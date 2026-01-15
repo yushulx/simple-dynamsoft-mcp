@@ -64,7 +64,7 @@ Add to your VS Code settings:
 }
 ```
 
-### Use via npx (after publishing)
+### Use via npx
 
 ```bash
 npx simple-dynamsoft-mcp
