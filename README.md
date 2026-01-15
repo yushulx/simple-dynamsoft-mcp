@@ -41,33 +41,126 @@ npm install
 npm start
 ```
 
-### Use with Claude Desktop
+## MCP Client Configuration
+
+### Claude Desktop
 
 Add to your `claude_desktop_config.json`:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "dynamsoft": {
-      "command": "node",
-      "args": ["/path/to/simple-dynamsoft-mcp/src/index.js"]
+      "command": "npx",
+      "args": ["-y", "simple-dynamsoft-mcp"]
     }
   }
 }
 ```
 
-### Use with VS Code (Copilot)
+### VS Code (GitHub Copilot)
 
-Add to your VS Code settings:
+Add to your VS Code `settings.json` (Ctrl+Shift+P → "Preferences: Open User Settings (JSON)"):
 
 ```json
 {
-  "mcp.servers": {
+  "mcp": {
+    "servers": {
+      "dynamsoft": {
+        "command": "npx",
+        "args": ["-y", "simple-dynamsoft-mcp"]
+      }
+    }
+  }
+}
+```
+
+Or use the workspace `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
     "dynamsoft": {
       "command": "npx",
       "args": ["-y", "simple-dynamsoft-mcp"]
     }
   }
+}
+```
+
+### OpenCode
+
+Add to your `~/.config/opencode/opencode.json` (or `%USERPROFILE%\.config\opencode\opencode.json` on Windows):
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "dynamsoft": {
+        "command": "npx",
+        "args": ["-y", "simple-dynamsoft-mcp"]
+      }
+    }
+  }
+}
+```
+
+### Cursor
+
+Add to your Cursor settings (`~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "command": "npx",
+      "args": ["-y", "simple-dynamsoft-mcp"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to your Windsurf MCP config (`~/.codeium/windsurf/mcp_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "command": "npx",
+      "args": ["-y", "simple-dynamsoft-mcp"]
+    }
+  }
+}
+```
+
+### Cline (VS Code Extension)
+
+Add via Cline settings in VS Code or edit `~/Library/Application Support/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "command": "npx",
+      "args": ["-y", "simple-dynamsoft-mcp"]
+    }
+  }
+}
+```
+
+### Alternative: Run from Local Clone
+
+If you prefer running from source:
+
+```json
+{
+  "command": "node",
+  "args": ["/absolute/path/to/simple-dynamsoft-mcp/src/index.js"]
 }
 ```
 
