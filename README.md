@@ -104,7 +104,7 @@ Add to your VS Code settings:
 
 **CDN:** `https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@11.2.4000/dist/dbr.bundle.min.js`
 
-### Dynamic Web TWAIN (v18.5)
+### Dynamic Web TWAIN (v19.3)
 
 **Installation:** `npm install dwt`
 

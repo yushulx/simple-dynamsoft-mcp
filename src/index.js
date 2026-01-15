@@ -352,10 +352,13 @@ const server = new McpServer({
 // TOOL: list_sdks
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "list_sdks",
-  "List all available Dynamsoft SDKs with versions and platforms",
-  z.object({}),
+  {
+    title: "List SDKs",
+    description: "List all available Dynamsoft SDKs with versions and platforms",
+    inputSchema: {}
+  },
   async () => {
     const lines = [
       "# Dynamsoft SDKs",
@@ -397,14 +400,17 @@ server.tool(
 // TOOL: get_sdk_info
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_sdk_info",
-  "Get SDK information including version, license, dependencies, and docs",
-  z.object({
-    sdk: z.string().optional().describe("SDK: dbr-mobile, dbr-python, dbr-web, dwt"),
-    platform: z.string().optional().describe("Platform: android, ios, flutter, react-native, maui, python, web"),
-    api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)")
-  }),
+  {
+    title: "Get SDK Info",
+    description: "Get SDK information including version, license, dependencies, and docs",
+    inputSchema: {
+      sdk: z.string().optional().describe("SDK: dbr-mobile, dbr-python, dbr-web, dwt"),
+      platform: z.string().optional().describe("Platform: android, ios, flutter, react-native, maui, python, web"),
+      api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)")
+    }
+  },
   async ({ sdk, platform, api_level }) => {
     const sdkId = normalizeSdkId(sdk || "dbr-mobile");
     const sdkEntry = registry.sdks[sdkId];
@@ -508,13 +514,16 @@ ${platformEntry.installation.npm}
 // TOOL: list_samples
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "list_samples",
-  "List available code samples for mobile platforms",
-  z.object({
-    platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
-    api_level: z.string().optional().describe("API level: high-level or low-level")
-  }),
+  {
+    title: "List Mobile Samples",
+    description: "List available code samples for mobile platforms",
+    inputSchema: {
+      platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
+      api_level: z.string().optional().describe("API level: high-level or low-level")
+    }
+  },
   async ({ platform, api_level }) => {
     const samples = discoverMobileSamples(platform);
     const level = normalizeApiLevel(api_level);
@@ -540,10 +549,13 @@ server.tool(
 // TOOL: list_python_samples
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "list_python_samples",
-  "List available Python SDK code samples",
-  z.object({}),
+  {
+    title: "List Python Samples",
+    description: "List available Python SDK code samples",
+    inputSchema: {}
+  },
   async () => {
     const samples = discoverPythonSamples();
     const sdkEntry = registry.sdks["dbr-python"];
@@ -568,10 +580,13 @@ server.tool(
 // TOOL: list_dwt_categories
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "list_dwt_categories",
-  "List Dynamic Web TWAIN sample categories",
-  z.object({}),
+  {
+    title: "List DWT Categories",
+    description: "List Dynamic Web TWAIN sample categories",
+    inputSchema: {}
+  },
   async () => {
     const categories = discoverDwtSamples();
     const sdkEntry = registry.sdks["dwt"];
@@ -603,16 +618,19 @@ server.tool(
 // TOOL: get_code_snippet
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_code_snippet",
-  "Get actual source code from mobile sample projects",
-  z.object({
-    platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
-    sample_name: z.string().describe("Sample name, e.g. ScanSingleBarcode, DecodeWithCameraEnhancer"),
-    api_level: z.string().optional().describe("API level: high-level or low-level"),
-    language: z.string().optional().describe("Language: java, kotlin, swift"),
-    file_name: z.string().optional().describe("Specific file to retrieve")
-  }),
+  {
+    title: "Get Code Snippet",
+    description: "Get actual source code from mobile sample projects",
+    inputSchema: {
+      platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
+      sample_name: z.string().describe("Sample name, e.g. ScanSingleBarcode, DecodeWithCameraEnhancer"),
+      api_level: z.string().optional().describe("API level: high-level or low-level"),
+      language: z.string().optional().describe("Language: java, kotlin, swift"),
+      file_name: z.string().optional().describe("Specific file to retrieve")
+    }
+  },
   async ({ platform, sample_name, api_level, language, file_name }) => {
     const level = normalizeApiLevel(api_level);
     const normalizedSample = normalizeSampleName(sample_name);
@@ -695,12 +713,15 @@ server.tool(
 // TOOL: get_python_sample
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_python_sample",
-  "Get Python SDK sample code",
-  z.object({
-    sample_name: z.string().describe("Sample name, e.g. read_an_image, video_decoding")
-  }),
+  {
+    title: "Get Python Sample",
+    description: "Get Python SDK sample code",
+    inputSchema: {
+      sample_name: z.string().describe("Sample name, e.g. read_an_image, video_decoding")
+    }
+  },
   async ({ sample_name }) => {
     const normalizedSample = normalizeSampleName(sample_name);
     const samplePath = getPythonSamplePath(normalizedSample);
@@ -737,13 +758,16 @@ server.tool(
 // TOOL: get_dwt_sample
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_dwt_sample",
-  "Get Dynamic Web TWAIN sample code",
-  z.object({
-    category: z.string().describe("Category: scan, input-options, output-options, classification, UI-customization"),
-    sample_name: z.string().describe("Sample name, e.g. basic-scan, read-barcode, save")
-  }),
+  {
+    title: "Get DWT Sample",
+    description: "Get Dynamic Web TWAIN sample code",
+    inputSchema: {
+      category: z.string().describe("Category: scan, input-options, output-options, classification, UI-customization"),
+      sample_name: z.string().describe("Sample name, e.g. basic-scan, read-barcode, save")
+    }
+  },
   async ({ category, sample_name }) => {
     const normalizedSample = normalizeSampleName(sample_name);
     const samplePath = getDwtSamplePath(category, normalizedSample);
@@ -786,16 +810,19 @@ server.tool(
 // TOOL: get_quick_start
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_quick_start",
-  "Get complete quick start guide with working code",
-  z.object({
-    sdk: z.string().optional().describe("SDK: dbr-mobile, dbr-python, dbr-web, dwt"),
-    platform: z.enum(["android", "ios"]).optional().describe("Platform: android or ios (for mobile)"),
-    api_level: z.string().optional().describe("API level: high-level or low-level"),
-    language: z.string().optional().describe("Language: java, kotlin, swift"),
-    use_case: z.string().optional().describe("Use case: single-barcode, multiple-barcodes, image-file")
-  }),
+  {
+    title: "Get Quick Start",
+    description: "Get complete quick start guide with working code",
+    inputSchema: {
+      sdk: z.string().optional().describe("SDK: dbr-mobile, dbr-python, dbr-web, dwt"),
+      platform: z.enum(["android", "ios"]).optional().describe("Platform: android or ios (for mobile)"),
+      api_level: z.string().optional().describe("API level: high-level or low-level"),
+      language: z.string().optional().describe("Language: java, kotlin, swift"),
+      use_case: z.string().optional().describe("Use case: single-barcode, multiple-barcodes, image-file")
+    }
+  },
   async ({ sdk, platform, api_level, language, use_case }) => {
     const sdkId = normalizeSdkId(sdk || "dbr-mobile");
 
@@ -989,12 +1016,15 @@ Then run: \`pod install\`
 // TOOL: get_gradle_config
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_gradle_config",
-  "Get Android Gradle configuration",
-  z.object({
-    sample_name: z.string().optional().describe("Sample to get config from")
-  }),
+  {
+    title: "Get Gradle Config",
+    description: "Get Android Gradle configuration",
+    inputSchema: {
+      sample_name: z.string().optional().describe("Sample to get config from")
+    }
+  },
   async ({ sample_name }) => {
     const sdkEntry = registry.sdks["dbr-mobile"];
     const sampleName = sample_name || "ScanSingleBarcode";
@@ -1031,13 +1061,16 @@ server.tool(
 // TOOL: get_license_info
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_license_info",
-  "Get license setup code for different platforms",
-  z.object({
-    platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
-    language: z.string().optional().describe("Language: java, kotlin, swift")
-  }),
+  {
+    title: "Get License Info",
+    description: "Get license setup code for different platforms",
+    inputSchema: {
+      platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
+      language: z.string().optional().describe("Language: java, kotlin, swift")
+    }
+  },
   async ({ platform, language }) => {
     const normalizedLang = normalizeLanguage(language);
 
@@ -1105,13 +1138,16 @@ LicenseManager.initLicense("${registry.trial_license}") { isSuccess, error in
 // TOOL: get_api_usage
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "get_api_usage",
-  "Get usage examples for specific Dynamsoft APIs",
-  z.object({
-    api_name: z.string().describe("API name: BarcodeScannerConfig, CaptureVisionRouter, etc."),
-    platform: z.enum(["android", "ios"]).optional().describe("Platform: android or ios")
-  }),
+  {
+    title: "Get API Usage",
+    description: "Get usage examples for specific Dynamsoft APIs",
+    inputSchema: {
+      api_name: z.string().describe("API name: BarcodeScannerConfig, CaptureVisionRouter, etc."),
+      platform: z.enum(["android", "ios"]).optional().describe("Platform: android or ios")
+    }
+  },
   async ({ api_name, platform }) => {
     const apiLower = api_name.toLowerCase();
     const platformKey = platform ? normalizePlatform(platform) : "android";
@@ -1159,13 +1195,16 @@ server.tool(
 // TOOL: search_samples
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "search_samples",
-  "Search for code samples by keyword or feature",
-  z.object({
-    keyword: z.string().describe("Keyword to search: camera, image, settings, etc."),
-    platform: z.enum(["android", "ios"]).optional().describe("Platform filter")
-  }),
+  {
+    title: "Search Samples",
+    description: "Search for code samples by keyword or feature",
+    inputSchema: {
+      keyword: z.string().describe("Keyword to search: camera, image, settings, etc."),
+      platform: z.enum(["android", "ios"]).optional().describe("Platform filter")
+    }
+  },
   async ({ keyword, platform }) => {
     const platforms = platform ? [platform] : ["android", "ios"];
     const kw = keyword.toLowerCase();
@@ -1203,10 +1242,15 @@ server.tool(
 // ============================================================================
 
 // SDK Info resource
-server.resource(
+server.registerResource(
+  "sdk-info",
   "dynamsoft://sdk-info",
-  "Dynamsoft SDKs information",
-  async () => {
+  {
+    title: "Dynamsoft SDK Information",
+    description: "Dynamsoft SDKs information including versions and platforms",
+    mimeType: "application/json"
+  },
+  async (uri) => {
     const info = {
       trial_license: registry.trial_license,
       license_request_url: registry.license_request_url,
@@ -1218,7 +1262,7 @@ server.resource(
         platforms: Object.keys(sdk.platforms)
       }))
     };
-    return { contents: [{ uri: "dynamsoft://sdk-info", text: JSON.stringify(info, null, 2), mimeType: "application/json" }] };
+    return { contents: [{ uri: uri.href, text: JSON.stringify(info, null, 2), mimeType: "application/json" }] };
   }
 );
 
@@ -1227,20 +1271,26 @@ for (const platform of ["android", "ios"]) {
   const samples = discoverMobileSamples(platform);
   for (const level of ["high-level", "low-level"]) {
     for (const sampleName of samples[level]) {
-      const uri = `dynamsoft://samples/mobile/${platform}/${level}/${sampleName}`;
-      server.resource(
-        uri,
-        `${sampleName} for ${platform} (${level})`,
-        async () => {
+      const resourceUri = `dynamsoft://samples/mobile/${platform}/${level}/${sampleName}`;
+      const resourceName = `mobile-${platform}-${level}-${sampleName}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+      server.registerResource(
+        resourceName,
+        resourceUri,
+        {
+          title: `${sampleName} (${platform})`,
+          description: `${sampleName} for ${platform} (${level})`,
+          mimeType: "text/plain"
+        },
+        async (uri) => {
           const samplePath = getMobileSamplePath(platform, level, sampleName);
           const mainFile = getMainCodeFile(platform, samplePath);
           if (!mainFile) {
-            return { contents: [{ uri, text: "Sample not found", mimeType: "text/plain" }] };
+            return { contents: [{ uri: uri.href, text: "Sample not found", mimeType: "text/plain" }] };
           }
           const content = readCodeFile(mainFile.path);
           const ext = mainFile.filename.split(".").pop();
           const mimeType = ext === "swift" ? "text/x-swift" : ext === "kt" ? "text/x-kotlin" : ext === "java" ? "text/x-java" : "text/plain";
-          return { contents: [{ uri, text: content, mimeType }] };
+          return { contents: [{ uri: uri.href, text: content, mimeType }] };
         }
       );
     }
@@ -1250,14 +1300,20 @@ for (const platform of ["android", "ios"]) {
 // Register Python sample resources
 const pythonSamples = discoverPythonSamples();
 for (const sampleName of pythonSamples) {
-  const uri = `dynamsoft://samples/python/${sampleName}`;
-  server.resource(
-    uri,
-    `Python sample: ${sampleName}`,
-    async () => {
+  const resourceUri = `dynamsoft://samples/python/${sampleName}`;
+  const resourceName = `python-${sampleName}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+  server.registerResource(
+    resourceName,
+    resourceUri,
+    {
+      title: `Python: ${sampleName}`,
+      description: `Python sample: ${sampleName}`,
+      mimeType: "text/x-python"
+    },
+    async (uri) => {
       const samplePath = getPythonSamplePath(sampleName);
       const content = existsSync(samplePath) ? readCodeFile(samplePath) : "Sample not found";
-      return { contents: [{ uri, text: content, mimeType: "text/x-python" }] };
+      return { contents: [{ uri: uri.href, text: content, mimeType: "text/x-python" }] };
     }
   );
 }
@@ -1266,14 +1322,20 @@ for (const sampleName of pythonSamples) {
 const dwtCategories = discoverDwtSamples();
 for (const [category, samples] of Object.entries(dwtCategories)) {
   for (const sampleName of samples) {
-    const uri = `dynamsoft://samples/dwt/${category}/${sampleName}`;
-    server.resource(
-      uri,
-      `DWT ${category}: ${sampleName}`,
-      async () => {
+    const resourceUri = `dynamsoft://samples/dwt/${category}/${sampleName}`;
+    const resourceName = `dwt-${category}-${sampleName}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    server.registerResource(
+      resourceName,
+      resourceUri,
+      {
+        title: `DWT: ${sampleName}`,
+        description: `DWT ${category}: ${sampleName}`,
+        mimeType: "text/html"
+      },
+      async (uri) => {
         const samplePath = getDwtSamplePath(category, sampleName);
         const content = samplePath && existsSync(samplePath) ? readCodeFile(samplePath) : "Sample not found";
-        return { contents: [{ uri, text: content, mimeType: "text/html" }] };
+        return { contents: [{ uri: uri.href, text: content, mimeType: "text/html" }] };
       }
     );
   }
