@@ -121,7 +121,7 @@ await test('Server responds to initialize request', async () => {
 });
 
 // Test 2: List tools
-await test('tools/list returns all 13 tools', async () => {
+await test('tools/list returns all 14 tools', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -130,14 +130,14 @@ await test('tools/list returns all 13 tools', async () => {
 
     assert(response.result, 'Should have result');
     assert(response.result.tools, 'Should have tools array');
-    assert(response.result.tools.length === 13, `Expected 13 tools, got ${response.result.tools.length}`);
+    assert(response.result.tools.length === 14, `Expected 14 tools, got ${response.result.tools.length}`);
 
     const toolNames = response.result.tools.map(t => t.name);
     const expectedTools = [
         'list_sdks', 'get_sdk_info', 'list_samples', 'list_python_samples',
         'list_dwt_categories', 'get_code_snippet', 'get_python_sample',
         'get_dwt_sample', 'get_quick_start', 'get_gradle_config',
-        'get_license_info', 'get_api_usage', 'search_samples'
+        'get_license_info', 'get_api_usage', 'search_samples', 'generate_project'
     ];
 
     for (const expected of expectedTools) {
@@ -328,7 +328,26 @@ await test('search_samples finds samples by keyword', async () => {
     assert(response.result.content, 'Should have content');
 });
 
-// Test 13: resources/list returns resources
+// Test 13: generate_project tool
+await test('generate_project returns project structure', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'generate_project',
+            arguments: { platform: 'android', sample_name: 'ScanSingleBarcode' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(response.result.content, 'Should have content');
+    const text = response.result.content[0].text;
+    assert(text.includes('# Project Generation:'), 'Should include project generation header');
+    assert(text.includes('AndroidManifest.xml') || text.includes('build.gradle'), 'Should include project files');
+});
+
+// Test 14: resources/list returns registered resources
 await test('resources/list returns registered resources', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
@@ -345,7 +364,7 @@ await test('resources/list returns registered resources', async () => {
     assert(uris.some(u => u.includes('sdk-info')), 'Should have sdk-info resources');
 });
 
-// Test 14: Invalid tool call returns error
+// Test 15: Invalid tool call returns error
 await test('Invalid tool call returns proper error', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
@@ -361,7 +380,7 @@ await test('Invalid tool call returns proper error', async () => {
         'Should return error for invalid tool');
 });
 
-// Test 15: Tool with invalid arguments returns error
+// Test 16: Tool with invalid arguments returns error
 await test('Tool with missing required arguments returns error', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',

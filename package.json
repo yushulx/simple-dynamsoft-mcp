@@ -1,6 +1,6 @@
 {
   "name": "simple-dynamsoft-mcp",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "MCP server for Dynamsoft SDKs - Barcode Reader (Mobile/Python/Web) and Dynamic Web TWAIN. Provides documentation, code snippets, and API guidance.",
   "repository": {
     "type": "git",

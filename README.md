@@ -31,6 +31,7 @@ MCP (Model Context Protocol) server that enables AI assistants to write correct 
 | `get_license_info` | License initialization code |
 | `get_api_usage` | Usage examples for specific APIs |
 | `search_samples` | Search samples by keyword |
+| `generate_project` | Generate a complete project structure based on a sample |
 
 
 ## MCP Client Configuration

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, relative, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -1234,6 +1234,94 @@ server.registerTool(
     ];
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// ============================================================================
+// TOOL: generate_project
+// ============================================================================
+
+server.registerTool(
+  "generate_project",
+  {
+    title: "Generate Project",
+    description: "Generate a complete project structure based on a sample",
+    inputSchema: {
+      platform: z.enum(["android", "ios"]).describe("Platform: android or ios"),
+      sample_name: z.string().optional().describe("Sample to use as template (default: ScanSingleBarcode)"),
+      api_level: z.string().optional().describe("API level: high-level or low-level")
+    }
+  },
+  async ({ platform, sample_name, api_level }) => {
+    const level = normalizeApiLevel(api_level);
+    const name = sample_name || "ScanSingleBarcode";
+    const samplePath = getMobileSamplePath(platform, level, name);
+
+    if (!existsSync(samplePath)) {
+      return { content: [{ type: "text", text: `Sample "${name}" not found.` }] };
+    }
+
+    const files = [];
+    const textExtensions = [
+      ".java", ".kt", ".swift", ".m", ".h", ".xml", ".gradle", ".properties",
+      ".pro", ".json", ".plist", ".storyboard", ".xib", ".gitignore", ".md"
+    ];
+
+    function walk(dir, root) {
+      const entries = readdirSync(dir);
+      for (const entry of entries) {
+        if (entry === "build" || entry === ".gradle" || entry === ".idea" || entry === ".git" || entry === "capturedImages") continue;
+
+        const fullPath = join(dir, entry);
+        const stat = statSync(fullPath);
+
+        if (stat.isDirectory()) {
+          walk(fullPath, root);
+        } else {
+          const ext = "." + entry.split(".").pop();
+          if (textExtensions.includes(ext) || entry === "gradlew" || entry === "Podfile") {
+            try {
+              const content = readFileSync(fullPath, "utf-8");
+              // Normalize newlines
+              const normalized = content.replace(/\r\n/g, "\n");
+              files.push({
+                path: fullPath.replace(root + "\\", "").replace(root + "/", ""),
+                content: normalized,
+                ext: ext.replace(".", "")
+              });
+            } catch (e) {
+              // Ignore binary read errors if any
+            }
+          }
+        }
+      }
+    }
+
+    walk(samplePath, samplePath);
+
+    // Filter out huge files if any (limit 50KB per file to avoid context overflow)
+    const validFiles = files.filter(f => f.content.length < 50000);
+
+    const output = [
+      `# Project Generation: ${name} (${platform})`,
+      "",
+      `**SDK Version:** ${registry.sdks["dbr-mobile"].version}`,
+      `**Level:** ${level}`,
+      "",
+      "This output contains the complete file structure for the project.",
+      "You can use these files to reconstruct the project locally.",
+      ""
+    ];
+
+    for (const file of validFiles) {
+      output.push(`## ${file.path}`);
+      output.push("```" + (file.ext || "text"));
+      output.push(file.content);
+      output.push("```");
+      output.push("");
+    }
+
+    return { content: [{ type: "text", text: output.join("\n") }] };
   }
 );
 
