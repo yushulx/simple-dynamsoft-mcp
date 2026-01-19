@@ -23,7 +23,9 @@
   "scripts": {
     "start": "node src/index.js",
     "start:http": "node http/wrapper.js",
-    "test": "node test/server.test.js && node test/http-wrapper.test.js"
+    "test": "npm run test:stdio && npm run test:http",
+    "test:stdio": "node test/server.test.js",
+    "test:http": "node test/http-wrapper.test.js"
   },
   "keywords": [
     "mcp",
