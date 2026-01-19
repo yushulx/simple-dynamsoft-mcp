@@ -216,6 +216,78 @@ function discoverPythonSamples() {
   return samples;
 }
 
+function discoverWebSamples() {
+  const categories = {
+    "root": [],
+    "frameworks": [],
+    "scenarios": []
+  };
+  const webPath = join(codeSnippetRoot, "dynamsoft-barcode-reader", "web");
+
+  if (!existsSync(webPath)) return categories;
+
+  // Find HTML files in root
+  for (const entry of readdirSync(webPath, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".html")) {
+      categories["root"].push(entry.name.replace(".html", ""));
+    }
+  }
+
+  // Find samples in subdirectories
+  for (const subdir of ["frameworks", "scenarios"]) {
+    const subdirPath = join(webPath, subdir);
+    if (existsSync(subdirPath)) {
+      for (const entry of readdirSync(subdirPath, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          categories[subdir].push(entry.name);
+        } else if (entry.isFile() && entry.name.endsWith(".html")) {
+          categories[subdir].push(entry.name.replace(".html", ""));
+        }
+      }
+    }
+  }
+
+  // Remove empty categories
+  for (const [key, value] of Object.entries(categories)) {
+    if (value.length === 0) delete categories[key];
+  }
+
+  return categories;
+}
+
+function getWebSamplePath(category, sampleName) {
+  const webPath = join(codeSnippetRoot, "dynamsoft-barcode-reader", "web");
+
+  if (category === "root" || !category) {
+    // Try root level
+    const htmlPath = join(webPath, `${sampleName}.html`);
+    if (existsSync(htmlPath)) return htmlPath;
+  } else {
+    // Try in subdirectory
+    const dirPath = join(webPath, category, sampleName);
+    if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
+      // Look for index.html or main html file
+      const indexPath = join(dirPath, "index.html");
+      if (existsSync(indexPath)) return indexPath;
+      // Look for any html file
+      for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+        if (entry.isFile() && entry.name.endsWith(".html")) {
+          return join(dirPath, entry.name);
+        }
+      }
+    }
+    // Try as html file directly
+    const htmlPath = join(webPath, category, `${sampleName}.html`);
+    if (existsSync(htmlPath)) return htmlPath;
+  }
+
+  // Fallback: search all
+  const rootPath = join(webPath, `${sampleName}.html`);
+  if (existsSync(rootPath)) return rootPath;
+
+  return null;
+}
+
 function discoverDwtSamples() {
   const categories = {};
   const dwtPath = join(codeSnippetRoot, "dynamic-web-twain");
@@ -385,7 +457,9 @@ server.registerTool(
     lines.push("- `list_sdks` - List all SDKs");
     lines.push("- `get_sdk_info` - Get detailed SDK info for a platform");
     lines.push("- `list_samples` - List code samples (mobile)");
+    lines.push("- `list_web_samples` - List web barcode reader samples");
     lines.push("- `get_code_snippet` - Get actual source code");
+    lines.push("- `get_web_sample` - Get web barcode reader sample code");
     lines.push("- `get_quick_start` - Get complete working example");
     lines.push("- `get_gradle_config` - Get Android build config");
     lines.push("- `get_license_info` - Get license setup code");
@@ -578,6 +652,99 @@ server.registerTool(
     ];
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// ============================================================================
+// TOOL: list_web_samples
+// ============================================================================
+
+server.registerTool(
+  "list_web_samples",
+  {
+    title: "List Web Barcode Samples",
+    description: "List available JavaScript/Web barcode reader code samples",
+    inputSchema: {}
+  },
+  async () => {
+    const categories = discoverWebSamples();
+    const sdkEntry = registry.sdks["dbr-web"];
+
+    const lines = [
+      "# Web Barcode Reader Samples",
+      "",
+      `**SDK Version:** ${sdkEntry.version}`,
+      `**Install:** \`npm install dynamsoft-barcode-reader-bundle\``,
+      `**CDN:** \`${sdkEntry.platforms.web.installation.cdn}\``,
+      "",
+      "## Available Samples",
+      ""
+    ];
+
+    for (const [category, samples] of Object.entries(categories)) {
+      const categoryTitle = category === "root" ? "Basic Samples" : category.charAt(0).toUpperCase() + category.slice(1);
+      lines.push(`### ${categoryTitle}`);
+      lines.push(samples.map(s => `- ${s}`).join("\n"));
+      lines.push("");
+    }
+
+    lines.push("Use `get_web_sample` with sample_name to get code.");
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// ============================================================================
+// TOOL: get_web_sample
+// ============================================================================
+
+server.registerTool(
+  "get_web_sample",
+  {
+    title: "Get Web Barcode Sample",
+    description: "Get JavaScript/Web barcode reader sample code",
+    inputSchema: {
+      sample_name: z.string().describe("Sample name, e.g. hello-world, read-an-image"),
+      category: z.string().optional().describe("Category: root, frameworks, scenarios (optional)")
+    }
+  },
+  async ({ sample_name, category }) => {
+    const samplePath = getWebSamplePath(category, sample_name);
+
+    if (!samplePath) {
+      const categories = discoverWebSamples();
+      const allSamples = Object.entries(categories)
+        .map(([cat, samples]) => samples.map(s => `${cat}/${s}`))
+        .flat();
+      return {
+        content: [{
+          type: "text",
+          text: `Sample "${sample_name}" not found.\n\nAvailable samples:\n${allSamples.map(s => `- ${s}`).join("\n")}\n\nUse \`list_web_samples\` to see all available samples.`
+        }]
+      };
+    }
+
+    const content = readCodeFile(samplePath);
+    if (!content) {
+      return { content: [{ type: "text", text: `Could not read "${sample_name}".` }] };
+    }
+
+    const sdkEntry = registry.sdks["dbr-web"];
+
+    const output = [
+      `# Web Barcode Reader: ${sample_name}`,
+      "",
+      `**SDK Version:** ${sdkEntry.version}`,
+      `**Install:** \`npm install dynamsoft-barcode-reader-bundle\``,
+      `**CDN:** \`${sdkEntry.platforms.web.installation.cdn}\``,
+      `**Trial License:** \`${registry.trial_license}\``,
+      "",
+      "```html",
+      content,
+      "```"
+    ];
+
+    return { content: [{ type: "text", text: output.join("\n") }] };
   }
 );
 
@@ -1054,6 +1221,49 @@ server.registerTool(
             "```",
             "",
             "## Sample: basic-scan.html",
+            "```html",
+            content,
+            "```",
+            "",
+            "## Notes",
+            "- Trial license requires network connection",
+            `- User Guide: ${sdkEntry.platforms.web.docs["user-guide"]}`
+          ].join("\n")
+        }]
+      };
+    }
+
+    // Handle Web Barcode Reader SDK
+    if (sdkId === "dbr-web") {
+      const sdkEntry = registry.sdks["dbr-web"];
+      const sampleName = use_case?.includes("image") ? "read-an-image" : "hello-world";
+      const samplePath = getWebSamplePath("root", sampleName);
+
+      if (!samplePath || !existsSync(samplePath)) {
+        return { content: [{ type: "text", text: `Sample not found. Use list_web_samples to see available.` }] };
+      }
+
+      const content = readCodeFile(samplePath);
+
+      return {
+        content: [{
+          type: "text", text: [
+            "# Quick Start: Web Barcode Reader",
+            "",
+            `**SDK Version:** ${sdkEntry.version}`,
+            `**Trial License:** \`${registry.trial_license}\``,
+            "",
+            "## Option 1: CDN",
+            "```html",
+            `<script src="${sdkEntry.platforms.web.installation.cdn}"></script>`,
+            "```",
+            "",
+            "## Option 2: NPM",
+            "```bash",
+            "npm install dynamsoft-barcode-reader-bundle",
+            "```",
+            "",
+            `## Sample: ${sampleName}.html`,
             "```html",
             content,
             "```",
@@ -1564,6 +1774,29 @@ for (const sampleName of pythonSamples) {
       return { contents: [{ uri: uri.href, text: content, mimeType: "text/x-python" }] };
     }
   );
+}
+
+// Register Web barcode reader sample resources
+const webCategories = discoverWebSamples();
+for (const [category, samples] of Object.entries(webCategories)) {
+  for (const sampleName of samples) {
+    const resourceUri = `dynamsoft://samples/web/${category}/${sampleName}`;
+    const resourceName = `web-${category}-${sampleName}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    server.registerResource(
+      resourceName,
+      resourceUri,
+      {
+        title: `Web: ${sampleName}`,
+        description: `Web barcode reader ${category}: ${sampleName}`,
+        mimeType: "text/html"
+      },
+      async (uri) => {
+        const samplePath = getWebSamplePath(category, sampleName);
+        const content = samplePath && existsSync(samplePath) ? readCodeFile(samplePath) : "Sample not found";
+        return { contents: [{ uri: uri.href, text: content, mimeType: "text/html" }] };
+      }
+    );
+  }
 }
 
 // Register DWT sample resources

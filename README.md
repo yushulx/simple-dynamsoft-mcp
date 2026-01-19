@@ -26,9 +26,11 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 | `get_sdk_info` | Get detailed SDK info for a specific platform |
 | `list_samples` | List mobile code samples |
 | `list_python_samples` | List Python SDK samples |
+| `list_web_samples` | List web barcode reader samples |
 | `list_dwt_categories` | List Dynamic Web TWAIN sample categories |
 | `get_code_snippet` | Get mobile sample source code |
 | `get_python_sample` | Get Python sample code |
+| `get_web_sample` | Get web barcode reader sample HTML/JS code |
 | `get_dwt_sample` | Get Dynamic Web TWAIN sample |
 | `get_quick_start` | Complete quick start guide with dependencies |
 | `get_gradle_config` | Android Gradle configuration |
@@ -194,6 +196,12 @@ If you prefer running from source:
 
 **CDN:** `https://cdn.jsdelivr.net/npm/dynamsoft-barcode-reader-bundle@11.2.4000/dist/dbr.bundle.min.js`
 
+**Samples:**
+- **hello-world** - Basic barcode scanning from camera
+- **read-an-image** - Decode from image files
+- **frameworks/** - React, Vue, Angular, Next.js, PWA samples
+- **scenarios/** - Multi-image reading, localize an item, driver license parsing
+
 ### Dynamic Web TWAIN (v19.3)
 
 **Installation:** `npm install dwt`
@@ -223,6 +231,12 @@ After connecting the MCP server, you can ask your AI assistant:
 ### Python Barcode Reader
 - "Show me how to read barcodes from an image in Python"
 - "Get the Python sample for video decoding"
+
+### Web Barcode Reader
+- "Create a web page that scans barcodes from a camera"
+- "Show me the web barcode reader hello world sample"
+- "Get the React sample for web barcode scanning"
+- "How do I decode barcodes from an image in JavaScript?"
 
 ### Dynamic Web TWAIN
 - "Create a web page that scans documents from a TWAIN scanner"
