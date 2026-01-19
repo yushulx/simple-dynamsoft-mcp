@@ -32,6 +32,10 @@ const SSE_KEEPALIVE_MS = process.env.SSE_KEEPALIVE_MS
   : 15000;
 const SESSION_ID = crypto.randomUUID();
 
+// Log levels: error < warn < info < debug
+const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
+const LOG_LEVEL = LEVELS[(process.env.LOG_LEVEL || "info").toLowerCase()] ?? LEVELS.info;
+
 // -----------------------------
 // Utils
 // -----------------------------
@@ -51,8 +55,14 @@ function makeId() {
   return crypto.randomUUID();
 }
 
-function log(...args) {
-  console.log(...args);
+function shouldLog(level) {
+  return (LEVELS[level] ?? LEVELS.info) <= LOG_LEVEL;
+}
+
+function logAt(level, ...args) {
+  if (shouldLog(level)) {
+    console.log(...args);
+  }
 }
 
 function err(...args) {
@@ -104,11 +114,11 @@ function sendResponse(res, payload, useSse = false) {
 // -----------------------------
 // Spawn MCP child
 // -----------------------------
-log("");
-log(`[MCP WRAPPER] MCP child starting...`);
-log(`[MCP WRAPPER] -> ${MCP_COMMAND} ${MCP_ARGS.join(" ")}`);
-log(`[MCP WRAPPER] Working dir: ${WORKDIR}`);
-log("");
+logAt("info", "");
+logAt("info", `[MCP WRAPPER] MCP child starting...`);
+logAt("info", `[MCP WRAPPER] -> ${MCP_COMMAND} ${MCP_ARGS.join(" ")}`);
+logAt("info", `[MCP WRAPPER] Working dir: ${WORKDIR}`);
+logAt("info", "");
 
 const child = spawn(MCP_COMMAND, MCP_ARGS, {
   cwd: WORKDIR,
@@ -116,7 +126,7 @@ const child = spawn(MCP_COMMAND, MCP_ARGS, {
   env: process.env,
 });
 
-log(`[MCP WRAPPER] MCP child started pid=${child.pid}`);
+logAt("info", `[MCP WRAPPER] MCP child started pid=${child.pid}`);
 
 child.on("exit", (code, signal) => {
   err(`[MCP WRAPPER] MCP child exited code=${code} signal=${signal}`);
@@ -162,8 +172,7 @@ child.stdout.on("data", (buf) => {
       continue;
     }
 
-    // Notification / server event
-    // We'll forward to SSE clients, if any.
+    // Notification / server event -> forward to SSE clients if any
     broadcastSse({
       event: "mcp",
       data: msg,
@@ -237,7 +246,7 @@ app.use(bodyParser.json({ limit: "2mb" }));
 
 // Basic HTTP logger
 app.use((req, res, next) => {
-  log(`[HTTP ${nowIso()}] ${req.method} ${req.path}`);
+  logAt("info", `[HTTP ${nowIso()}] ${req.method} ${req.path}`);
   next();
 });
 
@@ -254,7 +263,7 @@ app.get("/health", (req, res) => {
 
 // SSE endpoint (kept for compatibility; Copilot may or may not use it)
 app.get("/mcp", (req, res) => {
-  log(`[SSE] Client connected: ${req.headers["user-agent"] || "unknown"}`);
+  logAt("info", `[SSE] Client connected: ${req.headers["user-agent"] || "unknown"}`);
 
   res.status(200);
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -273,16 +282,16 @@ app.get("/mcp", (req, res) => {
   req.on("close", () => {
     sseClients.delete(res);
     stopKeepaliveIfNoClients();
-    log(`[SSE] Client disconnected. active=${sseClients.size}`);
+    logAt("info", `[SSE] Client disconnected. active=${sseClients.size}`);
   });
 });
 
 // MCP JSON-RPC endpoint
 app.post("/mcp", async (req, res) => {
   const useSse = wantsSse(req);
-  // Log headers & body for debugging
-  log(`[/mcp] headers: ${safeJson(req.headers)}`);
-  log(`[/mcp] raw body: ${safeJson(req.body)}`);
+  // Log headers (and body if enabled) for debugging
+  logAt("info", `[/mcp] headers: ${safeJson(req.headers)}`);
+  logAt("debug", `[/mcp] raw body: ${safeJson(req.body)}`);
 
   const body = req.body;
 
@@ -292,7 +301,7 @@ app.post("/mcp", async (req, res) => {
     body.jsonrpc === "2.0" &&
     body.method === "notifications/initialized"
   ) {
-    log(`[/mcp] notification received: notifications/initialized`);
+    logAt("info", `[/mcp] notification received: notifications/initialized`);
     const useSse = wantsSse(req);
     try {
       const discovery = await fetchDiscovery();
@@ -359,7 +368,7 @@ app.post("/mcp", async (req, res) => {
       return res.status(204).end();
     }
 
-    log(`[/mcp] MCP response: ${safeJson(childResp)}`);
+    logAt("debug", `[/mcp] MCP response: ${safeJson(childResp)}`);
     return sendResponse(res, childResp, useSse);
   } catch (e) {
     err(`[/mcp] Error proxying request: ${e?.stack || e}`);
@@ -382,11 +391,11 @@ app.post("/mcp", async (req, res) => {
 // -----------------------------
 async function pushDiscoveryToSse() {
   if (sseClients.size === 0) {
-    log(`[DISCOVERY] No SSE clients; skipping push.`);
+    logAt("debug", `[DISCOVERY] No SSE clients; skipping push.`);
     return;
   }
 
-  log(`[DISCOVERY] Querying tools/list + resources/list from MCP child...`);
+  logAt("debug", `[DISCOVERY] Querying tools/list + resources/list from MCP child...`);
 
   // tools/list
   const toolsReq = {
@@ -406,8 +415,8 @@ async function pushDiscoveryToSse() {
   };
   const resResp = await sendToChild(resReq, { timeoutMs: 30000 });
 
-  log(`[DISCOVERY] tools/list result keys: ${Object.keys(toolsResp || {})}`);
-  log(`[DISCOVERY] resources/list result keys: ${Object.keys(resResp || {})}`);
+  logAt("debug", `[DISCOVERY] tools/list result keys: ${Object.keys(toolsResp || {})}`);
+  logAt("debug", `[DISCOVERY] resources/list result keys: ${Object.keys(resResp || {})}`);
 
   // Push as SSE events (even if client didn't ask!)
   // This is a compatibility hack for Copilot Studio UI.
@@ -424,14 +433,15 @@ async function pushDiscoveryToSse() {
     },
   });
 
-  log(
+  logAt(
+    "info",
     `[DISCOVERY] pushed tools/resources over SSE. tools=${toolsResp?.result?.tools?.length ?? "?"} resources=${resResp?.result?.resources?.length ?? "?"}`
   );
 }
 
 // Fallback: fetch discovery for clients that don't use SSE
 async function fetchDiscovery() {
-  log(`[DISCOVERY] Fetching tools/resources for non-SSE client...`);
+  logAt("debug", `[DISCOVERY] Fetching tools/resources for non-SSE client...`);
 
   const toolsReq = {
     jsonrpc: "2.0",
@@ -461,10 +471,10 @@ async function fetchDiscovery() {
 // Start server
 // -----------------------------
 app.listen(PORT, "0.0.0.0", () => {
-  log("");
-  log(`[MCP WRAPPER] Listening on http://localhost:${PORT}`);
-  log(`[MCP WRAPPER] GET  /mcp = SSE stream (Copilot Studio expects this)`);
-  log(`[MCP WRAPPER] POST /mcp = JSON-RPC endpoint`);
-  log(`[MCP WRAPPER] /health = status`);
-  log("");
+  logAt("info", "");
+  logAt("info", `[MCP WRAPPER] Listening on http://localhost:${PORT}`);
+  logAt("info", `[MCP WRAPPER] GET  /mcp = SSE stream (Copilot Studio expects this)`);
+  logAt("info", `[MCP WRAPPER] POST /mcp = JSON-RPC endpoint`);
+  logAt("info", `[MCP WRAPPER] /health = status`);
+  logAt("info", "");
 });
