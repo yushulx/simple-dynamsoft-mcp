@@ -17,7 +17,8 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 - **Trial License Included**: Ready-to-use trial license for quick testing
 - **Multiple SDKs**: Barcode Reader (Mobile/Python/Web) + Dynamic Web TWAIN
 - **Multiple API Levels**: High-level (simple) and low-level (advanced) options
-- **HTTP MCP Wrapper for Copilot Studio**: `npm start:http` runs `http/wrapper.js`, exposing MCP over HTTP at `/mcp` (POST JSON-RPC, optional GET SSE). Discovery (tools/resources) is returned inline on `initialize` and `notifications/initialized`, plus SSE push when enabled.
+- **Stdio MCP server**: Runs on stdio. Works with any MCP-capable client.
+- **Resource-efficient discovery**: Resources are discovered via tools (fuzzy search + resource links). Only a small pinned set is listed by default; heavy content is fetched on-demand with `resources/read`.
 
 ## Available Tools
 
@@ -41,6 +42,8 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 | `generate_project` | Generate a complete project structure based on a sample |
 | `search_dwt_docs` | Search Dynamic Web TWAIN API documentation |
 | `get_dwt_api_doc` | Get specific DWT documentation article |
+| `search_resources` | Fuzzy search across samples/docs; returns resource links to read lazily |
+| `list_resource_topics` | Summarize resource categories to guide searching |
 
 
 ## MCP Client Configuration
@@ -164,16 +167,6 @@ If you prefer running from source:
 }
 ```
 
-### Copilot Studio / HTTP Wrapper
-
-- Install deps: `npm install`
-- Run the HTTP wrapper: `npm start:http` (listens on `http://localhost:3333`)
-  - POST `/mcp` for JSON-RPC (initialize returns capabilities, instructions, and discovery inline)
-  - GET `/mcp` for SSE (optional; discovery also pushed here if enabled)
-  - GET `/health` for status
-
-The wrapper proxies to the MCP stdio child (`./src/index.js`) and embeds `mcp-session-id` plus an instructions block in the initialize response for compatibility with Copilot Studio.
-
 ## Supported SDKs
 
 ### Dynamsoft Barcode Reader Mobile (v11.2.5000)
@@ -290,6 +283,13 @@ data/
 ├── dynamsoft_sdks.json        # SDK registry with versions and docs
 └── web-twain-api-docs.json    # Full DWT API documentation (50+ articles)
 ```
+
+## Using Search-Based Discovery (Recommended)
+
+- On session start, let your client call `tools/list` and `resources/list` (pinned only, not exhaustive).
+- For any query, call `search_resources` with keywords; it returns `resource_link` entries.
+- Read only the links you need via `resources/read` to avoid bloating the context window.
+- If unsure what to search, call `list_resource_topics` first.
 
 ## Extending the Server
 
