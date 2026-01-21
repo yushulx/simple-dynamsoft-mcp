@@ -6,6 +6,7 @@ MCP (Model Context Protocol) server that enables AI assistants to write correct 
 - **Dynamsoft Barcode Reader Python** - Desktop/server barcode scanning
 - **Dynamsoft Barcode Reader Web** - JavaScript/TypeScript barcode scanning
 - **Dynamic Web TWAIN** - Document scanning from TWAIN/WIA/ICA/SANE scanners
+- **Dynamsoft Document Viewer** - Web document viewing and annotation
 
 ## Demo Video
 https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
@@ -33,6 +34,8 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 | `get_python_sample` | Get Python sample code |
 | `get_web_sample` | Get web barcode reader sample HTML/JS code |
 | `get_dwt_sample` | Get Dynamic Web TWAIN sample |
+| `list_ddv_samples` | List Dynamsoft Document Viewer samples |
+| `get_ddv_sample` | Get Dynamsoft Document Viewer sample |
 | `get_quick_start` | Complete quick start guide with dependencies |
 | `get_gradle_config` | Android Gradle configuration |
 | `get_license_info` | License initialization code |
@@ -41,6 +44,8 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 | `generate_project` | Generate a complete project structure based on a sample |
 | `search_dwt_docs` | Search Dynamic Web TWAIN API documentation |
 | `get_dwt_api_doc` | Get specific DWT documentation article |
+| `search_ddv_docs` | Search Dynamsoft Document Viewer API documentation |
+| `get_ddv_api_doc` | Get specific DDV documentation article |
 
 
 ## MCP Client Configuration

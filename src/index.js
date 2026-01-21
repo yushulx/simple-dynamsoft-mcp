@@ -15,6 +15,9 @@ const registry = JSON.parse(readFileSync(registryUrl, "utf8"));
 const dwtDocsUrl = new URL("../data/web-twain-api-docs.json", import.meta.url);
 const dwtDocs = JSON.parse(readFileSync(dwtDocsUrl, "utf8"));
 
+const ddvDocsUrl = new URL("../data/ddv-api-docs.json", import.meta.url);
+const ddvDocs = JSON.parse(readFileSync(ddvDocsUrl, "utf8"));
+
 const codeSnippetRoot = join(projectRoot, "code-snippet");
 
 // ============================================================================
@@ -22,6 +25,12 @@ const codeSnippetRoot = join(projectRoot, "code-snippet");
 // ============================================================================
 
 const sdkAliases = {
+  // DDV
+  "ddv": "ddv",
+  "document-viewer": "ddv",
+  "document viewer": "ddv",
+  "pdf viewer": "ddv",
+  "edit viewer": "ddv",
   // DBR Mobile
   "dbr": "dbr-mobile",
   "dbr-mobile": "dbr-mobile",
@@ -320,6 +329,22 @@ function discoverDwtSamples() {
   return categories;
 }
 
+function discoverDdvSamples() {
+  const samples = [];
+  const ddvPath = join(codeSnippetRoot, "dynamsoft-document-viewer");
+
+  if (!existsSync(ddvPath)) return samples;
+
+  for (const entry of readdirSync(ddvPath, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".html")) {
+      samples.push(entry.name.replace(".html", ""));
+    } else if (entry.isDirectory() && !entry.name.startsWith(".")) {
+      samples.push(entry.name);
+    }
+  }
+  return samples;
+}
+
 // Legacy function for backward compatibility
 function discoverSamples(platform) {
   return discoverMobileSamples(platform);
@@ -384,6 +409,23 @@ function getDwtSamplePath(category, sampleName) {
   return findFile(categoryPath);
 }
 
+function getDdvSamplePath(sampleName) {
+  const ddvPath = join(codeSnippetRoot, "dynamsoft-document-viewer");
+  
+  // check for html file
+  let path = join(ddvPath, `${sampleName}.html`);
+  if (existsSync(path)) return path;
+
+  // check for directory
+  path = join(ddvPath, sampleName);
+  if (existsSync(path) && statSync(path).isDirectory()) {
+    // Look for README.md or src/index.js/ts or just return the dir
+    // Returning the dir allows findCodeFilesInSample to work on it
+    return path;
+  }
+  return null;
+}
+
 // Legacy function for backward compatibility
 function getSamplePath(platform, apiLevel, sampleName) {
   return getMobileSamplePath(platform, apiLevel, sampleName);
@@ -419,8 +461,8 @@ function formatDocs(docs) {
 
 const server = new McpServer({
   name: "simple-dynamsoft-mcp",
-  version: "1.0.3",
-  description: "MCP server for Dynamsoft SDKs: Barcode Reader (Mobile/Python/Web) and Dynamic Web TWAIN"
+  version: "3.1.0",
+  description: "MCP server for Dynamsoft SDKs: Barcode Reader (Mobile/Python/Web), Dynamic Web TWAIN and Document Viewer"
 });
 
 // ============================================================================
@@ -470,6 +512,10 @@ server.registerTool(
     lines.push("- `list_dwt_categories` - List DWT sample categories");
     lines.push("- `search_dwt_docs` - Search DWT API documentation");
     lines.push("- `get_dwt_api_doc` - Get specific DWT documentation article");
+    lines.push("- `list_ddv_samples` - List DDV samples");
+    lines.push("- `get_ddv_sample` - Get DDV sample code");
+    lines.push("- `search_ddv_docs` - Search DDV API documentation");
+    lines.push("- `get_ddv_api_doc` - Get specific DDV documentation article");
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
   }
@@ -554,7 +600,7 @@ Or Swift Package Manager: https://github.com/Dynamsoft/barcode-reader-spm`;
 \`\`\`bash
 ${platformEntry.installation.pip}
 \`\`\``;
-    } else if ((sdkId === "dbr-web" || sdkId === "dwt") && platformEntry.installation) {
+    } else if ((sdkId === "dbr-web" || sdkId === "dwt" || sdkId === "ddv") && platformEntry.installation) {
       deps = `
 ## Installation
 
@@ -1692,6 +1738,136 @@ server.registerTool(
     }
 
     return { content: [{ type: "text", text: output.join("\n") }] };
+  }
+);
+
+// ============================================================================
+// TOOL: list_ddv_samples
+// ============================================================================
+
+server.registerTool(
+  "list_ddv_samples",
+  {
+    title: "List DDV Samples",
+    description: "List available Dynamsoft Document Viewer code samples",
+    inputSchema: {}
+  },
+  async () => {
+    const samples = discoverDdvSamples();
+    if (samples.length === 0) {
+      return { content: [{ type: "text", text: "No samples found." }] };
+    }
+    const lines = ["# DDV Samples", "", ...samples.map(s => `- ${s}`)];
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// ============================================================================
+// TOOL: get_ddv_sample
+// ============================================================================
+
+server.registerTool(
+  "get_ddv_sample",
+  {
+    title: "Get DDV Sample",
+    description: "Get Dynamsoft Document Viewer sample code",
+    inputSchema: {
+      sample_name: z.string().describe("Sample name, e.g. hello-world, angular, vue")
+    }
+  },
+  async ({ sample_name }) => {
+    const path = getDdvSamplePath(sample_name);
+    if (!path) {
+      return { content: [{ type: "text", text: `Sample "${sample_name}" not found.` }] };
+    }
+
+    let content = "";
+    if (statSync(path).isDirectory()) {
+       // List files in directory
+       const files = readdirSync(path).filter(f => !f.startsWith("."));
+       content = `# Sample: ${sample_name}\n\nContents:\n${files.join("\n")}`;
+       
+       // Try to find a readme or main file
+       const readme = files.find(f => f.toLowerCase() === "readme.md");
+       if (readme) {
+         content += `\n\n## README\n\n${readFileSync(join(path, readme), "utf8")}`;
+       }
+    } else {
+       content = readFileSync(path, "utf8");
+    }
+
+    return { content: [{ type: "text", text: content }] };
+  }
+);
+
+// ============================================================================
+// TOOL: search_ddv_docs
+// ============================================================================
+
+server.registerTool(
+  "search_ddv_docs",
+  {
+    title: "Search DDV Docs",
+    description: "Search Dynamsoft Document Viewer API documentation",
+    inputSchema: {
+      query: z.string().describe("Search keyword or phrase"),
+      max_results: z.number().optional().describe("Maximum number of results (default: 5)")
+    }
+  },
+  async ({ query, max_results = 5 }) => {
+    const q = query.toLowerCase();
+    const matches = [];
+
+    for (const article of ddvDocs.articles) {
+      const titleScore = (article.title && article.title.toLowerCase().includes(q)) ? 2 : 0;
+      const contentScore = (article.content && article.content.toLowerCase().includes(q)) ? 1 : 0;
+      const score = titleScore + contentScore;
+
+      if (score > 0 && article.title) {
+        matches.push({ article, score });
+      }
+    }
+
+    matches.sort((a, b) => b.score - a.score);
+    const top = matches.slice(0, max_results);
+
+    if (top.length === 0) {
+      return { content: [{ type: "text", text: `No documentation found for "${query}".` }] };
+    }
+
+    const lines = top.map(m => {
+      const excerpt = m.article.content.split("\n").slice(0, 3).join("\n") + "...";
+      return `### ${m.article.title}\n**Score:** ${m.score}\n**URL:** ${m.article.url}\n\n${excerpt}\n`;
+    });
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+);
+
+// ============================================================================
+// TOOL: get_ddv_api_doc
+// ============================================================================
+
+server.registerTool(
+  "get_ddv_api_doc",
+  {
+    title: "Get DDV API Doc",
+    description: "Get full Dynamsoft Document Viewer documentation article by title or URL",
+    inputSchema: {
+      title: z.string().describe("Article title or partial title to match")
+    }
+  },
+  async ({ title }) => {
+    const q = title.toLowerCase();
+    const article = ddvDocs.articles.find(a => 
+      a.title.toLowerCase().includes(q) || a.url.toLowerCase().includes(q)
+    );
+
+    if (!article) {
+      return { content: [{ type: "text", text: `Article "${title}" not found.` }] };
+    }
+
+    return { content: [{ type: "text", text: `# ${article.title}\n\n**URL:** ${article.url}\n\n${article.content}` }] };
   }
 );
 

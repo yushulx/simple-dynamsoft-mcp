@@ -121,7 +121,7 @@ await test('Server responds to initialize request', async () => {
 });
 
 // Test 2: List tools
-await test('tools/list returns all 18 tools', async () => {
+await test('tools/list returns all 22 tools', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -130,7 +130,7 @@ await test('tools/list returns all 18 tools', async () => {
 
     assert(response.result, 'Should have result');
     assert(response.result.tools, 'Should have tools array');
-    assert(response.result.tools.length === 18, `Expected 18 tools, got ${response.result.tools.length}`);
+    assert(response.result.tools.length === 22, `Expected 22 tools, got ${response.result.tools.length}`);
 
     const toolNames = response.result.tools.map(t => t.name);
     const expectedTools = [
@@ -138,7 +138,8 @@ await test('tools/list returns all 18 tools', async () => {
         'list_web_samples', 'list_dwt_categories', 'get_code_snippet',
         'get_web_sample', 'get_python_sample', 'get_dwt_sample', 'get_quick_start',
         'get_gradle_config', 'get_license_info', 'get_api_usage', 'search_samples',
-        'generate_project', 'search_dwt_docs', 'get_dwt_api_doc'
+        'generate_project', 'search_dwt_docs', 'get_dwt_api_doc',
+        'list_ddv_samples', 'get_ddv_sample', 'search_ddv_docs', 'get_ddv_api_doc'
     ];
 
     for (const expected of expectedTools) {
@@ -503,6 +504,39 @@ await test('Deep folder sample (GeneralSettings) is discoverable and readable', 
     assert(content.length > 0, 'Content should not be empty');
     assert(content !== 'Sample not found', 'Should not return "Sample not found"');
     assert(content.includes('class HomeActivity') || content.includes('package'), 'Should contain Java/Kotlin code');
+});
+
+await test('list_ddv_samples', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: { name: 'list_ddv_samples', arguments: {} },
+        id: 11
+    });
+    assert(response.result, 'Should have result');
+    assert(response.result.content[0].text.includes('hello-world'), 'Should list hello-world sample');
+});
+
+await test('get_ddv_sample', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: { name: 'get_ddv_sample', arguments: { sample_name: 'hello-world' } },
+        id: 12
+    });
+    assert(response.result, 'Should have result');
+    assert(response.result.content[0].text.length > 0, 'Should have content');
+});
+
+await test('search_ddv_docs', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: { name: 'search_ddv_docs', arguments: { query: 'EditViewer' } },
+        id: 13
+    });
+    assert(response.result, 'Should have result');
+    assert(response.result.content[0].text.includes('EditViewer'), 'Should return matches');
 });
 
 // ============================================

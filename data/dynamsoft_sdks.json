@@ -206,6 +206,38 @@
           }
         }
       }
+    },
+    "ddv": {
+      "name": "Dynamsoft Document Viewer",
+      "description": "Browser-based JavaScript SDK for viewing, editing, and annotating documents (PDFs and images).",
+      "version": "3.x",
+      "default_platform": "web",
+      "snippet_path": "dynamsoft-document-viewer",
+      "api_docs": "ddv-api-docs.json",
+      "platforms": {
+        "web": {
+          "languages": [
+            "JavaScript",
+            "TypeScript",
+            "Vue",
+            "React",
+            "Angular"
+          ],
+          "docs": {
+            "introduction": "https://www.dynamsoft.com/document-viewer/docs/introduction/",
+            "user-guide": "https://www.dynamsoft.com/document-viewer/docs/gettingstarted/helloworld.html",
+            "api-reference": "https://www.dynamsoft.com/document-viewer/docs/api/",
+            "features": "https://www.dynamsoft.com/document-viewer/docs/features/"
+          },
+          "samples": {
+            "repo": "https://github.com/Dynamsoft/document-viewer-samples/"
+          },
+          "installation": {
+            "npm": "npm install dynamsoft-document-viewer",
+            "cdn": "https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.js"
+          }
+        }
+      }
     }
   }
 }
