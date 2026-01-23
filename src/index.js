@@ -13,7 +13,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import pkg from "../package.json" with { type: "json" };
+const pkgUrl = new URL("../package.json", import.meta.url);
+const pkg = JSON.parse(readFileSync(pkgUrl, "utf8"));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
