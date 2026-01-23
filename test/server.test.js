@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 /**
  * Automated tests for Dynamsoft MCP Server
@@ -13,14 +13,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const serverPath = join(__dirname, '..', 'src', 'index.js');
 
-// Test counters
 let passed = 0;
 let failed = 0;
 const results = [];
 
-/**
- * Send a JSON-RPC request to the server and get the response
- */
 async function sendRequest(request) {
     return new Promise((resolve, reject) => {
         const proc = spawn('node', [serverPath], {
@@ -38,9 +34,8 @@ async function sendRequest(request) {
             stderr += data.toString();
         });
 
-        proc.on('close', (code) => {
+        proc.on('close', () => {
             try {
-                // Parse only the JSON-RPC response (last complete JSON object)
                 const lines = stdout.trim().split('\n');
                 const jsonLine = lines.find(line => {
                     try {
@@ -63,46 +58,34 @@ async function sendRequest(request) {
 
         proc.on('error', reject);
 
-        // Send the request and close stdin
         proc.stdin.write(JSON.stringify(request) + '\n');
         proc.stdin.end();
     });
 }
 
-/**
- * Run a test case
- */
 async function test(name, fn) {
     try {
         await fn();
         passed++;
-        results.push({ name, status: '✅ PASSED' });
-        console.log(`✅ ${name}`);
+        results.push({ name, status: 'PASSED' });
+        console.log(`OK ${name}`);
     } catch (error) {
         failed++;
-        results.push({ name, status: '❌ FAILED', error: error.message });
-        console.log(`❌ ${name}`);
-        console.log(`   Error: ${error.message}`);
+        results.push({ name, status: 'FAILED', error: error.message });
+        console.log(`FAIL ${name}`);
+        console.log(`  Error: ${error.message}`);
     }
 }
 
-/**
- * Assert helper
- */
 function assert(condition, message) {
     if (!condition) {
         throw new Error(message || 'Assertion failed');
     }
 }
 
-// ============================================
-// Test Cases
-// ============================================
-
-console.log('\n🧪 Dynamsoft MCP Server Test Suite\n');
+console.log('\nDynamsoft MCP Server Test Suite\n');
 console.log('='.repeat(50));
 
-// Test 1: Server initialization
 await test('Server responds to initialize request', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
@@ -120,8 +103,7 @@ await test('Server responds to initialize request', async () => {
     assert(response.result.serverInfo.name === 'simple-dynamsoft-mcp', 'Server name should match');
 });
 
-// Test 2: List tools
-await test('tools/list returns all registered tools', async () => {
+await test('tools/list returns the minimal tool surface', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -130,301 +112,55 @@ await test('tools/list returns all registered tools', async () => {
 
     assert(response.result, 'Should have result');
     assert(response.result.tools, 'Should have tools array');
+
     const toolNames = response.result.tools.map(t => t.name);
     const expectedTools = [
-        'list_sdks', 'get_sdk_info', 'list_samples', 'list_python_samples',
-        'list_web_samples', 'list_dwt_categories', 'get_code_snippet',
-        'get_web_sample', 'get_python_sample', 'get_dwt_sample', 'get_quick_start',
-        'get_gradle_config', 'get_license_info', 'get_api_usage', 'search_samples',
-        'generate_project', 'search_dwt_docs', 'get_dwt_api_doc', 'search_resources',
-        'list_resource_topics'
+        'get_index',
+        'search',
+        'resolve_version',
+        'get_quickstart',
+        'generate_project'
     ];
-
-    assert(response.result.tools.length >= expectedTools.length,
-        `Expected at least ${expectedTools.length} tools, got ${response.result.tools.length}`);
 
     for (const expected of expectedTools) {
         assert(toolNames.includes(expected), `Missing tool: ${expected}`);
     }
 });
 
-// Test 3: list_sdks tool
-await test('list_sdks returns SDK information', async () => {
+await test('get_index returns product data', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
-            name: 'list_sdks',
+            name: 'get_index',
             arguments: {}
         }
     });
 
     assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-    assert(response.result.content.length > 0, 'Should have content items');
-
     const text = response.result.content[0].text;
-    assert(text.includes('dbr-mobile'), 'Should include dbr-mobile');
-    assert(text.includes('dbr-python'), 'Should include dbr-python');
-    assert(text.includes('dbr-web'), 'Should include dbr-web');
-    assert(text.includes('dwt'), 'Should include dwt');
+    const parsed = JSON.parse(text);
+    assert(parsed.products.dbr, 'Should include DBR');
+    assert(parsed.products.dwt, 'Should include DWT');
 });
 
-// Test 4: get_sdk_info tool
-await test('get_sdk_info returns detailed SDK info', async () => {
+await test('search returns resource links', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
-            name: 'get_sdk_info',
-            arguments: { sdk_id: 'dbr-mobile' }
+            name: 'search',
+            arguments: { query: 'basic-scan', product: 'dwt' }
         }
     });
 
     assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-
-    const text = response.result.content[0].text;
-    assert(text.includes('Android') || text.includes('android'), 'Should include Android');
-    assert(text.includes('11.2.5000'), 'Should include version');
+    const link = response.result.content.find(item => item.type === 'resource_link');
+    assert(link, 'Should return at least one resource link');
 });
 
-// Test 5: get_license_info tool (requires platform parameter)
-await test('get_license_info returns trial license', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_license_info',
-            arguments: { platform: 'android' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(!response.result.isError, 'Should not be an error');
-
-    const text = response.result.content[0].text;
-    assert(text.includes('DLS2') || text.includes('License'), 'Should include license info');
-});
-
-// Test 6: list_samples tool
-await test('list_samples returns mobile samples', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'list_samples',
-            arguments: { platform: 'android' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-
-    const text = response.result.content[0].text;
-    assert(text.includes('android'), 'Should include android');
-});
-
-// Test 7: list_python_samples tool
-await test('list_python_samples returns Python samples', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'list_python_samples',
-            arguments: {}
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    // Should return samples or indicate no local samples
-    assert(response.result.content, 'Should have content');
-});
-
-// Test 8: list_dwt_categories tool
-await test('list_dwt_categories returns DWT categories', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'list_dwt_categories',
-            arguments: {}
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    // Should return categories or indicate they exist
-    assert(response.result.content, 'Should have content');
-});
-
-// Test 9: get_quick_start tool
-await test('get_quick_start returns quick start guide', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_quick_start',
-            arguments: { sdk_id: 'dbr-mobile', platform: 'android' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-
-    const text = response.result.content[0].text;
-    assert(text.includes('Quick Start') || text.includes('Android'), 'Should include quick start info');
-});
-
-// Test 10: get_gradle_config tool
-await test('get_gradle_config returns Gradle configuration', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_gradle_config',
-            arguments: {}
-        }
-    });
-
-    assert(response.result, 'Should have result');
-
-    const text = response.result.content[0].text;
-    assert(text.includes('gradle') || text.includes('Gradle') || text.includes('implementation'),
-        'Should include Gradle config');
-});
-
-// Test 11: get_api_usage tool
-await test('get_api_usage returns API usage info', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_api_usage',
-            arguments: { sdk_id: 'dbr-mobile', api_name: 'decode' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-});
-
-// Test 12: search_samples tool
-await test('search_samples finds samples by keyword', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'search_samples',
-            arguments: { keyword: 'barcode' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-});
-
-// Test 13: generate_project tool
-await test('generate_project returns project structure', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'generate_project',
-            arguments: { platform: 'android', sample_name: 'ScanSingleBarcode' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-    const text = response.result.content[0].text;
-    assert(text.includes('# Project Generation:'), 'Should include project generation header');
-    assert(text.includes('AndroidManifest.xml') || text.includes('build.gradle'), 'Should include project files');
-});
-
-// Test 14: list_web_samples tool
-await test('list_web_samples returns web barcode samples', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'list_web_samples',
-            arguments: {}
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-    const text = response.result.content[0].text;
-    assert(text.includes('Web Barcode Reader Samples'), 'Should include web samples header');
-});
-
-// Test 15: get_web_sample tool
-await test('get_web_sample returns web barcode sample code', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_web_sample',
-            arguments: { sample_name: 'hello-world' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-    const text = response.result.content[0].text;
-    assert(text.includes('Web Barcode Reader') || text.includes('html') || text.includes('not found'), 'Should return sample or indicate not found');
-});
-
-// Test 16: search_dwt_docs tool
-await test('search_dwt_docs finds documentation articles', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'search_dwt_docs',
-            arguments: { query: 'PDF' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-    const text = response.result.content[0].text;
-    assert(text.includes('DWT Documentation Search'), 'Should include search header');
-    assert(text.includes('PDF') || text.includes('pdf'), 'Should find PDF-related articles');
-});
-
-// Test 17: get_dwt_api_doc tool
-await test('get_dwt_api_doc returns documentation article', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_dwt_api_doc',
-            arguments: { title: 'OCR' }
-        }
-    });
-
-    assert(response.result, 'Should have result');
-    assert(response.result.content, 'Should have content');
-    const text = response.result.content[0].text;
-    // Should return either the article or suggestions
-    assert(text.includes('OCR') || text.includes('not found'), 'Should handle OCR query');
-});
-
-// Test 18: resources/list returns pinned resources
 await test('resources/list returns pinned resources', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
@@ -433,17 +169,103 @@ await test('resources/list returns pinned resources', async () => {
     });
 
     assert(response.result, 'Should have result');
-    assert(response.result.resources, 'Should have resources array');
-    assert(response.result.resources.length > 0, 'Should have at least one resource');
-    assert(response.result.resources.length <= 5, 'Should only expose a small pinned set');
+    assert(response.result.resources.length > 0, 'Should have pinned resources');
 
-    // Check for expected resource types
     const uris = response.result.resources.map(r => r.uri);
-    assert(uris.some(u => u.includes('sdk-info')), 'Should have sdk-info resource');
+    assert(uris.includes('doc://index'), 'Should include doc://index');
+    assert(uris.includes('doc://version-policy'), 'Should include doc://version-policy');
 });
 
-// Test 19: Invalid tool call returns error
-await test('Invalid tool call returns proper error', async () => {
+await test('search + resources/read works together', async () => {
+    const searchResponse = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'ScanSingleBarcode', product: 'dbr' }
+        }
+    });
+
+    const link = searchResponse.result.content.find(item => item.type === 'resource_link');
+    assert(link, 'Should return resource link');
+
+    const readResponse = await sendRequest({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'resources/read',
+        params: { uri: link.uri }
+    });
+
+    assert(readResponse.result, 'Should have read result');
+    assert(readResponse.result.contents.length > 0, 'Should return content');
+});
+
+await test('resolve_version returns latest for DBR web', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'dbr', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('Resolved version'), 'Should include resolved version');
+});
+
+await test('resolve_version rejects old major version', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'dbr', edition: 'web', constraint: '10' }
+        }
+    });
+
+    assert(response.result && response.result.isError, 'Should return error for old major');
+    const text = response.result.content[0].text;
+    assert(text.includes('latest major'), 'Should mention latest major policy');
+});
+
+await test('get_quickstart returns a quickstart', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'dbr', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('Quick Start: DBR Web'), 'Should include quickstart header');
+});
+
+await test('generate_project returns project structure', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'generate_project',
+            arguments: { product: 'dbr', edition: 'mobile', platform: 'android', sample_id: 'ScanSingleBarcode' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('# Project Generation:'), 'Should include project generation header');
+});
+
+await test('Invalid tool call returns error', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -458,71 +280,19 @@ await test('Invalid tool call returns proper error', async () => {
         'Should return error for invalid tool');
 });
 
-// Test 20: Tool with invalid arguments returns error
-await test('Tool with missing required arguments returns error', async () => {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'get_license_info',
-            arguments: {} // Missing required platform
-        }
-    });
-
-    assert(response.result && response.result.isError,
-        'Should return error for missing required argument');
-});
-
-// Test 21: Verify search_resources returns a resource link and it can be read
-await test('search_resources + resources/read works together', async () => {
-    const searchResponse = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: 'search_resources',
-            arguments: { query: 'ScanSingleBarcode' }
-        }
-    });
-
-    assert(searchResponse.result, 'Should have result');
-    const link = searchResponse.result.content.find(item => item.type === 'resource_link');
-    assert(link, 'Should return at least one resource link');
-
-    const readResponse = await sendRequest({
-        jsonrpc: '2.0',
-        id: 2,
-        method: 'resources/read',
-        params: { uri: link.uri }
-    });
-
-    assert(readResponse.result, 'Should have read result');
-    assert(readResponse.result.contents, 'Should have contents array');
-    assert(readResponse.result.contents.length > 0, 'Should return content');
-    const content = readResponse.result.contents[0].text || '';
-    assert(content.length > 0, 'Content should not be empty');
-});
-
-// ============================================
-// Test Summary
-// ============================================
-
 console.log('\n' + '='.repeat(50));
-console.log('\n📊 Test Summary\n');
-console.log(`   Total:  ${passed + failed}`);
-console.log(`   Passed: ${passed} ✅`);
-console.log(`   Failed: ${failed} ❌`);
-console.log(`   Rate:   ${((passed / (passed + failed)) * 100).toFixed(1)}%`);
+console.log('\nTest Summary\n');
+console.log(`Total:  ${passed + failed}`);
+console.log(`Passed: ${passed}`);
+console.log(`Failed: ${failed}`);
+console.log(`Rate:   ${((passed / (passed + failed)) * 100).toFixed(1)}%`);
 
 if (failed > 0) {
-    console.log('\n❌ Failed Tests:');
-    results.filter(r => r.status.includes('FAILED')).forEach(r => {
-        console.log(`   - ${r.name}: ${r.error}`);
+    console.log('\nFailed Tests:');
+    results.filter(r => r.status === 'FAILED').forEach(r => {
+        console.log(`- ${r.name}: ${r.error}`);
     });
 }
 
 console.log('\n' + '='.repeat(50));
-
-// Exit with appropriate code
 process.exit(failed > 0 ? 1 : 0);
