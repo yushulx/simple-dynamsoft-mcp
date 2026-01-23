@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dynamsoft Document Viewer - Hello World</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.css">
+</head>
+<style>
+    html,body {
+        width: 100%;
+        height: 100%;
+    }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        margin: 0px;
+        padding: 0px 8px 8px 8px;
+        box-sizing: border-box;
+    }
+
+    #container {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+<body>
+    <h1>Hello World</h1>
+    <div id="container"></div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.js"></script>
+<script>
+    (async () => {
+        // Public trial license which is valid for 24 hours
+        // You can request a 30-day trial key from https://www.dynamsoft.com/customer/license/trialLicense?product=ddv&deploymenttype=browser
+        Dynamsoft.DDV.Core.license = "DLS2eyJvcmdhbml6YXRpb25JRCI6IjIwMDAwMSJ9";
+        Dynamsoft.DDV.Core.engineResourcePath = "https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/engine";
+        // Preload DDV Resource
+        Dynamsoft.DDV.Core.loadWasm();
+        await Dynamsoft.DDV.Core.init();
+        
+        const viewer = new Dynamsoft.DDV.EditViewer({
+            container: "container"
+        });
+    })();
+</script>
+</html>

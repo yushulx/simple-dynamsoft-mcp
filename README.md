@@ -6,6 +6,7 @@ MCP (Model Context Protocol) server that enables AI assistants to write correct 
 - **Dynamsoft Barcode Reader Python** - Desktop/server barcode scanning
 - **Dynamsoft Barcode Reader Web** - JavaScript/TypeScript barcode scanning
 - **Dynamic Web TWAIN** - Document scanning from TWAIN/WIA/ICA/SANE scanners
+- **Dynamsoft Document Viewer** - Web document viewing and annotation
 
 ## Demo Video
 https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
@@ -15,7 +16,7 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 
 - **Code Snippets**: Real, working source code from official Dynamsoft samples
 - **Trial License Included**: Ready-to-use trial license for quick testing
-- **Multiple SDKs**: Barcode Reader (Mobile/Python/Web) + Dynamic Web TWAIN
+- **Multiple SDKs**: Barcode Reader (Mobile/Python/Web) + Dynamic Web TWAIN + Document Viewer
 - **Multiple API Levels**: High-level (simple) and low-level (advanced) options
 - **Stdio MCP server**: Runs on stdio. Works with any MCP-capable client.
 - **Resource-efficient discovery**: Resources are discovered via tools (fuzzy search + resource links). Only a small pinned set is listed by default; heavy content is fetched on-demand with `resources/read`.
@@ -204,6 +205,16 @@ If you prefer running from source:
 - **output-options** - Save, upload, convert to PDF/Base64/Blob
 - **classification** - Document classification and tagging
 - **UI-customization** - Customize viewer and scan UI
+
+### Dynamsoft Document Viewer (v3.x)
+
+**Installation:** `npm install dynamsoft-document-viewer`
+
+**CDN:** `https://cdn.jsdelivr.net/npm/dynamsoft-document-viewer@latest/dist/ddv.js`
+
+**Samples:**
+- **hello-world** - Basic viewer setup
+- **angular**, **react-vite**, **vue**, **next** - Framework starter samples
 
 ## Trial License
 https://www.dynamsoft.com/customer/license/trialLicense/?product=dcv&package=cross-platform

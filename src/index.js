@@ -22,6 +22,9 @@ const registry = JSON.parse(readFileSync(registryUrl, "utf8"));
 const dwtDocsUrl = new URL("../data/web-twain-api-docs.json", import.meta.url);
 const dwtDocs = JSON.parse(readFileSync(dwtDocsUrl, "utf8"));
 
+const ddvDocsUrl = new URL("../data/ddv-api-docs.json", import.meta.url);
+const ddvDocs = JSON.parse(readFileSync(ddvDocsUrl, "utf8"));
+
 const codeSnippetRoot = join(projectRoot, "code-snippet");
 
 // ============================================================================
@@ -29,6 +32,12 @@ const codeSnippetRoot = join(projectRoot, "code-snippet");
 // ============================================================================
 
 const sdkAliases = {
+  // DDV
+  "ddv": "ddv",
+  "document-viewer": "ddv",
+  "document viewer": "ddv",
+  "pdf viewer": "ddv",
+  "edit viewer": "ddv",
   // DBR Mobile
   "dbr": "dbr-mobile",
   "dbr-mobile": "dbr-mobile",
@@ -172,6 +181,9 @@ function normalizeSampleName(name) {
 function normalizeProduct(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
+  if (["ddv", "document viewer", "document-viewer", "dynamsoft document viewer", "doc viewer", "pdf viewer"].includes(normalized)) {
+    return "ddv";
+  }
   if (["dbr", "barcode reader", "barcode-reader", "dynamsoft barcode reader"].includes(normalized)) {
     return "dbr";
   }
@@ -182,7 +194,7 @@ function normalizeProduct(product) {
 }
 
 function normalizeEdition(edition, platform, product) {
-  if (product === "dwt") return "web";
+  if (product === "dwt" || product === "ddv") return "web";
   const normalizedPlatform = normalizePlatform(platform);
 
   if (!edition) {
@@ -205,6 +217,9 @@ function normalizeEdition(edition, platform, product) {
 function inferProductFromQuery(query) {
   if (!query) return "";
   const normalized = query.toLowerCase();
+  if (normalized.includes("ddv") || normalized.includes("document viewer") || normalized.includes("pdf viewer") || normalized.includes("edit viewer")) {
+    return "ddv";
+  }
   if (normalized.includes("dwt") || normalized.includes("web twain") || normalized.includes("webtwain")) {
     return "dwt";
   }
@@ -219,7 +234,7 @@ function inferProductFromQuery(query) {
 // ============================================================================
 
 function getCodeFileExtensions() {
-  return [".java", ".kt", ".swift", ".m", ".h", ".py", ".js", ".ts", ".html"];
+  return [".java", ".kt", ".swift", ".m", ".h", ".py", ".js", ".jsx", ".ts", ".tsx", ".vue", ".html"];
 }
 
 function isCodeFile(filename) {
@@ -372,6 +387,22 @@ function discoverDwtSamples() {
   return categories;
 }
 
+function discoverDdvSamples() {
+  const samples = [];
+  const ddvPath = join(codeSnippetRoot, "dynamsoft-document-viewer");
+
+  if (!existsSync(ddvPath)) return samples;
+
+  for (const entry of readdirSync(ddvPath, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".html")) {
+      samples.push(entry.name.replace(".html", ""));
+    } else if (entry.isDirectory() && !entry.name.startsWith(".")) {
+      samples.push(entry.name);
+    }
+  }
+  return samples;
+}
+
 // Legacy function for backward compatibility
 function discoverSamples(platform) {
   return discoverMobileSamples(platform);
@@ -436,6 +467,23 @@ function getDwtSamplePath(category, sampleName) {
   return findFile(categoryPath);
 }
 
+function getDdvSamplePath(sampleName) {
+  const ddvPath = join(codeSnippetRoot, "dynamsoft-document-viewer");
+  
+  // check for html file
+  let path = join(ddvPath, `${sampleName}.html`);
+  if (existsSync(path)) return path;
+
+  // check for directory
+  path = join(ddvPath, sampleName);
+  if (existsSync(path) && statSync(path).isDirectory()) {
+    // Look for README.md or src/index.js/ts or just return the dir
+    // Returning the dir allows findCodeFilesInSample to work on it
+    return path;
+  }
+  return null;
+}
+
 // Legacy function for backward compatibility
 function getSamplePath(platform, apiLevel, sampleName) {
   return getMobileSamplePath(platform, apiLevel, sampleName);
@@ -474,7 +522,7 @@ function formatDocs(docs) {
  *   id: string;
  *   uri: string;
  *   type: "doc" | "sample" | "index" | "policy";
- *   product?: "dbr" | "dwt";
+ *   product?: "dbr" | "dwt" | "ddv";
  *   edition?: string;
  *   platform?: string;
  *   version?: string;
@@ -534,12 +582,16 @@ const LATEST_VERSIONS = {
   },
   dwt: {
     web: registry.sdks["dwt"].version
+  },
+  ddv: {
+    web: registry.sdks["ddv"].version
   }
 };
 
 const LATEST_MAJOR = {
   dbr: parseMajorVersion(registry.sdks["dbr-mobile"].version),
-  dwt: parseMajorVersion(registry.sdks["dwt"].version)
+  dwt: parseMajorVersion(registry.sdks["dwt"].version),
+  ddv: parseMajorVersion(registry.sdks["ddv"].version)
 };
 
 function parseMajorVersion(version) {
@@ -555,6 +607,10 @@ function getMimeTypeForExtension(ext) {
   if (normalized === "kt") return "text/x-kotlin";
   if (normalized === "java") return "text/x-java";
   if (normalized === "py") return "text/x-python";
+  if (normalized === "jsx") return "text/jsx";
+  if (normalized === "tsx") return "text/tsx";
+  if (normalized === "vue") return "text/x-vue";
+  if (normalized === "cjs") return "text/javascript";
   if (normalized === "html") return "text/html";
   if (normalized === "md" || normalized === "markdown") return "text/markdown";
   if (normalized === "json") return "application/json";
@@ -617,7 +673,7 @@ function detectMajorFromQuery(query) {
   if (!query) return null;
   const text = String(query);
   const explicit = text.match(/(?:\bv|\bversion\s*)(\d{1,2})(?:\.\d+)?/i);
-  const productScoped = text.match(/(?:dbr|dwt)[^0-9]*(\d{1,2})(?:\.\d+)?/i);
+  const productScoped = text.match(/(?:dbr|dwt|ddv)[^0-9]*(\d{1,2})(?:\.\d+)?/i);
   const match = explicit || productScoped;
   if (!match) return null;
   const major = Number.parseInt(match[1], 10);
@@ -633,6 +689,13 @@ function ensureLatestMajor({ product, version, query, edition, platform }) {
 
   if (!requestedMajor || requestedMajor === latestMajor) {
     return { ok: true, latestMajor };
+  }
+
+  if (inferredProduct === "ddv") {
+    return {
+      ok: false,
+      message: `This MCP server only serves the latest major version of DDV (v${latestMajor}).`
+    };
   }
 
   if (inferredProduct === "dbr" && requestedMajor < 9) {
@@ -741,21 +804,33 @@ function parseSampleUri(uri) {
     };
   }
 
+  if (parsed.product === "ddv") {
+    return {
+      product: "ddv",
+      edition: parsed.edition,
+      platform: parsed.platform,
+      version: parsed.version,
+      sampleName: parsed.parts[4]
+    };
+  }
+
   return null;
 }
 
 function buildVersionPolicyText() {
   const dbrMajor = LATEST_MAJOR.dbr;
   const dwtMajor = LATEST_MAJOR.dwt;
+  const ddvMajor = LATEST_MAJOR.ddv;
   const dwtLegacyVersions = Object.keys(LEGACY_DWT_LINKS).sort().join(", ");
 
   return [
     "# Version Policy",
     "",
-    `- This MCP server serves the latest major versions only (DBR v${dbrMajor}, DWT v${dwtMajor}).`,
+    `- This MCP server serves the latest major versions only (DBR v${dbrMajor}, DWT v${dwtMajor}, DDV v${ddvMajor}).`,
     "- Requests for older major versions are refused.",
     "- DBR legacy docs are only available for v9 and v10 (no docs prior to v9).",
     "- DWT archived docs are available for versions: " + dwtLegacyVersions,
+    "- DDV archived docs are not provided by this MCP server.",
     "",
     "Use the official Dynamsoft documentation if you must target older versions."
   ].join("\n");
@@ -766,12 +841,14 @@ function buildIndexData() {
   const dbrWebVersion = LATEST_VERSIONS.dbr.web;
   const dbrPythonVersion = LATEST_VERSIONS.dbr.python;
   const dwtVersion = LATEST_VERSIONS.dwt.web;
+  const ddvVersion = LATEST_VERSIONS.ddv.web;
 
   const mobileAndroid = discoverMobileSamples("android");
   const mobileIos = discoverMobileSamples("ios");
   const webSamples = discoverWebSamples();
   const pythonSamples = discoverPythonSamples();
   const dwtSamples = discoverDwtSamples();
+  const ddvSamples = discoverDdvSamples();
 
   return {
     products: {
@@ -808,6 +885,21 @@ function buildIndexData() {
             sampleCategories: dwtSamples,
             docCount: dwtDocs.articles.length,
             docTitles: dwtDocs.articles.map((article) => ({
+              title: article.title,
+              category: article.breadcrumb || ""
+            }))
+          }
+        }
+      },
+      ddv: {
+        latestMajor: LATEST_MAJOR.ddv,
+        editions: {
+          web: {
+            version: ddvVersion,
+            platforms: ["web"],
+            samples: ddvSamples,
+            docCount: ddvDocs.articles.length,
+            docTitles: ddvDocs.articles.map((article) => ({
               title: article.title,
               category: article.breadcrumb || ""
             }))
@@ -853,6 +945,7 @@ function buildResourceIndex() {
   const dbrWebVersion = LATEST_VERSIONS.dbr.web;
   const dbrPythonVersion = LATEST_VERSIONS.dbr.python;
   const dwtVersion = LATEST_VERSIONS.dwt.web;
+  const ddvVersion = LATEST_VERSIONS.ddv.web;
 
   // DBR mobile samples (main file only)
   for (const platform of ["android", "ios"]) {
@@ -998,6 +1091,106 @@ function buildResourceIndex() {
       }
     });
   }
+
+  // DDV samples
+  for (const sampleName of discoverDdvSamples()) {
+    addResourceToIndex({
+      id: `ddv-${sampleName}`,
+      uri: `sample://ddv/web/web/${ddvVersion}/${sampleName}`,
+      type: "sample",
+      product: "ddv",
+      edition: "web",
+      platform: "web",
+      version: ddvVersion,
+      majorVersion: LATEST_MAJOR.ddv,
+      title: `DDV sample: ${sampleName}`,
+      summary: `Dynamsoft Document Viewer sample ${sampleName}.`,
+      mimeType: "text/plain",
+      tags: ["sample", "ddv", "document-viewer", "web", sampleName],
+      loadContent: async () => {
+        const samplePath = getDdvSamplePath(sampleName);
+        if (!samplePath || !existsSync(samplePath)) {
+          return { text: "Sample not found", mimeType: "text/plain" };
+        }
+
+        const stat = statSync(samplePath);
+        if (stat.isDirectory()) {
+          const readmePath = join(samplePath, "README.md");
+          if (existsSync(readmePath)) {
+            return { text: readCodeFile(readmePath), mimeType: "text/markdown" };
+          }
+
+          const codeFiles = findCodeFilesInSample(samplePath);
+          if (codeFiles.length === 0) {
+            const entries = readdirSync(samplePath, { withFileTypes: true })
+              .filter((entry) => entry.isFile())
+              .map((entry) => entry.name);
+            return {
+              text: entries.length ? entries.join("\n") : "Sample found, but no code files detected.",
+              mimeType: "text/plain"
+            };
+          }
+
+          const preferredNames = [
+            "main.tsx",
+            "main.jsx",
+            "main.ts",
+            "main.js",
+            "App.tsx",
+            "App.jsx",
+            "App.vue",
+            "Viewer.tsx",
+            "Viewer.jsx",
+            "Viewer.vue"
+          ];
+          const preferred = codeFiles.find((file) => preferredNames.includes(file.filename)) || codeFiles[0];
+          const content = readCodeFile(preferred.path);
+          return { text: content, mimeType: getMimeTypeForExtension(preferred.extension) };
+        }
+
+        const ext = extname(samplePath).replace(".", "");
+        return { text: readCodeFile(samplePath), mimeType: getMimeTypeForExtension(ext) };
+      }
+    });
+  }
+
+  // DDV documentation articles
+  for (let i = 0; i < ddvDocs.articles.length; i++) {
+    const article = ddvDocs.articles[i];
+    if (!article.title) continue;
+    const slug = `${encodeURIComponent(article.title)}-${i}`;
+    const tags = ["doc", "ddv"];
+    if (article.breadcrumb) {
+      tags.push(...article.breadcrumb.toLowerCase().split(/\s*>\s*/));
+    }
+    addResourceToIndex({
+      id: `ddv-doc-${i}`,
+      uri: `doc://ddv/web/web/${ddvVersion}/${slug}`,
+      type: "doc",
+      product: "ddv",
+      edition: "web",
+      platform: "web",
+      version: ddvVersion,
+      majorVersion: LATEST_MAJOR.ddv,
+      title: article.title,
+      summary: article.breadcrumb || "Dynamsoft Document Viewer documentation",
+      mimeType: "text/markdown",
+      tags,
+      loadContent: async () => {
+        const content = [
+          `# ${article.title}`,
+          "",
+          article.breadcrumb ? `**Category:** ${article.breadcrumb}` : "",
+          article.url ? `**URL:** ${article.url}` : "",
+          "",
+          "---",
+          "",
+          article.content
+        ].filter(Boolean).join("\n");
+        return { text: content, mimeType: "text/markdown" };
+      }
+    });
+  }
 }
 
 buildResourceIndex();
@@ -1033,8 +1226,8 @@ async function readResourceContent(uri) {
 
 const server = new McpServer({
   name: "simple-dynamsoft-mcp",
-  version: "1.0.3",
-  description: "MCP server for latest major versions of Dynamsoft SDKs: Barcode Reader (Mobile/Python/Web) and Dynamic Web TWAIN"
+  version: "3.1.0",
+  description: "MCP server for latest major versions of Dynamsoft SDKs: Barcode Reader (Mobile/Python/Web), Dynamic Web TWAIN, and Document Viewer"
 });
 
 // ============================================================================
@@ -1064,7 +1257,7 @@ server.registerTool(
     description: "Unified search across docs and samples; returns resource links for lazy loading.",
     inputSchema: {
       query: z.string().describe("Keywords to search across docs and samples."),
-      product: z.string().optional().describe("Product: dbr or dwt"),
+      product: z.string().optional().describe("Product: dbr, dwt, ddv"),
       edition: z.string().optional().describe("Edition: mobile, web, python, java, cpp, dotnet"),
       platform: z.string().optional().describe("Platform: android, ios, web, python"),
       version: z.string().optional().describe("Version constraint (major or full version)"),
@@ -1076,7 +1269,6 @@ server.registerTool(
     if (!query || !query.trim()) {
       return { isError: true, content: [{ type: "text", text: "Query is required." }] };
     }
-
     const normalizedProduct = normalizeProduct(product);
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
@@ -1154,7 +1346,7 @@ server.registerTool(
     title: "Resolve Version",
     description: "Resolve a concrete latest-major version for a product/edition/platform.",
     inputSchema: {
-      product: z.string().describe("Product: dbr or dwt"),
+      product: z.string().describe("Product: dbr, dwt, or ddv"),
       edition: z.string().optional().describe("Edition: mobile, web, python, java, cpp, dotnet"),
       platform: z.string().optional().describe("Platform: android, ios, web, python"),
       constraint: z.string().optional().describe("Version constraint, e.g., latest, 11.x, 10"),
@@ -1166,8 +1358,11 @@ server.registerTool(
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
 
-    if (!["dbr", "dwt"].includes(normalizedProduct)) {
-      return { isError: true, content: [{ type: "text", text: `Unknown product "${product}". Use dbr or dwt.` }] };
+    if (!["dbr", "dwt", "ddv"].includes(normalizedProduct)) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `Unknown product "${product}". Use dbr, dwt, or ddv.` }]
+      };
     }
 
     const policy = ensureLatestMajor({
@@ -1215,10 +1410,19 @@ server.registerTool(
       return { content: [{ type: "text", text: lines.join("\n") }] };
     }
 
+    if (normalizedProduct === "dwt") {
+      const lines = [
+        "# DWT Version Resolution",
+        `- Latest major: v${LATEST_MAJOR.dwt}`,
+        `- Resolved version: ${LATEST_VERSIONS.dwt.web}`
+      ];
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    }
+
     const lines = [
-      "# DWT Version Resolution",
-      `- Latest major: v${LATEST_MAJOR.dwt}`,
-      `- Resolved version: ${LATEST_VERSIONS.dwt.web}`
+      "# DDV Version Resolution",
+      `- Latest major: v${LATEST_MAJOR.ddv}`,
+      `- Resolved version: ${LATEST_VERSIONS.ddv.web}`
     ];
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
@@ -1235,13 +1439,13 @@ server.registerTool(
     title: "Get Quickstart",
     description: "Opinionated quickstart for a target product/edition/platform.",
     inputSchema: {
-      product: z.string().describe("Product: dbr or dwt"),
+      product: z.string().describe("Product: dbr, dwt, or ddv"),
       edition: z.string().optional().describe("Edition: mobile, web, python"),
       platform: z.string().optional().describe("Platform: android, ios, web, python"),
-      language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python"),
+      language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, react, vue, angular"),
       version: z.string().optional().describe("Version constraint"),
       api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)"),
-      scenario: z.string().optional().describe("Scenario: camera, image, single, multiple, etc.")
+      scenario: z.string().optional().describe("Scenario: camera, image, single, multiple, react, etc.")
     }
   },
   async ({ product, edition, platform, language, version, api_level, scenario }) => {
@@ -1417,7 +1621,7 @@ end
       }
 
       const output = [
-        `# Quick Start: DBR Mobile (${targetPlatform})`,
+        "# Quick Start: DBR Mobile",
         "",
         `**SDK Version:** ${sdkEntry.version}`,
         `**API Level:** ${level}`,
@@ -1476,6 +1680,83 @@ end
       };
     }
 
+    if (normalizedProduct === "ddv") {
+      const sdkEntry = registry.sdks["ddv"];
+      const hint = `${scenario || ""} ${language || ""}`.toLowerCase();
+      let sampleName = "hello-world";
+
+      if (hint.includes("react")) sampleName = "react-vite";
+      else if (hint.includes("vue")) sampleName = "vue";
+      else if (hint.includes("angular")) sampleName = "angular";
+      else if (hint.includes("next")) sampleName = "next";
+
+      const samplePath = getDdvSamplePath(sampleName);
+      if (!samplePath || !existsSync(samplePath)) {
+        return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
+      }
+
+      let sampleContent = "";
+      let fence = "text";
+      const stat = statSync(samplePath);
+      if (stat.isDirectory()) {
+        const readmePath = join(samplePath, "README.md");
+        if (existsSync(readmePath)) {
+          sampleContent = readCodeFile(readmePath);
+          fence = "markdown";
+        } else {
+          const codeFiles = findCodeFilesInSample(samplePath);
+          if (codeFiles.length > 0) {
+            const preferredNames = [
+              "main.tsx",
+              "main.jsx",
+              "main.ts",
+              "main.js",
+              "App.tsx",
+              "App.jsx",
+              "App.vue"
+            ];
+            const preferred = codeFiles.find((file) => preferredNames.includes(file.filename)) || codeFiles[0];
+            sampleContent = readCodeFile(preferred.path);
+            fence = preferred.extension ? preferred.extension.replace(".", "") : "text";
+          } else {
+            sampleContent = "Sample found, but no code files detected.";
+          }
+        }
+      } else {
+        sampleContent = readCodeFile(samplePath);
+        fence = extname(samplePath).replace(".", "") || "text";
+      }
+
+      return {
+        content: [{
+          type: "text",
+          text: [
+            "# Quick Start: Dynamsoft Document Viewer",
+            "",
+            `**SDK Version:** ${sdkEntry.version}`,
+            `**Trial License:** \`${registry.trial_license}\``,
+            "",
+            "## Option 1: CDN",
+            "```html",
+            `<script src="${sdkEntry.platforms.web.installation.cdn}"></script>`,
+            "```",
+            "",
+            "## Option 2: NPM",
+            "```bash",
+            sdkEntry.platforms.web.installation.npm,
+            "```",
+            "",
+            `## ${sampleName}`,
+            "```" + fence,
+            sampleContent,
+            "```",
+            "",
+            `Docs: ${sdkEntry.platforms.web.docs["user-guide"]}`
+          ].join("\n")
+        }]
+      };
+    }
+
     return {
       isError: true,
       content: [{ type: "text", text: "Unsupported product/edition for quickstart." }]
@@ -1493,7 +1774,7 @@ server.registerTool(
     title: "Generate Project",
     description: "Generate a project structure from a sample (no AI generation).",
     inputSchema: {
-      product: z.string().describe("Product: dbr or dwt"),
+      product: z.string().describe("Product: dbr, dwt, or ddv"),
       edition: z.string().optional().describe("Edition: mobile, web, python"),
       platform: z.string().optional().describe("Platform: android, ios, web, python"),
       version: z.string().optional().describe("Version constraint"),
@@ -1540,6 +1821,8 @@ server.registerTool(
         samplePath = getPythonSamplePath(sampleInfo.sampleName);
       } else if (sampleInfo.product === "dwt") {
         samplePath = getDwtSamplePath(sampleInfo.category, sampleInfo.sampleName);
+      } else if (sampleInfo.product === "ddv") {
+        samplePath = getDdvSamplePath(sampleInfo.sampleName);
       }
     } else if (sample_id) {
       if (!normalizedProduct || !normalizedEdition) {
@@ -1570,6 +1853,8 @@ server.registerTool(
           }
         }
         samplePath = foundCategory ? getDwtSamplePath(foundCategory, sampleName) : null;
+      } else if (normalizedProduct === "ddv") {
+        samplePath = getDdvSamplePath(sampleName);
       }
     } else {
       return { isError: true, content: [{ type: "text", text: "Provide sample_id or resource_uri." }] };
@@ -1582,7 +1867,7 @@ server.registerTool(
     const textExtensions = [
       ".java", ".kt", ".swift", ".m", ".h", ".xml", ".gradle", ".properties",
       ".pro", ".json", ".plist", ".storyboard", ".xib", ".gitignore", ".md",
-      ".js", ".ts", ".html", ".css"
+      ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".html", ".css"
     ];
 
     const files = [];
@@ -1674,7 +1959,7 @@ server.server.setRequestHandler(ListResourcesRequestSchema, async () => {
 
 server.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const parsed = parseResourceUri(request.params.uri);
-  if (parsed && ["dbr", "dwt"].includes(parsed.product)) {
+  if (parsed && ["dbr", "dwt", "ddv"].includes(parsed.product)) {
     const policy = ensureLatestMajor({
       product: parsed.product,
       version: parsed.version,

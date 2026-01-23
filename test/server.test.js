@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 /**
  * Automated tests for Dynamsoft MCP Server
@@ -122,6 +122,7 @@ await test('tools/list returns the minimal tool surface', async () => {
         'generate_project'
     ];
 
+    assert(response.result.tools.length === expectedTools.length, `Expected ${expectedTools.length} tools`);
     for (const expected of expectedTools) {
         assert(toolNames.includes(expected), `Missing tool: ${expected}`);
     }
@@ -143,9 +144,10 @@ await test('get_index returns product data', async () => {
     const parsed = JSON.parse(text);
     assert(parsed.products.dbr, 'Should include DBR');
     assert(parsed.products.dwt, 'Should include DWT');
+    assert(parsed.products.ddv, 'Should include DDV');
 });
 
-await test('search returns resource links', async () => {
+await test('search returns resource links for DWT', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -153,6 +155,22 @@ await test('search returns resource links', async () => {
         params: {
             name: 'search',
             arguments: { query: 'basic-scan', product: 'dwt' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const link = response.result.content.find(item => item.type === 'resource_link');
+    assert(link, 'Should return at least one resource link');
+});
+
+await test('search returns resource links for DDV', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'hello-world', product: 'ddv' }
         }
     });
 
@@ -217,6 +235,22 @@ await test('resolve_version returns latest for DBR web', async () => {
     assert(text.includes('Resolved version'), 'Should include resolved version');
 });
 
+await test('resolve_version returns latest for DDV', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'ddv' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('DDV Version Resolution'), 'Should include DDV resolution');
+});
+
 await test('resolve_version rejects old major version', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
@@ -233,30 +267,30 @@ await test('resolve_version rejects old major version', async () => {
     assert(text.includes('latest major'), 'Should mention latest major policy');
 });
 
-await test('get_quickstart returns a quickstart', async () => {
+await test('get_quickstart returns a DDV quickstart', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: 'get_quickstart',
-            arguments: { product: 'dbr', edition: 'web' }
+            arguments: { product: 'ddv' }
         }
     });
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    assert(text.includes('Quick Start: DBR Web'), 'Should include quickstart header');
+    assert(text.includes('Quick Start: Dynamsoft Document Viewer'), 'Should include DDV quickstart header');
 });
 
-await test('generate_project returns project structure', async () => {
+await test('generate_project returns DDV project structure', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: 'generate_project',
-            arguments: { product: 'dbr', edition: 'mobile', platform: 'android', sample_id: 'ScanSingleBarcode' }
+            arguments: { product: 'ddv', edition: 'web', sample_id: 'hello-world' }
         }
     });
 
