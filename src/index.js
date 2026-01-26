@@ -56,6 +56,16 @@ const server = new McpServer({
   description: "MCP server for latest major versions of Dynamsoft SDKs: Barcode Reader (Mobile/Server/Web), Dynamic Web TWAIN, and Document Viewer"
 });
 
+function formatScoreLabel(entry) {
+  if (!Number.isFinite(entry?.score)) return "";
+  return ` | score: ${entry.score.toFixed(3)}`;
+}
+
+function formatScoreNote(entry) {
+  if (!Number.isFinite(entry?.score)) return "";
+  return ` score=${entry.score.toFixed(3)}`;
+}
+
 // ============================================================================
 // TOOL: get_index
 // ============================================================================
@@ -142,11 +152,12 @@ server.registerTool(
       const scopeLabel = formatScopeLabel(entry);
       const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
       const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
+      const scoreLabel = formatScoreLabel(entry);
       content.push({
         type: "resource_link",
         uri: entry.uri,
         name: entry.title,
-        description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel} - ${entry.summary}${sampleHint}`,
+        description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
         mimeType: entry.mimeType,
         annotations: {
           audience: ["assistant"],
@@ -159,7 +170,8 @@ server.registerTool(
       const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
       const action = entry.type === "sample" ? "generate_project resource_uri" : "resources/read uri";
       const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
-      return `- ${index + 1}. ${entry.uri}${sampleNote} (${action})`;
+      const scoreNote = formatScoreNote(entry);
+      return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote} (${action})`;
     });
     content.push({
       type: "text",
@@ -341,7 +353,7 @@ server.registerTool(
           type: "resource_link",
           uri: entry.uri,
           name: entry.title,
-          description: `SAMPLE | ${formatScopeLabel(entry)} | v${entry.version} | sample_id: ${payload[0].sample_id}`,
+          description: `SAMPLE | ${formatScopeLabel(entry)} | v${entry.version}${formatScoreLabel(entry)} | sample_id: ${payload[0].sample_id}`,
           mimeType: entry.mimeType,
           annotations: {
             audience: ["assistant"],
@@ -399,7 +411,7 @@ server.registerTool(
           type: "resource_link",
           uri: entry.uri,
           name: entry.title,
-          description: `${entry.type.toUpperCase()} | ${formatScopeLabel(entry)} | v${entry.version} | sample_id: ${sampleId || "n/a"}`,
+          description: `${entry.type.toUpperCase()} | ${formatScopeLabel(entry)} | v${entry.version}${formatScoreLabel(entry)} | sample_id: ${sampleId || "n/a"}`,
           mimeType: entry.mimeType,
           annotations: {
             audience: ["assistant"],
@@ -412,7 +424,8 @@ server.registerTool(
         const plainLines = suggestions.map((entry, index) => {
           const sampleId = getSampleIdFromUri(entry.uri);
           const sampleNote = sampleId ? ` (sample_id: ${sampleId})` : "";
-          return `- ${index + 1}. ${entry.uri}${sampleNote}`;
+          const scoreNote = formatScoreNote(entry);
+          return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote}`;
         });
         content.push({
           type: "text",
@@ -437,9 +450,11 @@ server.registerTool(
     const lines = [
       `Found ${selected.length} match(es) for "${sample_id}".`,
       "Plain URIs (copy/paste):",
-      ...payload.map((item, index) => {
-        const sampleNote = item.sample_id ? ` (sample_id: ${item.sample_id})` : "";
-        return `- ${index + 1}. ${item.uri}${sampleNote}`;
+      ...selected.map((entry, index) => {
+        const sampleId = getSampleIdFromUri(entry.uri);
+        const sampleNote = sampleId ? ` (sample_id: ${sampleId})` : "";
+        const scoreNote = formatScoreNote(entry);
+        return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote}`;
       })
     ];
 
@@ -460,7 +475,7 @@ server.registerTool(
         type: "resource_link",
         uri: entry.uri,
         name: entry.title,
-        description: `${entry.type.toUpperCase()} | ${formatScopeLabel(entry)} | v${entry.version} | sample_id: ${sampleId || "n/a"}`,
+        description: `${entry.type.toUpperCase()} | ${formatScopeLabel(entry)} | v${entry.version}${formatScoreLabel(entry)} | sample_id: ${sampleId || "n/a"}`,
         mimeType: entry.mimeType,
         annotations: {
           audience: ["assistant"],

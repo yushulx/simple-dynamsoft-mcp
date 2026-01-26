@@ -305,7 +305,7 @@ Key env vars:
 Local embeddings download the model on first run and cache under `data/.rag-cache/models`.
 Advanced tuning:
 - `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`, `RAG_MAX_CHUNKS_PER_DOC`, `RAG_MAX_TEXT_CHARS`
-- `RAG_MIN_SCORE`, `RAG_REBUILD`, `RAG_PREWARM`, `RAG_PREWARM_BLOCK`, `RAG_LOCAL_QUANTIZED`, `GEMINI_EMBED_BATCH_SIZE`, `RAG_MODEL_CACHE_DIR`
+- `RAG_MIN_SCORE`, `RAG_INCLUDE_SCORE`, `RAG_REBUILD`, `RAG_PREWARM`, `RAG_PREWARM_BLOCK`, `RAG_LOCAL_QUANTIZED`, `GEMINI_EMBED_BATCH_SIZE`, `RAG_MODEL_CACHE_DIR`
 
 For local dev, you can also use a `.env` file (see `.env.example`).
 

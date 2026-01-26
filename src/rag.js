@@ -69,7 +69,8 @@ const ragConfig = {
   chunkOverlap: readIntEnv("RAG_CHUNK_OVERLAP", 200),
   maxChunksPerDoc: readIntEnv("RAG_MAX_CHUNKS_PER_DOC", 6),
   maxTextChars: readIntEnv("RAG_MAX_TEXT_CHARS", 4000),
-  minScore: readFloatEnv("RAG_MIN_SCORE", 0),
+  minScore: readFloatEnv("RAG_MIN_SCORE", 0.2),
+  includeScore: readBoolEnv("RAG_INCLUDE_SCORE", false),
   rebuild: readBoolEnv("RAG_REBUILD", false),
   prewarm: readBoolEnv("RAG_PREWARM", false),
   prewarmBlock: readBoolEnv("RAG_PREWARM_BLOCK", false),
@@ -89,6 +90,11 @@ const fuseSearch = new Fuse(resourceIndex, {
   ignoreLocation: true,
   includeScore: true
 });
+
+function attachScore(entry, score) {
+  if (!ragConfig.includeScore || !Number.isFinite(score)) return entry;
+  return { ...entry, score };
+}
 
 function normalizeSearchFilters({ product, edition, platform, type }) {
   const normalizedProduct = normalizeProduct(product);
@@ -413,7 +419,7 @@ async function createVectorProvider({ name, model, embedder, batchSize }) {
 
       const results = Array.from(bestByUri.values())
         .sort((a, b) => b.score - a.score)
-        .map((item) => item.entry);
+        .map((item) => attachScore(item.entry, item.score));
 
       if (limit) return results.slice(0, limit);
       return results;
@@ -428,10 +434,13 @@ function createFuseProvider() {
   return {
     name: "fuse",
     search: async (query, filters, limit) => {
-      const results = fuseSearch
-        .search(query)
-        .map((result) => result.item)
-        .filter((entry) => entryMatchesScope(entry, filters));
+      const results = [];
+      for (const result of fuseSearch.search(query)) {
+        const entry = result.item;
+        if (!entryMatchesScope(entry, filters)) continue;
+        const score = Number.isFinite(result.score) ? Math.max(0, 1 - result.score) : undefined;
+        results.push(attachScore(entry, score));
+      }
       if (limit) return results.slice(0, limit);
       return results;
     },
