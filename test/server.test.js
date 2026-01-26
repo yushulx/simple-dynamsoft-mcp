@@ -20,7 +20,8 @@ const results = [];
 async function sendRequest(request) {
     return new Promise((resolve, reject) => {
         const proc = spawn('node', [serverPath], {
-            stdio: ['pipe', 'pipe', 'pipe']
+            stdio: ['pipe', 'pipe', 'pipe'],
+            env: { ...process.env, RAG_PROVIDER: 'fuse' }
         });
 
         let stdout = '';

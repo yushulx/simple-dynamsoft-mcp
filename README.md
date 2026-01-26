@@ -19,7 +19,7 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 - **Multiple SDKs**: Barcode Reader (Mobile/Python/Web) + Dynamic Web TWAIN + Document Viewer
 - **Multiple API Levels**: High-level (simple) and low-level (advanced) options
 - **Stdio MCP server**: Runs on stdio. Works with any MCP-capable client.
-- **Resource-efficient discovery**: Resources are discovered via tools (fuzzy search + resource links). Only a small pinned set is listed by default; heavy content is fetched on-demand with `resources/read`.
+- **Resource-efficient discovery**: Resources are discovered via tools (semantic RAG search with fuzzy fallback + resource links). Only a small pinned set is listed by default; heavy content is fetched on-demand with `resources/read`.
 - **Latest-major policy**: The server only serves the latest major versions; older major requests are refused with legacy links when available.
 
 ## Available Tools
@@ -286,9 +286,30 @@ data/
 ## Using Search-Based Discovery (Recommended)
 
 - On session start, let your client call `tools/list` and `resources/list` (pinned only, not exhaustive).
-- For any query, call `search` with keywords; it returns `resource_link` entries.
+- For any query, call `search`; it uses semantic RAG retrieval (with fuzzy fallback) and returns `resource_link` entries.
 - Read only the links you need via `resources/read` to avoid bloating the context window.
 - If unsure what to search, call `get_index` first to see what is available.
+
+## RAG Configuration
+
+Search providers are selected at runtime via environment variables (safe for public npm packages). Defaults to `auto` -> `gemini` if `GEMINI_API_KEY` is set, otherwise `local`, with `fuse` fallback on failure.
+
+To keep the legacy fuzzy search (no model download), set `RAG_PROVIDER=fuse`.
+
+Key env vars:
+- `RAG_PROVIDER`: `auto` | `gemini` | `local` | `fuse`
+- `RAG_FALLBACK`: `fuse` | `local` | `none`
+- `GEMINI_API_KEY`: required for remote embeddings
+- `GEMINI_EMBED_MODEL`: e.g. `models/embedding-001` or `models/gemini-embedding-001`
+- `RAG_LOCAL_MODEL`: default `Xenova/all-MiniLM-L6-v2`
+- `RAG_CACHE_DIR`: default `data/.rag-cache`
+
+Local embeddings download the model on first run and cache under `data/.rag-cache/models`.
+Advanced tuning:
+- `RAG_CHUNK_SIZE`, `RAG_CHUNK_OVERLAP`, `RAG_MAX_CHUNKS_PER_DOC`, `RAG_MAX_TEXT_CHARS`
+- `RAG_MIN_SCORE`, `RAG_REBUILD`, `RAG_PREWARM`, `RAG_PREWARM_BLOCK`, `RAG_LOCAL_QUANTIZED`, `GEMINI_EMBED_BATCH_SIZE`, `RAG_MODEL_CACHE_DIR`
+
+For local dev, you can also use a `.env` file (see `.env.example`).
 
 ## Version Policy
 
