@@ -28,6 +28,8 @@ https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 |------|-------------|
 | `get_index` | Compact index of products, editions, versions, samples, and docs |
 | `search` | Unified search across docs and samples; returns resource links |
+| `list_samples` | List available sample IDs and URIs for a scope |
+| `resolve_sample` | Resolve a sample_id (or sample URI) to matching sample URIs |
 | `resolve_version` | Resolve a concrete latest-major version for a product/edition |
 | `get_quickstart` | Opinionated quickstart for a target stack |
 | `generate_project` | Assemble a project structure from a sample (no AI generation) |
