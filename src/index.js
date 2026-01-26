@@ -925,7 +925,7 @@ server.registerTool(
   "generate_project",
   {
     title: "Generate Project",
-    description: "Generate a project structure from a sample (no AI generation).",
+    description: "Generate a project structure from a sample and return files inline (no zip/download).",
     inputSchema: {
       product: z.string().describe("Product: dbr, dwt, or ddv"),
       edition: z.string().optional().describe("Edition: mobile, web, server/desktop"),
@@ -1154,6 +1154,7 @@ server.registerTool(
       `# Project Generation: ${sampleLabel}`,
       "",
       "This output contains the file structure for the project.",
+      "Note: This tool returns files inline and does not create a downloadable zip.",
       ""
     ];
 
