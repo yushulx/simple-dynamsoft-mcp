@@ -1,11 +1,9 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, copyFileSync, rmSync, statSync } from "node:fs";
-import { join, dirname, basename, resolve } from "node:path";
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { tmpdir } from "node:os";
 import "dotenv/config";
 import Fuse from "fuse.js";
-import * as tar from "tar";
 import { getResolvedDataRoot } from "./data-root.js";
 import {
   resourceIndex,
@@ -18,22 +16,12 @@ import {
   normalizeEdition,
   getRagSignatureData
 } from "./resource-index.js";
-import {
-  sleepMs,
-  parseRetryAfterMs,
-  normalizeGeminiRetryConfig,
-  isRateLimitGeminiStatus,
-  GeminiHttpError,
-  executeWithGeminiRetry
-} from "./gemini-retry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataRoot = getResolvedDataRoot();
 
 const pkgUrl = new URL("../package.json", import.meta.url);
 const pkg = JSON.parse(readFileSync(pkgUrl, "utf8"));
-const defaultPrebuiltIndexUrl =
-  `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-${pkg.version}.tar.gz`;
 
 // ============================================================================
 // RAG configuration
@@ -87,17 +75,10 @@ const ragConfig = {
   rebuild: readBoolEnv("RAG_REBUILD", false),
   prewarm: readBoolEnv("RAG_PREWARM", false),
   prewarmBlock: readBoolEnv("RAG_PREWARM_BLOCK", false),
-  prebuiltIndexAutoDownload: readBoolEnv("RAG_PREBUILT_INDEX_AUTO_DOWNLOAD", true),
-  prebuiltIndexUrl: readEnvValue("RAG_PREBUILT_INDEX_URL", defaultPrebuiltIndexUrl),
-  prebuiltIndexTimeoutMs: readIntEnv("RAG_PREBUILT_INDEX_TIMEOUT_MS", 180000),
   geminiApiKey: readEnvValue("GEMINI_API_KEY", ""),
   geminiModel: normalizeGeminiModel(readEnvValue("GEMINI_EMBED_MODEL", "models/gemini-embedding-001")),
   geminiBaseUrl: readEnvValue("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com"),
-  geminiBatchSize: readIntEnv("GEMINI_EMBED_BATCH_SIZE", 16),
-  geminiRetryMaxAttempts: readIntEnv("GEMINI_RETRY_MAX_ATTEMPTS", 5),
-  geminiRetryBaseDelayMs: readIntEnv("GEMINI_RETRY_BASE_DELAY_MS", 500),
-  geminiRetryMaxDelayMs: readIntEnv("GEMINI_RETRY_MAX_DELAY_MS", 10000),
-  geminiRequestThrottleMs: readIntEnv("GEMINI_REQUEST_THROTTLE_MS", 0)
+  geminiBatchSize: readIntEnv("GEMINI_EMBED_BATCH_SIZE", 16)
 };
 
 const ragLogState = {
@@ -108,8 +89,6 @@ const ragLogState = {
   providerFirstUse: new Set(),
   fallbackUse: new Set()
 };
-
-const prebuiltDownloadAttempts = new Map();
 
 function logRag(message) {
   console.error(`[rag] ${message}`);
@@ -251,258 +230,27 @@ function makeCacheFileName(provider, model, cacheKey) {
   return `rag-${provider}-${safeModel}-${cacheKey.slice(0, 12)}.json`;
 }
 
-function makeCheckpointFileName(provider, model, cacheKey) {
-  const safeModel = String(model || "default").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 32);
-  return `rag-${provider}-${safeModel}-${cacheKey.slice(0, 12)}.checkpoint.json`;
-}
-
-function loadVectorIndexCache(
-  cacheFile,
-  { cacheKey, signature, provider, model, requireSignature = false } = {}
-) {
+function loadVectorIndexCache(cacheFile, expectedKey) {
   if (!existsSync(cacheFile)) {
     return { hit: false, reason: "missing", payload: null };
   }
   try {
     const parsed = JSON.parse(readFileSync(cacheFile, "utf8"));
-    if (!parsed || (cacheKey && parsed.cacheKey !== cacheKey)) {
-      return { hit: false, reason: "cache_key_mismatch", payload: null };
-    }
-    if (!Array.isArray(parsed.items) || !Array.isArray(parsed.vectors)) {
-      return { hit: false, reason: "invalid_payload", payload: null };
-    }
-    const meta = parsed.meta || {};
-    if (provider && meta.provider && meta.provider !== provider) {
-      return { hit: false, reason: "provider_mismatch", payload: null };
-    }
-    if (model && meta.model && meta.model !== model) {
-      return { hit: false, reason: "model_mismatch", payload: null };
-    }
-    if (signature) {
-      if (!meta.signature) {
-        if (requireSignature) {
-          return { hit: false, reason: "missing_signature", payload: null };
-        }
-      } else if (meta.signature !== signature) {
-        return { hit: false, reason: "signature_mismatch", payload: null };
-      }
-    }
-    return { hit: true, reason: "ok", payload: parsed };
-  } catch {
-    return { hit: false, reason: "parse_error", payload: null };
-  }
-}
-
-function listFilesRecursive(rootDir) {
-  const files = [];
-  const stack = [rootDir];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    const entries = readdirSync(current, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join(current, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(fullPath);
-      } else if (entry.isFile()) {
-        files.push(fullPath);
-      }
-    }
-  }
-  return files;
-}
-
-function readSignaturePackageVersion(signatureRaw) {
-  if (!signatureRaw) return "";
-  try {
-    const parsed = JSON.parse(signatureRaw);
-    return String(parsed?.packageVersion || "");
-  } catch {
-    return "";
-  }
-}
-
-function listDownloadedCacheCandidates(extractRoot, expectedCacheFileName, cacheKey) {
-  const allFiles = listFilesRecursive(extractRoot).filter((path) => path.toLowerCase().endsWith(".json")).sort();
-  const expectedPath = allFiles.find((path) => basename(path) === expectedCacheFileName);
-
-  const cachePrefix = cacheKey.slice(0, 12);
-  const prefixPath = allFiles.find((path) => {
-    const name = basename(path);
-    return name.startsWith("rag-local-") && name.endsWith(`-${cachePrefix}.json`);
-  });
-
-  const ragLocalFiles = allFiles.filter((path) => basename(path).startsWith("rag-local-"));
-  const unique = [];
-  for (const path of [expectedPath, prefixPath, ...ragLocalFiles]) {
-    if (!path) continue;
-    if (!unique.includes(path)) unique.push(path);
-  }
-  return unique;
-}
-
-async function downloadPrebuiltArchive(url, outputPath, timeoutMs) {
-  const source = String(url || "").trim();
-  if (!source) {
-    throw new Error("prebuilt URL is empty");
-  }
-
-  if (source.startsWith("file://")) {
-    copyFileSync(fileURLToPath(source), outputPath);
-    return { sourceType: "file", size: statSync(outputPath).size };
-  }
-
-  if (!/^https?:\/\//i.test(source)) {
-    copyFileSync(resolve(source), outputPath);
-    return { sourceType: "file", size: statSync(outputPath).size };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
-  try {
-    const response = await fetch(source, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const arrayBuffer = await response.arrayBuffer();
-    writeFileSync(outputPath, Buffer.from(arrayBuffer));
-    return { sourceType: "http", size: arrayBuffer.byteLength };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function maybeDownloadPrebuiltVectorIndex({ provider, model, cacheKey, signature, cacheFile }) {
-  if (provider !== "local") {
-    return { downloaded: false, reason: "provider_not_local" };
-  }
-  if (!ragConfig.prebuiltIndexAutoDownload) {
-    return { downloaded: false, reason: "auto_download_disabled" };
-  }
-
-  const sourceUrl = String(ragConfig.prebuiltIndexUrl || "").trim();
-  if (!sourceUrl) {
-    return { downloaded: false, reason: "url_not_set" };
-  }
-
-  const attemptKey = `${provider}:${cacheKey}:${sourceUrl}`;
-  if (prebuiltDownloadAttempts.has(attemptKey)) {
-    return prebuiltDownloadAttempts.get(attemptKey);
-  }
-
-  const expectedCacheFileName = makeCacheFileName(provider, model, cacheKey);
-  const attempt = (async () => {
-    const tempRoot = join(tmpdir(), `simple-dynamsoft-mcp-rag-prebuilt-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-    const archivePath = join(tempRoot, "prebuilt-rag-index.tar.gz");
-    const extractRoot = join(tempRoot, "extract");
-
-    ensureDirectory(extractRoot);
-    try {
-      logRag(`prebuilt index download start provider=${provider} url=${sourceUrl} timeout_ms=${ragConfig.prebuiltIndexTimeoutMs}`);
-      const downloaded = await downloadPrebuiltArchive(sourceUrl, archivePath, ragConfig.prebuiltIndexTimeoutMs);
-      logRag(
-        `prebuilt index downloaded provider=${provider} source=${downloaded.sourceType} size=${downloaded.size}B`
-      );
-
-      await tar.x({
-        file: archivePath,
-        cwd: extractRoot,
-        strict: true
-      });
-
-      const candidateFiles = listDownloadedCacheCandidates(extractRoot, expectedCacheFileName, cacheKey);
-      if (candidateFiles.length === 0) {
-        throw new Error(`cache_file_not_found expected=${expectedCacheFileName}`);
-      }
-
-      for (const sourceCacheFile of candidateFiles) {
-        const candidateCache = loadVectorIndexCache(sourceCacheFile, {
-          provider,
-          model
-        });
-        if (!candidateCache.hit) {
-          continue;
-        }
-
-        const cachePackageVersion = readSignaturePackageVersion(candidateCache.payload?.meta?.signature);
-        if (!cachePackageVersion || cachePackageVersion !== pkg.version) {
-          continue;
-        }
-
-        const migratedPayload = {
-          ...candidateCache.payload,
-          cacheKey,
-          meta: {
-            ...(candidateCache.payload.meta || {}),
-            provider,
-            model,
-            signature
-          }
-        };
-        saveVectorIndexCache(cacheFile, migratedPayload);
-        logRag(
-          `prebuilt index installed provider=${provider} cache_file=${cacheFile} source=${basename(sourceCacheFile)} mode=version_only_compat version=${cachePackageVersion}`
-        );
-        return { downloaded: true, reason: "installed_version_only_compat" };
-      }
-
-      throw new Error(
-        `no_compatible_cache expected=${expectedCacheFileName} found=${candidateFiles.map((path) => basename(path)).join(",")}`
-      );
-    } catch (error) {
-      logRag(`prebuilt index unavailable provider=${provider} reason=${error.message}`);
-      return { downloaded: false, reason: error.message };
-    } finally {
-      rmSync(tempRoot, { recursive: true, force: true });
-    }
-  })();
-
-  prebuiltDownloadAttempts.set(attemptKey, attempt);
-  return attempt;
-}
-
-function saveVectorIndexCache(cacheFile, payload) {
-  ensureDirectory(ragConfig.cacheDir);
-  writeFileSync(cacheFile, JSON.stringify(payload));
-}
-
-function loadVectorIndexCheckpoint(checkpointFile, expectedKey, expectedItems) {
-  if (!existsSync(checkpointFile)) {
-    return { hit: false, reason: "missing", payload: null };
-  }
-  try {
-    const parsed = JSON.parse(readFileSync(checkpointFile, "utf8"));
     if (!parsed || parsed.cacheKey !== expectedKey) {
       return { hit: false, reason: "cache_key_mismatch", payload: null };
     }
     if (!Array.isArray(parsed.items) || !Array.isArray(parsed.vectors)) {
       return { hit: false, reason: "invalid_payload", payload: null };
     }
-    if (parsed.items.length !== expectedItems.length) {
-      return { hit: false, reason: "items_length_mismatch", payload: null };
-    }
-    for (let i = 0; i < expectedItems.length; i += 1) {
-      if (parsed.items[i]?.id !== expectedItems[i]?.id || parsed.items[i]?.uri !== expectedItems[i]?.uri) {
-        return { hit: false, reason: "items_mismatch", payload: null };
-      }
-    }
-    if (parsed.vectors.length > expectedItems.length) {
-      return { hit: false, reason: "vectors_overflow", payload: null };
-    }
     return { hit: true, reason: "ok", payload: parsed };
   } catch {
     return { hit: false, reason: "parse_error", payload: null };
   }
 }
 
-function saveVectorIndexCheckpoint(checkpointFile, payload) {
+function saveVectorIndexCache(cacheFile, payload) {
   ensureDirectory(ragConfig.cacheDir);
-  writeFileSync(checkpointFile, JSON.stringify(payload));
-}
-
-function clearVectorIndexCheckpoint(checkpointFile) {
-  if (existsSync(checkpointFile)) {
-    rmSync(checkpointFile, { force: true });
-  }
+  writeFileSync(cacheFile, JSON.stringify(payload));
 }
 
 function normalizeVector(vector) {
@@ -524,111 +272,25 @@ function dotProduct(a, b) {
   return sum;
 }
 
-function isRateLimitError(error) {
-  if (error?.rateLimited) return true;
-  const status = Number(error?.status);
-  return isRateLimitGeminiStatus(status);
-}
-
-async function embedTextsWithProgress(
-  texts,
-  embedder,
-  batchSize = 1,
-  {
-    offset = 0,
-    total = texts.length,
-    onChunk = null,
-    providerName = ""
-  } = {}
-) {
+async function embedTexts(texts, embedder, batchSize = 1) {
   const results = [];
-  const normalizedBatchSize = Math.max(1, batchSize);
-  let completed = offset;
-  let currentBatchSize = normalizedBatchSize;
-  let rateLimitFailures = 0;
-  let batchDowngrades = 0;
-  let singleFallbackBatches = 0;
-
-  const reportChunk = async (vectors, mode, sourceBatchSize) => {
-    if (!Array.isArray(vectors) || vectors.length === 0) return;
-    completed += vectors.length;
-    if (onChunk) {
-      await onChunk({
-        vectors,
-        mode,
-        sourceBatchSize,
-        completed,
-        total
-      });
-    }
-  };
-
-  if (embedder.embedBatch && normalizedBatchSize > 1) {
-    let index = 0;
-    while (index < texts.length) {
-      const batch = texts.slice(index, index + currentBatchSize);
-      try {
+  if (embedder.embedBatch && batchSize > 1) {
+    try {
+      for (let i = 0; i < texts.length; i += batchSize) {
+        const batch = texts.slice(i, i + batchSize);
         const vectors = await embedder.embedBatch(batch);
-        if (!Array.isArray(vectors) || vectors.length !== batch.length) {
-          throw new Error(`Gemini batch response size mismatch expected=${batch.length} actual=${vectors?.length || 0}`);
-        }
         results.push(...vectors);
-        index += batch.length;
-        rateLimitFailures = 0;
-        await reportChunk(vectors, "batch", batch.length);
-      } catch (error) {
-        if (isRateLimitError(error)) {
-          rateLimitFailures += 1;
-          const nextBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
-          if (nextBatchSize < currentBatchSize) {
-            batchDowngrades += 1;
-            logRag(
-              `gemini batch downgrade provider=${providerName || "unknown"} from=${currentBatchSize} to=${nextBatchSize} ` +
-              `rate_limit_failures=${rateLimitFailures}`
-            );
-            currentBatchSize = nextBatchSize;
-            continue;
-          }
-        }
-
-        singleFallbackBatches += 1;
-        logRag(
-          `batch embedding fallback provider=${providerName || "unknown"} batch_size=${batch.length} reason=${error.message}`
-        );
-        for (const text of batch) {
-          const vector = await embedder.embed(text);
-          results.push(vector);
-          await reportChunk([vector], "single_fallback", 1);
-        }
-        index += batch.length;
-        rateLimitFailures = 0;
       }
+      return results;
+    } catch (error) {
+      console.error(`[rag] batch embedding failed, falling back to single requests: ${error.message}`);
+      results.length = 0;
     }
-
-    return {
-      vectors: results,
-      stats: {
-        batchDowngrades,
-        singleFallbackBatches,
-        finalBatchSize: currentBatchSize
-      }
-    };
   }
-
   for (const text of texts) {
-    const vector = await embedder.embed(text);
-    results.push(vector);
-    await reportChunk([vector], "single", 1);
+    results.push(await embedder.embed(text));
   }
-
-  return {
-    vectors: results,
-    stats: {
-      batchDowngrades,
-      singleFallbackBatches,
-      finalBatchSize: 1
-    }
-  };
+  return results;
 }
 
 let localEmbedderPromise = null;
@@ -664,119 +326,59 @@ async function getGeminiEmbedder() {
     throw new Error("GEMINI_API_KEY is required for gemini embeddings.");
   }
   if (geminiEmbedderPromise) return geminiEmbedderPromise;
-  const retryConfig = normalizeGeminiRetryConfig({
-    maxAttempts: ragConfig.geminiRetryMaxAttempts,
-    baseDelayMs: ragConfig.geminiRetryBaseDelayMs,
-    maxDelayMs: ragConfig.geminiRetryMaxDelayMs,
-    requestThrottleMs: ragConfig.geminiRequestThrottleMs
-  });
-
-  geminiEmbedderPromise = Promise.resolve((() => {
-    const metrics = {
-      requests: 0,
-      retries: 0,
-      retryDelayMs: 0,
-      throttleEvents: 0,
-      throttleDelayMs: 0,
-      rateLimitRetries: 0
-    };
-
-    let nextAllowedAt = 0;
-
-    const throttleRequest = async (operation) => {
-      if (retryConfig.requestThrottleMs <= 0) return;
-      const now = Date.now();
-      const waitMs = Math.max(0, nextAllowedAt - now);
-      if (waitMs > 0) {
-        metrics.throttleEvents += 1;
-        metrics.throttleDelayMs += waitMs;
-        logRag(`gemini throttle op=${operation} wait_ms=${waitMs}`);
-        await sleepMs(waitMs);
-      }
-      nextAllowedAt = Date.now() + retryConfig.requestThrottleMs;
-    };
-
-    const requestJson = async (operation, endpoint, body) => executeWithGeminiRetry({
-      operation,
-      retryConfig,
-      logger: (message) => logRag(message),
-      onRetry: ({ delayMs, rateLimited }) => {
-        metrics.retries += 1;
-        metrics.retryDelayMs += delayMs;
-        if (rateLimited) {
-          metrics.rateLimitRetries += 1;
-        }
-      },
-      requestFn: async () => {
-        await throttleRequest(operation);
-        metrics.requests += 1;
-        const response = await fetch(
-          `${ragConfig.geminiBaseUrl}/v1beta/${endpoint}?key=${ragConfig.geminiApiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-          }
-        );
-        if (!response.ok) {
-          const detail = await response.text();
-          throw new GeminiHttpError(`Gemini ${operation} failed (${response.status}): ${detail}`, {
-            status: response.status,
-            detail,
-            retryAfterMs: parseRetryAfterMs(response.headers.get("retry-after"))
-          });
-        }
-        return response.json();
-      }
-    });
-
-    return {
-      embed: async (text) => {
-        const payload = await requestJson(
-          "embedContent",
-          `${ragConfig.geminiModel}:embedContent`,
-          {
+  geminiEmbedderPromise = Promise.resolve({
+    embed: async (text) => {
+      const response = await fetch(
+        `${ragConfig.geminiBaseUrl}/v1beta/${ragConfig.geminiModel}:embedContent?key=${ragConfig.geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             content: {
               parts: [{ text }]
             }
-          }
-        );
-        const embedding = payload.embedding?.values || payload.embedding || payload.embeddings?.[0]?.values;
-        if (!embedding) {
-          throw new Error("Gemini embedding response missing embedding values.");
+          })
         }
-        return embedding;
-      },
-      embedBatch: async (texts) => {
-        const payload = await requestJson(
-          "batchEmbedContents",
-          `${ragConfig.geminiModel}:batchEmbedContents`,
-          {
+      );
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`Gemini embedContent failed (${response.status}): ${detail}`);
+      }
+      const payload = await response.json();
+      const embedding = payload.embedding?.values || payload.embedding || payload.embeddings?.[0]?.values;
+      if (!embedding) {
+        throw new Error("Gemini embedding response missing embedding values.");
+      }
+      return embedding;
+    },
+    embedBatch: async (texts) => {
+      const response = await fetch(
+        `${ragConfig.geminiBaseUrl}/v1beta/${ragConfig.geminiModel}:batchEmbedContents?key=${ragConfig.geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             requests: texts.map((text) => ({
               model: ragConfig.geminiModel,
               content: {
                 parts: [{ text }]
               }
             }))
-          }
-        );
-        const embeddings = payload.embeddings || payload.responses;
-        if (!Array.isArray(embeddings)) {
-          throw new Error("Gemini batch response missing embeddings.");
+          })
         }
-        return embeddings.map((item) => item.values || item.embedding?.values || item.embedding);
-      },
-      getMetrics: () => ({ ...metrics }),
-      resetMetrics: () => {
-        metrics.requests = 0;
-        metrics.retries = 0;
-        metrics.retryDelayMs = 0;
-        metrics.throttleEvents = 0;
-        metrics.throttleDelayMs = 0;
-        metrics.rateLimitRetries = 0;
+      );
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`Gemini batchEmbedContents failed (${response.status}): ${detail}`);
       }
-    };
-  })());
+      const payload = await response.json();
+      const embeddings = payload.embeddings || payload.responses;
+      if (!Array.isArray(embeddings)) {
+        throw new Error("Gemini batch response missing embeddings.");
+      }
+      return embeddings.map((item) => item.values || item.embedding?.values || item.embedding);
+    }
+  });
   return geminiEmbedderPromise;
 }
 
@@ -789,13 +391,6 @@ async function createVectorProvider({ name, model, embedder, batchSize }) {
   };
   const cacheKey = createHash("sha256").update(JSON.stringify(cacheMeta)).digest("hex");
   const cacheFile = join(ragConfig.cacheDir, makeCacheFileName(name, model, cacheKey));
-  const checkpointFile = join(ragConfig.cacheDir, makeCheckpointFileName(name, model, cacheKey));
-  const expectedCacheState = {
-    cacheKey,
-    signature,
-    provider: name,
-    model
-  };
   logRag(
     `provider=${name} cache_file=${cacheFile} rebuild=${ragConfig.rebuild} cache_key=${cacheKey.slice(0, 12)}`
   );
@@ -805,7 +400,7 @@ async function createVectorProvider({ name, model, embedder, batchSize }) {
     if (indexPromise) return indexPromise;
     indexPromise = (async () => {
       if (!ragConfig.rebuild) {
-        let cacheState = loadVectorIndexCache(cacheFile, expectedCacheState);
+        const cacheState = loadVectorIndexCache(cacheFile, cacheKey);
         if (cacheState.hit) {
           const cached = cacheState.payload;
           logRag(
@@ -817,130 +412,23 @@ async function createVectorProvider({ name, model, embedder, batchSize }) {
           };
         }
         logRag(`cache miss provider=${name} file=${cacheFile} reason=${cacheState.reason}`);
-
-        if (name === "local") {
-          const downloadResult = await maybeDownloadPrebuiltVectorIndex({
-            provider: name,
-            model,
-            cacheKey,
-            signature,
-            cacheFile
-          });
-          if (downloadResult.downloaded) {
-            cacheState = loadVectorIndexCache(cacheFile, expectedCacheState);
-            if (cacheState.hit) {
-              const cached = cacheState.payload;
-              logRag(
-                `cache hit provider=${name} file=${cacheFile} source=prebuilt_download items=${cached.items.length} vectors=${cached.vectors.length}`
-              );
-              return {
-                items: cached.items,
-                vectors: cached.vectors
-              };
-            }
-            logRag(`cache miss provider=${name} file=${cacheFile} source=prebuilt_download reason=${cacheState.reason}`);
-          }
-        }
       } else {
         logRag(`cache bypass provider=${name} file=${cacheFile} reason=rebuild_true`);
-        clearVectorIndexCheckpoint(checkpointFile);
       }
 
       const items = buildEmbeddingItems();
       const texts = items.map((item) => item.text);
-      const indexedItems = items.map((item) => ({ id: item.id, uri: item.uri }));
-      let normalized = [];
-      let resumeFrom = 0;
-      if (!ragConfig.rebuild) {
-        const checkpointState = loadVectorIndexCheckpoint(checkpointFile, cacheKey, indexedItems);
-        if (checkpointState.hit) {
-          normalized = checkpointState.payload.vectors;
-          resumeFrom = normalized.length;
-          logRag(
-            `checkpoint resume provider=${name} file=${checkpointFile} completed=${resumeFrom}/${texts.length}`
-          );
-        } else if (checkpointState.reason !== "missing") {
-          logRag(`checkpoint ignored provider=${name} file=${checkpointFile} reason=${checkpointState.reason}`);
-        }
-      }
-
-      if (name === "gemini" && embedder.resetMetrics) {
-        embedder.resetMetrics();
-      }
-
-      const checkpointIntervalMs = 5000;
-      let lastCheckpointAt = 0;
-      const persistCheckpoint = (force = false) => {
-        const now = Date.now();
-        if (!force && now - lastCheckpointAt < checkpointIntervalMs) return;
-        const payload = {
-          cacheKey,
-          meta: cacheMeta,
-          items: indexedItems,
-          vectors: normalized,
-          completed: normalized.length,
-          total: texts.length,
-          updatedAt: new Date().toISOString()
-        };
-        saveVectorIndexCheckpoint(checkpointFile, payload);
-        lastCheckpointAt = now;
-      };
-
-      if (resumeFrom < texts.length) {
-        logRag(
-          `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=${batchSize}`
-        );
-        try {
-          const embeddingResult = await embedTextsWithProgress(
-            texts.slice(resumeFrom),
-            embedder,
-            batchSize,
-            {
-              offset: resumeFrom,
-              total: texts.length,
-              providerName: name,
-              onChunk: ({ vectors, completed, total }) => {
-                normalized.push(...vectors.map(normalizeVector));
-                persistCheckpoint(completed >= total);
-              }
-            }
-          );
-
-          if (name === "gemini") {
-            const metrics = embedder.getMetrics ? embedder.getMetrics() : {};
-            logRag(
-              `gemini build metrics provider=${name} requests=${metrics.requests || 0} retries=${metrics.retries || 0} ` +
-              `retry_delay_ms=${metrics.retryDelayMs || 0} throttle_events=${metrics.throttleEvents || 0} ` +
-              `throttle_delay_ms=${metrics.throttleDelayMs || 0} rate_limit_retries=${metrics.rateLimitRetries || 0} ` +
-              `batch_downgrades=${embeddingResult.stats.batchDowngrades} single_fallback_batches=${embeddingResult.stats.singleFallbackBatches} ` +
-              `final_batch_size=${embeddingResult.stats.finalBatchSize}`
-            );
-          }
-        } catch (error) {
-          persistCheckpoint(true);
-          if (name === "gemini") {
-            const metrics = embedder.getMetrics ? embedder.getMetrics() : {};
-            logRag(
-              `gemini build failed provider=${name} requests=${metrics.requests || 0} retries=${metrics.retries || 0} ` +
-              `retry_delay_ms=${metrics.retryDelayMs || 0} throttle_events=${metrics.throttleEvents || 0} ` +
-              `throttle_delay_ms=${metrics.throttleDelayMs || 0} rate_limit_retries=${metrics.rateLimitRetries || 0} ` +
-              `checkpoint_completed=${normalized.length}/${texts.length} error=${error.message}`
-            );
-          }
-          throw error;
-        }
-      } else {
-        logRag(`checkpoint already complete provider=${name} completed=${resumeFrom}/${texts.length}`);
-      }
+      logRag(`building index provider=${name} embed_items=${texts.length} batch_size=${batchSize}`);
+      const vectors = await embedTexts(texts, embedder, batchSize);
+      const normalized = vectors.map(normalizeVector);
 
       const payload = {
         cacheKey,
         meta: cacheMeta,
-        items: indexedItems,
+        items: items.map((item) => ({ id: item.id, uri: item.uri })),
         vectors: normalized
       };
       saveVectorIndexCache(cacheFile, payload);
-      clearVectorIndexCheckpoint(checkpointFile);
       logRag(`cache saved provider=${name} file=${cacheFile} items=${payload.items.length} vectors=${payload.vectors.length}`);
       return {
         items: payload.items,
@@ -1018,11 +506,7 @@ function logRagConfigOnce() {
   if (ragLogState.config) return;
   ragLogState.config = true;
   logRag(
-    `config provider=${ragConfig.provider} fallback=${ragConfig.fallback} prewarm=${ragConfig.prewarm} rebuild=${ragConfig.rebuild} ` +
-    `cache_dir=${ragConfig.cacheDir} prebuilt_auto_download=${ragConfig.prebuiltIndexAutoDownload} ` +
-    `prebuilt_timeout_ms=${ragConfig.prebuiltIndexTimeoutMs} gemini_retry_max_attempts=${ragConfig.geminiRetryMaxAttempts} ` +
-    `gemini_retry_base_delay_ms=${ragConfig.geminiRetryBaseDelayMs} gemini_retry_max_delay_ms=${ragConfig.geminiRetryMaxDelayMs} ` +
-    `gemini_request_throttle_ms=${ragConfig.geminiRequestThrottleMs}`
+    `config provider=${ragConfig.provider} fallback=${ragConfig.fallback} prewarm=${ragConfig.prewarm} rebuild=${ragConfig.rebuild} cache_dir=${ragConfig.cacheDir}`
   );
 }
 

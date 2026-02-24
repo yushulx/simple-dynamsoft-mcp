@@ -53,15 +53,15 @@ Goal: avoid long local index build time whenever local embeddings are used (prim
 - [x] Define artifact naming convention including compatibility keys:
 - [x] package version
 - [x] RAG model id
-- [x] index signature/cache key
-- [x] Add runtime logic: whenever execution resolves to local embeddings (primary or fallback), try downloading matching prebuilt index before local build.
-- [x] Validate downloaded prebuilt index compatibility before use (package-version match + provider/model/payload sanity checks).
-- [x] Fallback to existing local-build flow when prebuilt index is missing/incompatible/download fails.
-- [x] Add env controls:
-- [x] `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD` (default `true`)
-- [x] `RAG_PREBUILT_INDEX_URL`
-- [x] `RAG_PREBUILT_INDEX_TIMEOUT_MS`
-- [x] Document this behavior in `README.md`, `AGENTS.md`, and `.env.example`.
+- [ ] index signature/cache key
+- [ ] Add runtime logic: whenever execution resolves to local embeddings (primary or fallback), try downloading matching prebuilt index before local build.
+- [ ] Validate downloaded index signature before use.
+- [ ] Fallback to existing local-build flow when prebuilt index is missing/incompatible/download fails.
+- [ ] Add env controls:
+- [ ] `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD` (default `true`)
+- [ ] `RAG_PREBUILT_INDEX_URL`
+- [ ] `RAG_PREBUILT_INDEX_TIMEOUT_MS`
+- [ ] Document this behavior in `README.md`, `AGENTS.md`, and `.env.example`.
 
 ## Post-Release Validation
 
@@ -86,15 +86,15 @@ Goal: replace fuse-only fallback with lexical hybrid retrieval for no-model scen
 
 Goal: prevent prewarm failures when embedding large corpora with Gemini API quotas/rate limits.
 
-- [x] Add exponential backoff with jitter for Gemini embedding requests during prewarm/index build.
-- [x] Add retry policy for retryable errors (`429`, `503`, transient `5xx`) with max-attempt cap.
-- [x] Add configurable throttling between Gemini requests/batches to reduce burst pressure.
-- [x] Add env controls for retry/backoff/throttle settings (for example `GEMINI_RETRY_MAX_ATTEMPTS`, `GEMINI_RETRY_BASE_DELAY_MS`, `GEMINI_RETRY_MAX_DELAY_MS`, `GEMINI_REQUEST_THROTTLE_MS`).
-- [x] Add adaptive batch downgrade on repeated rate-limit responses (reduce `GEMINI_EMBED_BATCH_SIZE` progressively).
-- [x] Persist partial progress/checkpoints during prewarm so retries can resume instead of restarting full corpus embedding.
-- [x] Add graceful fallback behavior when prewarm fails (continue startup and use fallback provider/search mode).
-- [x] Add structured logs/metrics for retry attempts, backoff delay, throttle events, and final prewarm outcome.
-- [x] Add tests for retry/backoff behavior and config parsing, and update docs in `README.md`, `AGENTS.md`, and `.env.example`.
+- [ ] Add exponential backoff with jitter for Gemini embedding requests during prewarm/index build.
+- [ ] Add retry policy for retryable errors (`429`, `503`, transient `5xx`) with max-attempt cap.
+- [ ] Add configurable throttling between Gemini requests/batches to reduce burst pressure.
+- [ ] Add env controls for retry/backoff/throttle settings (for example `GEMINI_RETRY_MAX_ATTEMPTS`, `GEMINI_RETRY_BASE_DELAY_MS`, `GEMINI_RETRY_MAX_DELAY_MS`, `GEMINI_REQUEST_THROTTLE_MS`).
+- [ ] Add adaptive batch downgrade on repeated rate-limit responses (reduce `GEMINI_EMBED_BATCH_SIZE` progressively).
+- [ ] Persist partial progress/checkpoints during prewarm so retries can resume instead of restarting full corpus embedding.
+- [ ] Add graceful fallback behavior when prewarm fails (continue startup and use fallback provider/search mode).
+- [ ] Add structured logs/metrics for retry attempts, backoff delay, throttle events, and final prewarm outcome.
+- [ ] Add tests for retry/backoff behavior and config parsing, and update docs in `README.md`, `AGENTS.md`, and `.env.example`.
 
 ## Key Points For Future Agents
 

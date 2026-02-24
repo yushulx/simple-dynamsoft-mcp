@@ -111,9 +111,6 @@ jobs:
       - name: Verify lock manifest
         run: npm run data:verify-lock
 
-      - name: Run unit tests
-        run: npm run test:unit
-
       - name: Run tests
         run: npm test
 
@@ -167,8 +164,6 @@ jobs:
       RAG_LOCAL_QUANTIZED: "true"
       RAG_CACHE_DIR: ${{ github.workspace }}/release-assets/prebuilt-rag/cache
       RAG_MODEL_CACHE_DIR: ${{ github.workspace }}/release-assets/prebuilt-rag/model-cache
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_EMBED_BATCH_SIZE: 16
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -188,22 +183,6 @@ jobs:
         run: npm run data:bootstrap
 
       - name: Prebuild local RAG index
-        run: npm run rag:prebuild
-
-      - name: Ensure Gemini API key is configured
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${GEMINI_API_KEY:-}" ]]; then
-            echo "GEMINI_API_KEY secret is required for Gemini prebuild."
-            exit 1
-          fi
-
-      - name: Prebuild gemini RAG index
-        env:
-          RAG_PROVIDER: gemini
-          RAG_FALLBACK: none
-          RAG_REBUILD: "true"
         run: npm run rag:prebuild
 
       - name: Show prebuilt RAG output

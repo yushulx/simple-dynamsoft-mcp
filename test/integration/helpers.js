@@ -18,9 +18,6 @@ const supergatewayEntry = join(projectRoot, "node_modules", "supergateway", "dis
 
 const RUN_FUSE_PROVIDER_TESTS = process.env.RUN_FUSE_PROVIDER_TESTS !== "false";
 const RUN_LOCAL_PROVIDER_TESTS = process.env.RUN_LOCAL_PROVIDER_TESTS === "true";
-const RUN_GEMINI_PROVIDER_TESTS =
-  process.env.RUN_GEMINI_PROVIDER_TESTS === "true" &&
-  Boolean(process.env.GEMINI_API_KEY);
 
 function sleep(ms) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
@@ -282,7 +279,6 @@ function cleanupDir(path) {
 export {
   RUN_FUSE_PROVIDER_TESTS,
   RUN_LOCAL_PROVIDER_TESTS,
-  RUN_GEMINI_PROVIDER_TESTS,
   cleanupDir,
   connectStreamableClientWithRetry,
   createStdioClient,

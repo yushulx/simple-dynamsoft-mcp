@@ -57,10 +57,8 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 ## Tests and Commands
 - Run server: `npm start`
 - Run tests: `npm test`
-- Run unit tests: `npm run test:unit`
 - Run fuse integration suite: `npm run test:fuse`
 - Run local-provider integration suite: `npm run test:local`
-- Run gemini-provider integration suite: `npm run test:gemini`
 - Run stdio integration only: `npm run test:stdio`
 - Run streamable HTTP gateway integration only: `npm run test:http`
 - Run packaged runtime integration only: `npm run test:package`
@@ -72,14 +70,11 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Build prebuilt local RAG index cache: `npm run rag:prebuild`
 - Optional startup sync env: `DATA_SYNC_ON_START=true`, `DATA_SYNC_TIMEOUT_MS=30000`
 - Optional runtime data env: `MCP_DATA_DIR`, `MCP_DATA_AUTO_DOWNLOAD`, `MCP_DATA_CACHE_DIR`, `MCP_DATA_REFRESH_ON_START`
-- Optional gemini retry env: `GEMINI_RETRY_MAX_ATTEMPTS`, `GEMINI_RETRY_BASE_DELAY_MS`, `GEMINI_RETRY_MAX_DELAY_MS`, `GEMINI_REQUEST_THROTTLE_MS`
-- Optional test toggles: `RUN_FUSE_PROVIDER_TESTS=true|false`, `RUN_LOCAL_PROVIDER_TESTS=true|false`, `RUN_GEMINI_PROVIDER_TESTS=true|false`
-- Optional prebuilt RAG env: `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD`, `RAG_PREBUILT_INDEX_URL`, `RAG_PREBUILT_INDEX_TIMEOUT_MS`
+- Optional test toggles: `RUN_FUSE_PROVIDER_TESTS=true|false`, `RUN_LOCAL_PROVIDER_TESTS=true|false`
 
 CI notes:
 - `test_fuse` runs on `ubuntu-latest` for every PR/push.
 - `test_local_provider` runs on `ubuntu-latest` for every PR/push.
-- `test_gemini_provider` runs on `ubuntu-latest` when `GEMINI_API_KEY` secret is configured.
 - `rag:prebuild` is run in the local-provider CI job before local-provider integration tests.
 
 ## Roadmap Notes

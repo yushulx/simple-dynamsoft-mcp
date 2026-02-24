@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 function toPosixPath(path) {
   return path.replace(/\\/g, "/");
@@ -35,39 +35,18 @@ if (!existsSync(cacheDir)) {
 const cacheFiles = readdirSync(cacheDir, { withFileTypes: true })
   .filter((entry) => entry.isFile())
   .map((entry) => join(cacheDir, entry.name))
-  .filter((path) => {
-    const name = basename(path).toLowerCase();
-    if (!name.endsWith(".json")) return false;
-    if (!name.startsWith("rag-")) return false;
-    if (name.endsWith(".checkpoint.json")) return false;
-    return true;
-  })
+  .filter((path) => path.toLowerCase().endsWith(".json"))
   .sort();
 
 if (cacheFiles.length === 0) {
   throw new Error(`No cache JSON files found in ${cacheDir}.`);
 }
 
-let indexSignature = "";
-let indexCacheKey = "";
-const localCacheFile = cacheFiles.find((path) => /rag-local-.*\.json$/i.test(path));
-if (localCacheFile) {
-  try {
-    const parsed = JSON.parse(readFileSync(localCacheFile, "utf8"));
-    indexSignature = String(parsed?.meta?.signature || "");
-    indexCacheKey = String(parsed?.cacheKey || "");
-  } catch {
-    // Keep manifest generation resilient; runtime still validates cache payloads directly.
-  }
-}
-
 const manifest = {
   packageVersion: pkg.version,
   generatedAt: new Date().toISOString(),
   ragProvider: ragConfig.provider,
-  ragModel: ragConfig.provider === "gemini" ? ragConfig.geminiModel : ragConfig.localModel,
-  indexSignature,
-  indexCacheKey,
+  ragModel: ragConfig.localModel,
   cacheDir: toPosixPath(cacheDir),
   files: cacheFiles.map((path) => {
     const stats = statSync(path);
