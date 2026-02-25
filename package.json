@@ -24,7 +24,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "npm run test:fuse",
-    "test:unit": "node --test \"test/unit/*.test.js\"",
+    "test:unit": "node --test test/unit/gemini-retry.test.js test/unit/profile-config.test.js",
     "test:fuse": "npm run test:stdio && npm run test:http && npm run test:package",
     "test:local": "node --test test/integration/stdio.test.js test/integration/http.test.js",
     "test:gemini": "node scripts/run-gemini-tests.mjs",
