@@ -13,11 +13,6 @@ const PROFILE_DEFAULTS = {
   }
 };
 
-const LEGACY_DEFAULTS = {
-  provider: "auto",
-  fallback: "fuse"
-};
-
 function normalizeEnvValue(value) {
   if (value === undefined || value === null) return "";
   return String(value).trim().toLowerCase();
@@ -34,8 +29,8 @@ function resolveProfileConfig(env = process.env) {
     );
   }
 
-  const profile = rawProfile || "legacy";
-  const defaults = PROFILE_DEFAULTS[profile] || LEGACY_DEFAULTS;
+  const profile = rawProfile || "lite";
+  const defaults = PROFILE_DEFAULTS[profile];
 
   return {
     profile,
@@ -49,6 +44,5 @@ function resolveProfileConfig(env = process.env) {
 
 export {
   PROFILE_DEFAULTS,
-  LEGACY_DEFAULTS,
   resolveProfileConfig
 };
