@@ -210,6 +210,9 @@ Commonly used settings:
 - `MCP_DATA_REFRESH_ON_START`: force re-download of pinned archives on startup
 - `MCP_DATA_CACHE_DIR`: customize downloaded data cache location
 - `MCP_DATA_HYDRATION_MODE`: `lazy` (metadata-first, hydrate selected repos on demand) or `eager` (download full corpus at startup)
+- `MCP_DATA_DOWNLOAD_RETRY_MAX_ATTEMPTS`: retry attempts for retryable archive download failures
+- `MCP_DATA_DOWNLOAD_RETRY_BASE_DELAY_MS`: exponential backoff base delay
+- `MCP_DATA_DOWNLOAD_RETRY_MAX_DELAY_MS`: exponential backoff max delay
 
 Default profile target is `MCP_PROFILE=lite` (lightweight startup, no local embedding model download).
 
@@ -524,6 +527,9 @@ Optional runtime data bootstrap (mainly for npm/npx installs):
 - `MCP_DATA_CACHE_DIR=<cache path>`
 - `MCP_DATA_REFRESH_ON_START=false`
 - `MCP_DATA_HYDRATION_MODE=lazy`
+- `MCP_DATA_DOWNLOAD_RETRY_MAX_ATTEMPTS=3`
+- `MCP_DATA_DOWNLOAD_RETRY_BASE_DELAY_MS=500`
+- `MCP_DATA_DOWNLOAD_RETRY_MAX_DELAY_MS=5000`
 
 Default cache location when `MCP_DATA_CACHE_DIR` is not set:
 - Windows: `%LOCALAPPDATA%\simple-dynamsoft-mcp\data`
