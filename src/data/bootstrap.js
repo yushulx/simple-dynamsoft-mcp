@@ -12,6 +12,9 @@ import { basename, dirname, join, resolve } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import extractZip from "extract-zip";
 import { bundledDataRoot } from "./root.js";
+import { normalizeHydrationScopes } from "./hydration-policy.js";
+import { resolveRepoPathsForScopes } from "./repo-map.js";
+import { resolveHydrationMode } from "./hydration-mode.js";
 
 const manifestPath = join(bundledDataRoot, "metadata", "data-manifest.json");
 const sdkRegistryPath = join(bundledDataRoot, "metadata", "dynamsoft_sdks.json");
@@ -31,6 +34,12 @@ function readIntEnv(key, fallback) {
   if (value === undefined || value === "") return fallback;
   const parsed = Number.parseInt(String(value), 10);
   return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function readStringEnv(key, fallback = "") {
+  const value = process.env[key];
+  if (value === undefined || value === "") return fallback;
+  return String(value).trim();
 }
 
 function readManifest(rootDir = bundledDataRoot) {
@@ -107,6 +116,66 @@ function copyBundledMetadata(targetRoot) {
   writeFileSync(join(metadataDir, "data-manifest.json"), readFileSync(manifestPath, "utf8"));
 }
 
+function ensureMetadataInitialized(targetRoot, manifest, signature) {
+  mkdirSync(targetRoot, { recursive: true });
+  copyBundledMetadata(targetRoot);
+  if (manifest && signature) {
+    writeFileSync(join(targetRoot, ".manifest-signature"), signature);
+  }
+}
+
+function readHydratedReposState(rootDir) {
+  const path = join(rootDir, ".hydrated-repos.json");
+  if (!existsSync(path)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function writeHydratedReposState(rootDir, state) {
+  const path = join(rootDir, ".hydrated-repos.json");
+  writeFileSync(path, JSON.stringify(state, null, 2));
+}
+
+async function hydrateRepoInPlace({ repo, targetRoot, tempZipRoot, timeoutMs }) {
+  const slug = parseGithubSlug(repo);
+  if (!slug) {
+    throw new Error(`Unable to parse GitHub slug for ${repo.path}`);
+  }
+
+  const archiveUrl = repo.archiveUrl || `https://codeload.github.com/${slug.owner}/${slug.name}/zip/${repo.commit}`;
+  const zipPath = join(tempZipRoot, `${repo.path.replace(/[\\/]/g, "_")}.zip`);
+  const extractRoot = join(tempZipRoot, `${repo.path.replace(/[\\/]/g, "_")}-extract`);
+  const targetPath = join(targetRoot, repo.path);
+  const targetParent = dirname(targetPath);
+
+  logData(`repo start path=${repo.path} commit=${String(repo.commit || "").slice(0, 12)} host=codeload.github.com`);
+  mkdirSync(targetParent, { recursive: true });
+  await downloadFile(archiveUrl, zipPath, timeoutMs);
+  await extractZip(zipPath, { dir: extractRoot });
+
+  let extractedFolder = join(extractRoot, `${slug.name}-${repo.commit}`);
+  if (!existsSync(extractedFolder)) {
+    const children = readdirSync(extractRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => join(extractRoot, entry.name));
+    if (children.length === 1) {
+      extractedFolder = children[0];
+    } else {
+      const fallbackName = basename(extractRoot);
+      throw new Error(`Archive layout is not recognized for ${repo.path} (${fallbackName})`);
+    }
+  }
+
+  if (existsSync(targetPath)) rmSync(targetPath, { recursive: true, force: true });
+  renameSync(extractedFolder, targetPath);
+  logData(`repo ready path=${repo.path}`);
+}
+
 async function populateFromManifest(targetRoot, manifest, timeoutMs) {
   const tempZipRoot = join(tmpdir(), `simple-dynamsoft-mcp-zips-${Date.now()}`);
   mkdirSync(tempZipRoot, { recursive: true });
@@ -114,38 +183,12 @@ async function populateFromManifest(targetRoot, manifest, timeoutMs) {
 
   try {
     for (const repo of manifest.repos) {
-      const slug = parseGithubSlug(repo);
-      if (!slug) {
-        throw new Error(`Unable to parse GitHub slug for ${repo.path}`);
-      }
-
-      const archiveUrl = repo.archiveUrl || `https://codeload.github.com/${slug.owner}/${slug.name}/zip/${repo.commit}`;
-      const zipPath = join(tempZipRoot, `${repo.path.replace(/[\\/]/g, "_")}.zip`);
-      const extractRoot = join(tempZipRoot, `${repo.path.replace(/[\\/]/g, "_")}-extract`);
-      const targetPath = join(targetRoot, repo.path);
-      const targetParent = dirname(targetPath);
-
-      logData(`repo start path=${repo.path} commit=${String(repo.commit || "").slice(0, 12)} host=codeload.github.com`);
-      mkdirSync(targetParent, { recursive: true });
-      await downloadFile(archiveUrl, zipPath, timeoutMs);
-      await extractZip(zipPath, { dir: extractRoot });
-
-      let extractedFolder = join(extractRoot, `${slug.name}-${repo.commit}`);
-      if (!existsSync(extractedFolder)) {
-        const children = readdirSync(extractRoot, { withFileTypes: true })
-          .filter((entry) => entry.isDirectory())
-          .map((entry) => join(extractRoot, entry.name));
-        if (children.length === 1) {
-          extractedFolder = children[0];
-        } else {
-          const fallbackName = basename(extractRoot);
-          throw new Error(`Archive layout is not recognized for ${repo.path} (${fallbackName})`);
-        }
-      }
-
-      if (existsSync(targetPath)) rmSync(targetPath, { recursive: true, force: true });
-      renameSync(extractedFolder, targetPath);
-      logData(`repo ready path=${repo.path}`);
+      await hydrateRepoInPlace({
+        repo,
+        targetRoot,
+        tempZipRoot,
+        timeoutMs
+      });
     }
     logData(`populate done repos=${manifest.repos.length}`);
   } finally {
@@ -210,6 +253,57 @@ async function ensureDownloadedData(cacheRoot) {
   }
 }
 
+function ensureLazyMetadataRoot(cacheRoot, manifest, signature) {
+  ensureMetadataInitialized(cacheRoot, manifest, signature);
+  logData(`lazy metadata ready root=${cacheRoot}`);
+}
+
+async function ensureDownloadedRepos(cacheRoot, repoPaths) {
+  const manifest = readManifest(bundledDataRoot);
+  if (!manifest) {
+    throw new Error(`Missing manifest at ${manifestPath}. Run npm run data:lock.`);
+  }
+
+  const wanted = new Set(repoPaths || []);
+  if (wanted.size === 0) return { hydrated: [] };
+
+  const signature = getManifestSignature(manifest);
+  ensureMetadataInitialized(cacheRoot, manifest, signature);
+
+  const timeoutMs = readIntEnv("MCP_DATA_DOWNLOAD_TIMEOUT_MS", 180000);
+  const state = readHydratedReposState(cacheRoot);
+  const tempZipRoot = join(tmpdir(), `simple-dynamsoft-mcp-zips-lazy-${Date.now()}`);
+  mkdirSync(tempZipRoot, { recursive: true });
+
+  const hydrated = [];
+  try {
+    for (const repo of manifest.repos) {
+      if (!wanted.has(repo.path)) continue;
+
+      const targetPath = join(cacheRoot, repo.path);
+      const knownCommit = String(state[repo.path] || "");
+      const expectedCommit = String(repo.commit || "");
+      if (isDirectoryReady(targetPath) && knownCommit === expectedCommit) {
+        logData(`hydrate cache hit path=${repo.path}`);
+        continue;
+      }
+
+      await hydrateRepoInPlace({
+        repo,
+        targetRoot: cacheRoot,
+        tempZipRoot,
+        timeoutMs
+      });
+      state[repo.path] = expectedCommit;
+      hydrated.push(repo.path);
+    }
+    writeHydratedReposState(cacheRoot, state);
+    return { hydrated };
+  } finally {
+    rmSync(tempZipRoot, { recursive: true, force: true });
+  }
+}
+
 async function ensureDataReady() {
   const explicitRoot = process.env.MCP_DATA_DIR ? resolve(process.env.MCP_DATA_DIR) : "";
   logData(`resolve start explicit_root=${explicitRoot || "(none)"} bundled_root=${bundledDataRoot}`);
@@ -219,12 +313,14 @@ async function ensureDataReady() {
       throw new Error(`MCP_DATA_DIR is set but data is incomplete: ${explicitRoot}`);
     }
     process.env.MCP_RESOLVED_DATA_DIR = explicitRoot;
+    process.env.MCP_DATA_RESOLVE_MODE = "custom";
     logData(`resolve done mode=custom root=${explicitRoot}`);
     return { dataRoot: explicitRoot, mode: "custom", downloaded: false };
   }
 
   if (isDataRootReady(bundledDataRoot)) {
     process.env.MCP_RESOLVED_DATA_DIR = bundledDataRoot;
+    process.env.MCP_DATA_RESOLVE_MODE = "bundled";
     logData(`resolve done mode=bundled root=${bundledDataRoot}`);
     return { dataRoot: bundledDataRoot, mode: "bundled", downloaded: false };
   }
@@ -240,16 +336,58 @@ async function ensureDataReady() {
 
   const defaultCacheRoot = join(process.env.LOCALAPPDATA || join(homedir(), ".cache"), "simple-dynamsoft-mcp", "data");
   const cacheRoot = resolve(process.env.MCP_DATA_CACHE_DIR || defaultCacheRoot);
-  const result = await ensureDownloadedData(cacheRoot);
+  const hydrationMode = resolveHydrationMode(process.env);
+  const manifest = readManifest(bundledDataRoot);
+  if (!manifest) {
+    throw new Error(`Missing manifest at ${manifestPath}. Run npm run data:lock.`);
+  }
+  const signature = getManifestSignature(manifest);
+
+  let result;
+  if (hydrationMode === "lazy") {
+    ensureLazyMetadataRoot(cacheRoot, manifest, signature);
+    result = { downloaded: false };
+  } else {
+    result = await ensureDownloadedData(cacheRoot);
+  }
+
   process.env.MCP_RESOLVED_DATA_DIR = cacheRoot;
-  logData(`resolve done mode=downloaded root=${cacheRoot} source=${result?.downloaded ? "fresh-download" : "cache"}`);
+  process.env.MCP_DATA_RESOLVE_MODE = hydrationMode === "lazy" ? "downloaded-lazy" : "downloaded";
+  logData(`resolve done mode=${process.env.MCP_DATA_RESOLVE_MODE} root=${cacheRoot} source=${result?.downloaded ? "fresh-download" : "cache"}`);
   return {
     dataRoot: cacheRoot,
-    mode: "downloaded",
+    mode: process.env.MCP_DATA_RESOLVE_MODE,
     downloaded: Boolean(result?.downloaded)
   };
 }
 
+async function ensureDataScopesHydrated(scopes) {
+  const mode = readStringEnv("MCP_DATA_RESOLVE_MODE", "").toLowerCase();
+  if (mode !== "downloaded-lazy") {
+    return { hydrated: [], mode, skipped: true };
+  }
+
+  const root = process.env.MCP_RESOLVED_DATA_DIR ? resolve(process.env.MCP_RESOLVED_DATA_DIR) : "";
+  if (!root) {
+    return { hydrated: [], mode, skipped: true };
+  }
+
+  const manifest = readManifest(bundledDataRoot);
+  const normalizedScopes = normalizeHydrationScopes(scopes);
+  const repoPaths = resolveRepoPathsForScopes(normalizedScopes, manifest);
+  if (repoPaths.length === 0) {
+    return { hydrated: [], mode, skipped: true };
+  }
+
+  logData(`hydrate plan mode=lazy scopes=${normalizedScopes.length} repos=${repoPaths.length}`);
+  const result = await ensureDownloadedRepos(root, repoPaths);
+  if (result.hydrated.length > 0) {
+    logData(`hydrate done repos=${result.hydrated.length}`);
+  }
+  return { hydrated: result.hydrated, mode, skipped: false };
+}
+
 export {
-  ensureDataReady
+  ensureDataReady,
+  ensureDataScopesHydrated
 };

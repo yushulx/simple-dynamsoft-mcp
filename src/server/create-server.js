@@ -8,6 +8,7 @@ import {
   UnsubscribeRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { ensureDataScopesHydrated } from "../data/bootstrap.js";
 
 export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }) {
   const {
@@ -39,6 +40,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     formatScopeLabel,
     getPinnedResources,
     readResourceContent,
+    refreshResourceIndex,
     normalizePlatform,
     normalizeApiLevel,
     normalizeSampleName,
@@ -50,8 +52,21 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
 
   const {
     searchResources,
-    getSampleSuggestions
+    getSampleSuggestions,
+    refreshRagIndexes
   } = ragApi;
+
+  async function ensureScopeHydrated(scope) {
+    const result = await ensureDataScopesHydrated([scope]);
+    if (Array.isArray(result.hydrated) && result.hydrated.length > 0) {
+      if (typeof refreshResourceIndex === "function") {
+        refreshResourceIndex();
+      }
+      if (typeof refreshRagIndexes === "function") {
+        refreshRagIndexes();
+      }
+    }
+  }
 
 const server = new McpServer({
   name: "simple-dynamsoft-mcp",
@@ -111,6 +126,13 @@ server.registerTool(
     const normalizedProduct = normalizeProduct(product);
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+
+    await ensureScopeHydrated({
+      product: normalizedProduct,
+      edition: normalizedEdition,
+      platform: normalizedPlatform,
+      type: type || "any"
+    });
 
     const policy = ensureLatestMajor({
       product: normalizedProduct,
@@ -206,6 +228,13 @@ server.registerTool(
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
 
+    await ensureScopeHydrated({
+      product: normalizedProduct,
+      edition: normalizedEdition,
+      platform: normalizedPlatform,
+      type: "sample"
+    });
+
     const policy = ensureLatestMajor({
       product: normalizedProduct,
       version: undefined,
@@ -289,6 +318,13 @@ server.registerTool(
     const normalizedProduct = normalizeProduct(product);
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+
+    await ensureScopeHydrated({
+      product: normalizedProduct,
+      edition: normalizedEdition,
+      platform: normalizedPlatform,
+      type: "sample"
+    });
 
     const policy = ensureLatestMajor({
       product: normalizedProduct,
@@ -643,6 +679,14 @@ server.registerTool(
     const normalizedProduct = normalizeProduct(product);
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+
+    await ensureScopeHydrated({
+      product: normalizedProduct,
+      edition: normalizedEdition,
+      platform: normalizedPlatform,
+      type: "any"
+    });
+
     const policy = ensureLatestMajor({
       product: normalizedProduct,
       version,
@@ -1184,6 +1228,13 @@ server.registerTool(
     const normalizedProduct = normalizeProduct(product);
     const normalizedPlatform = normalizePlatform(platform);
     const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+
+    await ensureScopeHydrated({
+      product: normalizedProduct,
+      edition: normalizedEdition,
+      platform: normalizedPlatform,
+      type: "sample"
+    });
 
     const policy = ensureLatestMajor({
       product: normalizedProduct,

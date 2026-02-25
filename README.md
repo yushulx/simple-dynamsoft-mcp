@@ -209,6 +209,7 @@ Commonly used settings:
 - `MCP_DATA_AUTO_DOWNLOAD`: allow startup archive download when bundled data is unavailable
 - `MCP_DATA_REFRESH_ON_START`: force re-download of pinned archives on startup
 - `MCP_DATA_CACHE_DIR`: customize downloaded data cache location
+- `MCP_DATA_HYDRATION_MODE`: `lazy` (metadata-first, hydrate selected repos on demand) or `eager` (download full corpus at startup)
 
 Default profile target is `MCP_PROFILE=lite` (lightweight startup, no local embedding model download).
 
@@ -522,13 +523,19 @@ Optional runtime data bootstrap (mainly for npm/npx installs):
 - `MCP_DATA_AUTO_DOWNLOAD=true`
 - `MCP_DATA_CACHE_DIR=<cache path>`
 - `MCP_DATA_REFRESH_ON_START=false`
+- `MCP_DATA_HYDRATION_MODE=lazy`
 
 Default cache location when `MCP_DATA_CACHE_DIR` is not set:
 - Windows: `%LOCALAPPDATA%\simple-dynamsoft-mcp\data`
 - Linux/macOS: `~/.cache/simple-dynamsoft-mcp/data`
 
+Hydration modes:
+- `lazy` (default): initialize metadata first, then hydrate scope-matched repos (product/edition/type) on tool calls.
+- `eager`: download all repos from the lock manifest during startup bootstrap.
+
 At startup, the server logs data mode/path to stderr:
 - `[data] mode=downloaded ... source=fresh-download|cache`
+- `[data] mode=downloaded-lazy ... source=cache`
 - `[data] mode=bundled ...`
 - `[data] mode=custom ...`
 
