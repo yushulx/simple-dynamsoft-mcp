@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveProfileConfig } from "../../src/rag/profile-config.js";
 
-test("resolveProfileConfig keeps legacy defaults when MCP_PROFILE is unset", () => {
+test("resolveProfileConfig defaults to lite when MCP_PROFILE is unset", () => {
   const resolved = resolveProfileConfig({});
-  assert.equal(resolved.profile, "legacy");
-  assert.equal(resolved.provider, "auto");
-  assert.equal(resolved.fallback, "fuse");
+  assert.equal(resolved.profile, "lite");
+  assert.equal(resolved.provider, "fuse");
+  assert.equal(resolved.fallback, "none");
   assert.equal(resolved.providerSource, "profile-default");
   assert.equal(resolved.fallbackSource, "profile-default");
 });
