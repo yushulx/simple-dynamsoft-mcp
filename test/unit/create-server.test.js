@@ -44,3 +44,48 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
     assert.equal(typeof toolDef.handler, "function", `${toolName} should have a wired handler`);
   }
 });
+
+test("createMcpServerInstance wires resources/list and resources/read handlers", async () => {
+  const pinned = [{
+    uri: "doc://product-selection",
+    title: "Product Selection",
+    summary: "Guidance",
+    mimeType: "text/markdown"
+  }];
+  const readResource = {
+    uri: "doc://product-selection",
+    mimeType: "text/markdown",
+    text: "Use DCV for document workflows"
+  };
+
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => pinned,
+      parseResourceUri: () => ({ product: "dwt", version: "18", edition: "web", platform: "web" }),
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => readResource
+    },
+    ragApi: {}
+  });
+
+  const handlers = server.server._requestHandlers;
+  const listHandler = handlers.get("resources/list");
+  const readHandler = handlers.get("resources/read");
+
+  const listResult = await listHandler({ method: "resources/list", params: {} });
+  assert.deepEqual(listResult, {
+    resources: [{
+      uri: pinned[0].uri,
+      name: pinned[0].title,
+      description: pinned[0].summary,
+      mimeType: pinned[0].mimeType
+    }]
+  });
+
+  const readResult = await readHandler({
+    method: "resources/read",
+    params: { uri: "doc://product-selection" }
+  });
+  assert.deepEqual(readResult, { contents: [readResource] });
+});

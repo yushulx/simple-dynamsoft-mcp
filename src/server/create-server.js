@@ -1,12 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import {
-  ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  SubscribeRequestSchema,
-  UnsubscribeRequestSchema
-} from "@modelcontextprotocol/sdk/types.js";
 import { ensureDataScopesHydrated } from "../data/bootstrap.js";
 import { createScopeHydrator } from "./helpers/server-helpers.js";
+import { registerResourceHandlers } from "./resources/register-resources.js";
 import { registerIndexTools } from "./tools/register-index-tools.js";
 import { registerSampleTools } from "./tools/register-sample-tools.js";
 import { registerVersionTools } from "./tools/register-version-tools.js";
@@ -160,50 +155,14 @@ registerProjectTools({
   getDdvSamplePath,
   getSampleSuggestions
 });
-// ============================================================================
-// MCP Resources (tool-discovered, lazy-read)
-// ============================================================================
 
-server.server.registerCapabilities({
-  resources: {
-    listChanged: false,
-    subscribe: true
-  }
+registerResourceHandlers({
+  server,
+  getPinnedResources,
+  parseResourceUri,
+  ensureLatestMajor,
+  readResourceContent
 });
-
-server.server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  // Only surface a small, pinned set to avoid bloating the context window.
-  const resources = getPinnedResources().map((r) => ({
-    uri: r.uri,
-    name: r.title,
-    description: r.summary,
-    mimeType: r.mimeType
-  }));
-  return { resources };
-});
-
-server.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const parsed = parseResourceUri(request.params.uri);
-  if (parsed && ["dcv", "dbr", "dwt", "ddv"].includes(parsed.product)) {
-    const policy = ensureLatestMajor({
-      product: parsed.product,
-      version: parsed.version,
-      edition: parsed.edition,
-      platform: parsed.platform
-    });
-    if (!policy.ok) {
-      throw new Error(policy.message);
-    }
-  }
-  const resource = await readResourceContent(request.params.uri);
-  if (!resource) {
-    throw new Error(`Resource not found: ${request.params.uri}`);
-  }
-  return { contents: [resource] };
-});
-
-server.server.setRequestHandler(SubscribeRequestSchema, async () => ({}));
-server.server.setRequestHandler(UnsubscribeRequestSchema, async () => ({}));
 
 return server;
 }
