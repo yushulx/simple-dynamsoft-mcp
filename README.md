@@ -273,7 +273,7 @@ Use profiles to keep end-user setup simple while preserving advanced internal mo
 
 | Profile | Intended use | Default provider/fallback | First-run cost | Network/model dependencies |
 |---|---|---|---|---|
-| `lite` | Public + default internal | `fuse` / `none` | Lowest | No local embedding model download |
+| `lite` | Public + default internal | `lexical` / `none` | Lowest | No local embedding model download |
 | `semantic-local` | Internal semantic search | `local` / `none` | Higher | Downloads local embedding model + builds/loads vector cache |
 | `semantic-gemini` | Advanced semantic search | `gemini` / `none` | Medium | Requires `GEMINI_API_KEY` and network access |
 
@@ -577,7 +577,7 @@ At startup, the server logs data mode/path to stderr:
 Search providers are selected at runtime via profile defaults plus environment overrides.
 
 Profile targets:
-- `MCP_PROFILE=lite`: lightweight defaults (`fuse` primary, fallback `none`)
+- `MCP_PROFILE=lite`: lightweight defaults (`lexical` primary, fallback `none`)
 - `MCP_PROFILE=semantic-local`: local embeddings
 - `MCP_PROFILE=semantic-gemini`: Gemini embeddings
 

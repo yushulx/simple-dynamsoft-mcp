@@ -5,7 +5,7 @@ import { resolveProfileConfig } from "../../src/rag/profile-config.js";
 test("resolveProfileConfig defaults to lite when MCP_PROFILE is unset", () => {
   const resolved = resolveProfileConfig({});
   assert.equal(resolved.profile, "lite");
-  assert.equal(resolved.provider, "fuse");
+  assert.equal(resolved.provider, "lexical");
   assert.equal(resolved.fallback, "none");
   assert.equal(resolved.providerSource, "profile-default");
   assert.equal(resolved.fallbackSource, "profile-default");
@@ -14,7 +14,7 @@ test("resolveProfileConfig defaults to lite when MCP_PROFILE is unset", () => {
 test("resolveProfileConfig applies lite defaults", () => {
   const resolved = resolveProfileConfig({ MCP_PROFILE: "lite" });
   assert.equal(resolved.profile, "lite");
-  assert.equal(resolved.provider, "fuse");
+  assert.equal(resolved.provider, "lexical");
   assert.equal(resolved.fallback, "none");
 });
 

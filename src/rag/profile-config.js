@@ -1,6 +1,6 @@
 const PROFILE_DEFAULTS = {
   lite: {
-    provider: "fuse",
+    provider: "lexical",
     fallback: "none"
   },
   "semantic-local": {
