@@ -135,12 +135,16 @@ function logRag(message) {
 // RAG search implementation
 // ============================================================================
 
-const fuseSearch = new Fuse(resourceIndex, {
-  keys: ["title", "summary", "tags", "uri"],
-  threshold: 0.35,
-  ignoreLocation: true,
-  includeScore: true
-});
+function createFuseSearch() {
+  return new Fuse(resourceIndex, {
+    keys: ["title", "summary", "tags", "uri"],
+    threshold: 0.35,
+    ignoreLocation: true,
+    includeScore: true
+  });
+}
+
+let fuseSearch = createFuseSearch();
 
 function attachScore(entry, score) {
   if (!ragConfig.includeScore || !Number.isFinite(score)) return entry;
@@ -1082,6 +1086,16 @@ function logRagConfigOnce() {
 
 const providerCache = new Map();
 
+function refreshRagIndexes() {
+  fuseSearch = createFuseSearch();
+  providerCache.clear();
+  ragLogState.providerReady.clear();
+  ragLogState.providerFirstUse.clear();
+  ragLogState.fallbackUse.clear();
+  ragLogState.providerChain = false;
+  logRag(`indexes refreshed resources=${resourceIndex.length}`);
+}
+
 async function loadSearchProvider(name) {
   if (providerCache.has(name)) return providerCache.get(name);
   let providerPromise;
@@ -1255,5 +1269,6 @@ export {
   ragConfig,
   searchResources,
   getSampleSuggestions,
-  prewarmRagIndex
+  prewarmRagIndex,
+  refreshRagIndexes
 };

@@ -19,6 +19,13 @@ let cachedDbrWebFrameworkPlatforms = null;
 let cachedDdvWebFrameworkPlatforms = null;
 let cachedDcvWebFrameworkPlatforms = null;
 
+function resetSampleDiscoveryCaches() {
+  cachedWebFrameworkPlatforms = null;
+  cachedDbrWebFrameworkPlatforms = null;
+  cachedDdvWebFrameworkPlatforms = null;
+  cachedDcvWebFrameworkPlatforms = null;
+}
+
 function getCodeFileExtensions() {
   return CODE_FILE_EXTENSIONS;
 }
@@ -719,5 +726,6 @@ export {
   getMainCodeFile,
   getMimeTypeForExtension,
   getDbrServerSampleContent,
-  getDcvServerSampleContent
+  getDcvServerSampleContent,
+  resetSampleDiscoveryCaches
 };

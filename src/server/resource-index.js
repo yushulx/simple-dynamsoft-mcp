@@ -53,7 +53,8 @@ import {
   getMainCodeFile,
   getMimeTypeForExtension,
   getDbrServerSampleContent,
-  getDcvServerSampleContent
+  getDcvServerSampleContent,
+  resetSampleDiscoveryCaches
 } from "./resource-index/samples.js";
 import { parseResourceUri, parseSampleUri, getSampleIdFromUri } from "./resource-index/uri.js";
 import {
@@ -126,95 +127,107 @@ function inferDcvServerPlatform(articlePath) {
   return "server";
 }
 
-const dbrWebDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dbrWeb,
-    urlBase: DOCS_CONFIG.dbrWeb.urlBase,
-    excludeDirs: DOCS_CONFIG.dbrWeb.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dbrWeb.excludeFiles
-  }).articles,
-  "web",
-  () => "web"
-);
+let dbrWebDocs = [];
+let dbrMobileDocs = [];
+let dbrServerDocs = [];
+let dcvCoreDocs = [];
+let dcvWebDocs = [];
+let dcvMobileDocs = [];
+let dcvServerDocs = [];
+let dwtDocs = { articles: [] };
+let ddvDocs = { articles: [] };
 
-const dbrMobileDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dbrMobile,
-    urlBase: DOCS_CONFIG.dbrMobile.urlBase,
-    excludeDirs: DOCS_CONFIG.dbrMobile.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dbrMobile.excludeFiles
-  }).articles,
-  "mobile",
-  inferDbrMobilePlatform
-);
+function loadDocumentationSets() {
+  dbrWebDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dbrWeb,
+      urlBase: DOCS_CONFIG.dbrWeb.urlBase,
+      excludeDirs: DOCS_CONFIG.dbrWeb.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dbrWeb.excludeFiles
+    }).articles,
+    "web",
+    () => "web"
+  );
 
-const dbrServerDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dbrServer,
-    urlBase: DOCS_CONFIG.dbrServer.urlBase,
-    excludeDirs: DOCS_CONFIG.dbrServer.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dbrServer.excludeFiles
-  }).articles,
-  "server",
-  inferDbrServerPlatform
-);
+  dbrMobileDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dbrMobile,
+      urlBase: DOCS_CONFIG.dbrMobile.urlBase,
+      excludeDirs: DOCS_CONFIG.dbrMobile.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dbrMobile.excludeFiles
+    }).articles,
+    "mobile",
+    inferDbrMobilePlatform
+  );
 
-const dcvCoreDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dcvCore,
-    urlBase: DOCS_CONFIG.dcvCore.urlBase,
-    excludeDirs: DOCS_CONFIG.dcvCore.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dcvCore.excludeFiles
-  }).articles,
-  "core",
-  () => "core"
-);
+  dbrServerDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dbrServer,
+      urlBase: DOCS_CONFIG.dbrServer.urlBase,
+      excludeDirs: DOCS_CONFIG.dbrServer.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dbrServer.excludeFiles
+    }).articles,
+    "server",
+    inferDbrServerPlatform
+  );
 
-const dcvWebDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dcvWeb,
-    urlBase: DOCS_CONFIG.dcvWeb.urlBase,
-    excludeDirs: DOCS_CONFIG.dcvWeb.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dcvWeb.excludeFiles
-  }).articles,
-  "web",
-  () => "web"
-);
+  dcvCoreDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dcvCore,
+      urlBase: DOCS_CONFIG.dcvCore.urlBase,
+      excludeDirs: DOCS_CONFIG.dcvCore.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dcvCore.excludeFiles
+    }).articles,
+    "core",
+    () => "core"
+  );
 
-const dcvMobileDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dcvMobile,
-    urlBase: DOCS_CONFIG.dcvMobile.urlBase,
-    excludeDirs: DOCS_CONFIG.dcvMobile.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dcvMobile.excludeFiles
-  }).articles,
-  "mobile",
-  inferDcvMobilePlatform
-);
+  dcvWebDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dcvWeb,
+      urlBase: DOCS_CONFIG.dcvWeb.urlBase,
+      excludeDirs: DOCS_CONFIG.dcvWeb.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dcvWeb.excludeFiles
+    }).articles,
+    "web",
+    () => "web"
+  );
 
-const dcvServerDocs = withEditionScope(
-  loadMarkdownDocs({
-    rootDir: DOC_ROOTS.dcvServer,
-    urlBase: DOCS_CONFIG.dcvServer.urlBase,
-    excludeDirs: DOCS_CONFIG.dcvServer.excludeDirs,
-    excludeFiles: DOCS_CONFIG.dcvServer.excludeFiles
-  }).articles,
-  "server",
-  inferDcvServerPlatform
-);
+  dcvMobileDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dcvMobile,
+      urlBase: DOCS_CONFIG.dcvMobile.urlBase,
+      excludeDirs: DOCS_CONFIG.dcvMobile.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dcvMobile.excludeFiles
+    }).articles,
+    "mobile",
+    inferDcvMobilePlatform
+  );
 
-const dwtDocs = loadMarkdownDocs({
-  rootDir: DOC_ROOTS.dwtArticles,
-  urlBase: DOCS_CONFIG.dwt.urlBase,
-  includeDirNames: DOCS_CONFIG.dwt.includeDirNames
-});
+  dcvServerDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.dcvServer,
+      urlBase: DOCS_CONFIG.dcvServer.urlBase,
+      excludeDirs: DOCS_CONFIG.dcvServer.excludeDirs,
+      excludeFiles: DOCS_CONFIG.dcvServer.excludeFiles
+    }).articles,
+    "server",
+    inferDcvServerPlatform
+  );
 
-const ddvDocs = loadMarkdownDocs({
-  rootDir: DOC_ROOTS.ddv,
-  urlBase: DOCS_CONFIG.ddv.urlBase,
-  excludeDirs: DOCS_CONFIG.ddv.excludeDirs,
-  excludeFiles: DOCS_CONFIG.ddv.excludeFiles
-});
+  dwtDocs = loadMarkdownDocs({
+    rootDir: DOC_ROOTS.dwtArticles,
+    urlBase: DOCS_CONFIG.dwt.urlBase,
+    includeDirNames: DOCS_CONFIG.dwt.includeDirNames
+  });
+
+  ddvDocs = loadMarkdownDocs({
+    rootDir: DOC_ROOTS.ddv,
+    urlBase: DOCS_CONFIG.ddv.urlBase,
+    excludeDirs: DOCS_CONFIG.ddv.excludeDirs,
+    excludeFiles: DOCS_CONFIG.ddv.excludeFiles
+  });
+}
 
 const dbrServerSdk = registry.sdks["dbr-server"];
 const dcvMobileSdk = registry.sdks["dcv-mobile"];
@@ -261,6 +274,7 @@ function buildVersionPolicyText() {
 }
 
 const resourceIndex = [];
+const resourceIndexByUri = new Map();
 
 function addResourceToIndex(entry) {
   resourceIndex.push(entry);
@@ -340,9 +354,19 @@ function buildResourceIndex() {
   });
 }
 
-buildResourceIndex();
+function refreshResourceIndex() {
+  resetSampleDiscoveryCaches();
+  loadDocumentationSets();
+  resourceIndex.length = 0;
+  buildResourceIndex();
+  resourceIndexByUri.clear();
+  for (const entry of resourceIndex) {
+    resourceIndexByUri.set(entry.uri, entry);
+  }
+  return { resourceCount: resourceIndex.length };
+}
 
-const resourceIndexByUri = new Map(resourceIndex.map((entry) => [entry.uri, entry]));
+refreshResourceIndex();
 
 function editionMatches(normalizedEdition, entryEdition) {
   if (!normalizedEdition) return true;
@@ -555,6 +579,7 @@ export {
   buildVersionPolicyText,
   buildIndexData,
   buildResourceIndex,
+  refreshResourceIndex,
   editionMatches,
   platformMatches,
   getDisplayEdition,
