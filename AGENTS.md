@@ -15,6 +15,10 @@ Supported products:
 - `resources/list` exposes only pinned resources to keep context small.
 - Resource indexing logic is split under `src/server/resource-index/` with `src/server/resource-index.js` as the composition layer.
 - Dual-mode data: use local submodules when available, otherwise bootstrap pinned archives for npm/npx usage.
+- Runtime profile targets:
+  - `lite` (default target): lightweight retrieval path without local embedding model download.
+  - `semantic-local`: local embedding retrieval path.
+  - `semantic-gemini`: Gemini embedding retrieval path.
 - Transport defaults to stdio and also supports native Streamable HTTP via CLI (`--transport=http`, `--host`, `--port`). Do not add an external HTTP wrapper layer in this repo.
 
 ## Version Policy
@@ -89,7 +93,9 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Verify all doc resources can be read: `npm run data:verify-docs`
 - Build prebuilt local RAG index cache: `npm run rag:prebuild`
 - Optional startup sync env: `DATA_SYNC_ON_START=true`, `DATA_SYNC_TIMEOUT_MS=30000`
+- Optional profile env: `MCP_PROFILE=lite|semantic-local|semantic-gemini`
 - Optional runtime data env: `MCP_DATA_DIR`, `MCP_DATA_AUTO_DOWNLOAD`, `MCP_DATA_CACHE_DIR`, `MCP_DATA_REFRESH_ON_START`
+- Optional retrieval env: `RAG_PROVIDER`, `RAG_FALLBACK` (explicit override of profile defaults)
 - Optional gemini retry env: `GEMINI_RETRY_MAX_ATTEMPTS`, `GEMINI_RETRY_BASE_DELAY_MS`, `GEMINI_RETRY_MAX_DELAY_MS`, `GEMINI_REQUEST_THROTTLE_MS`
 - Optional test toggles: `RUN_FUSE_PROVIDER_TESTS=true|false`, `RUN_LOCAL_PROVIDER_TESTS=true|false`, `RUN_GEMINI_PROVIDER_TESTS=true|false`
 - Optional prebuilt RAG env: `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD`, `RAG_PREBUILT_INDEX_URL`, `RAG_PREBUILT_INDEX_URL_LOCAL`, `RAG_PREBUILT_INDEX_URL_GEMINI`, `RAG_PREBUILT_INDEX_TIMEOUT_MS`
