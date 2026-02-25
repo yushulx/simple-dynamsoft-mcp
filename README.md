@@ -536,7 +536,7 @@ At startup, the server logs data mode/path to stderr:
 
 - CI workflow: `.github/workflows/ci.yml`
 - CI jobs:
-- `test_fuse` on `ubuntu-latest` runs `npm run test:fuse` (stdio + native HTTP + package-runtime with fuse provider)
+- `test_lite` on `ubuntu-latest` runs `npm run test:lite` (stdio + native HTTP + package-runtime with lite defaults)
 - `test_local_provider` on `ubuntu-latest` restores RAG caches, runs `npm run rag:prebuild`, then `npm run test:local`
 - `test_gemini_provider` on `ubuntu-latest` (when `GEMINI_API_KEY` secret exists) prebuilds gemini RAG cache, then runs `npm run test:gemini`
 - Daily data-lock refresh workflow: `.github/workflows/update-data-lock.yml`
@@ -551,9 +551,10 @@ At startup, the server logs data mode/path to stderr:
 
 ## Testing
 
-- `npm test`: default test entry (currently `npm run test:fuse`)
+- `npm test`: default test entry (currently `npm run test:lite`)
 - `npm run test:unit`: unit tests (retry/backoff/config helpers)
-- `npm run test:fuse`: integration coverage for fuse provider
+- `npm run test:lite`: integration coverage for lite defaults
+- `npm run test:fuse`: compatibility alias for `npm run test:lite`
 - `npm run test:local`: integration coverage for local provider
 - `npm run test:gemini`: integration coverage for gemini provider (requires `GEMINI_API_KEY`)
 - `npm run test:stdio`: stdio transport integration tests

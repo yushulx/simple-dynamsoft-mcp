@@ -50,7 +50,7 @@ Supported products:
 - `test/integration/stdio.test.js`: stdio integration tests using MCP SDK client transport.
 - `test/integration/http.test.js`: HTTP integration tests against native streamable HTTP mode.
 - `test/integration/package-runtime.test.js`: packaged runtime test via `npm pack` + `npm exec --package`.
-- `.github/workflows/ci.yml`: CI test matrix (`test_fuse` + `test_local_provider` on `ubuntu-latest`).
+- `.github/workflows/ci.yml`: CI test matrix (`test_lite` + `test_local_provider` on `ubuntu-latest`).
 - `.github/workflows/release.yml`: release pipeline for GitHub releases and attached artifacts.
 - `data/metadata/dynamsoft_sdks.json`: product metadata and latest version info.
 - `data/metadata/data-manifest.json`: pinned commit lockfile used for runtime data bootstrap.
@@ -75,7 +75,7 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Run server: `npm start`
 - Run tests: `npm test`
 - Run unit tests: `npm run test:unit`
-- Run fuse integration suite: `npm run test:fuse`
+- Run lite integration suite: `npm run test:lite`
 - Run local-provider integration suite: `npm run test:local`
 - Run gemini-provider integration suite: `npm run test:gemini`
 - Run stdio integration only: `npm run test:stdio`
@@ -104,8 +104,8 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Optional prebuilt RAG env: `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD`, `RAG_PREBUILT_INDEX_URL`, `RAG_PREBUILT_INDEX_URL_LOCAL`, `RAG_PREBUILT_INDEX_URL_GEMINI`, `RAG_PREBUILT_INDEX_TIMEOUT_MS`
 
 CI notes:
-- `test_fuse` runs on `ubuntu-latest` for every PR/push.
-- `test_fuse` includes strict source-wiring validation via `npm run data:verify-versions:strict`.
+- `test_lite` runs on `ubuntu-latest` for every PR/push.
+- `test_lite` includes strict source-wiring validation via `npm run data:verify-versions:strict`.
 - `test_local_provider` runs on `ubuntu-latest` for every PR/push.
 - `test_gemini_provider` runs on `ubuntu-latest` when `GEMINI_API_KEY` secret is configured.
 - `rag:prebuild` is run in the local-provider CI job before local-provider integration tests.
