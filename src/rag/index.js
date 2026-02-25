@@ -26,6 +26,7 @@ import {
   GeminiHttpError,
   executeWithGeminiRetry
 } from "./gemini-retry.js";
+import { resolveProfileConfig } from "./profile-config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataRoot = getResolvedDataRoot();
@@ -77,9 +78,15 @@ function normalizeGeminiModel(model) {
   return `models/${model}`;
 }
 
+const profileConfig = resolveProfileConfig(process.env);
+
 const ragConfig = {
-  provider: readEnvValue("RAG_PROVIDER", "auto").toLowerCase(),
-  fallback: readEnvValue("RAG_FALLBACK", "fuse").toLowerCase(),
+  profile: profileConfig.profile,
+  profileDefaults: profileConfig.defaults,
+  providerSource: profileConfig.providerSource,
+  fallbackSource: profileConfig.fallbackSource,
+  provider: profileConfig.provider,
+  fallback: profileConfig.fallback,
   cacheDir: readEnvValue("RAG_CACHE_DIR", join(dataRoot, ".rag-cache")),
   modelCacheDir: readEnvValue("RAG_MODEL_CACHE_DIR", join(dataRoot, ".rag-cache", "models")),
   localModel: readEnvValue("RAG_LOCAL_MODEL", "Xenova/all-MiniLM-L6-v2"),

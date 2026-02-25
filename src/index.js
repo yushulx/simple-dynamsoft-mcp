@@ -23,6 +23,12 @@ if (dataStatus.mode === "downloaded") {
 const resourceIndexApi = await import("./server/resource-index.js");
 const ragApi = await import("./rag/index.js");
 
+console.error(
+  `[profile] name=${ragApi.ragConfig.profile} ` +
+  `provider=${ragApi.ragConfig.provider} provider_source=${ragApi.ragConfig.providerSource} ` +
+  `fallback=${ragApi.ragConfig.fallback} fallback_source=${ragApi.ragConfig.fallbackSource}`
+);
+
 const createServer = () => createMcpServerInstance({
   pkgVersion: pkg.version,
   resourceIndexApi,
