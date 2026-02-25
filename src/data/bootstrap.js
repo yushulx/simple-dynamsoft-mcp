@@ -14,6 +14,7 @@ import extractZip from "extract-zip";
 import { bundledDataRoot } from "./root.js";
 import { normalizeHydrationScopes } from "./hydration-policy.js";
 import { resolveRepoPathsForScopes } from "./repo-map.js";
+import { resolveHydrationMode } from "./hydration-mode.js";
 
 const manifestPath = join(bundledDataRoot, "metadata", "data-manifest.json");
 const sdkRegistryPath = join(bundledDataRoot, "metadata", "dynamsoft_sdks.json");
@@ -335,7 +336,7 @@ async function ensureDataReady() {
 
   const defaultCacheRoot = join(process.env.LOCALAPPDATA || join(homedir(), ".cache"), "simple-dynamsoft-mcp", "data");
   const cacheRoot = resolve(process.env.MCP_DATA_CACHE_DIR || defaultCacheRoot);
-  const hydrationMode = readStringEnv("MCP_DATA_HYDRATION_MODE", "eager").toLowerCase();
+  const hydrationMode = resolveHydrationMode(process.env);
   const manifest = readManifest(bundledDataRoot);
   if (!manifest) {
     throw new Error(`Missing manifest at ${manifestPath}. Run npm run data:lock.`);
