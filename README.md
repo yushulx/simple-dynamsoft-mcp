@@ -10,6 +10,10 @@ Supported products:
 
 Default transport is `stdio`. Native Streamable HTTP is also supported at `/mcp`.
 
+## Demo Video
+
+https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
+
 ## Two Supported Usage Scenarios
 
 This project is intentionally documented for two real-world usage paths:
