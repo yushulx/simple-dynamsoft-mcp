@@ -31,6 +31,27 @@ async function runStdioScenario(provider) {
   }
 }
 
+async function runLexicalFallbackScenario() {
+  const env = resolveServerEnv({
+    provider: "gemini",
+    fallback: "lexical",
+    extra: {
+      GEMINI_API_KEY: ""
+    }
+  });
+
+  const { client, transport } = await createStdioClient({
+    env,
+    name: "integration-stdio-lexical-fallback"
+  });
+
+  try {
+    await runCoreAssertions(client, { requestTimeoutMs: 60000 });
+  } finally {
+    await transport.close();
+  }
+}
+
 if (RUN_FUSE_PROVIDER_TESTS) {
   test("[fuse] stdio integration works", async () => {
     await runStdioScenario("fuse");
@@ -54,3 +75,7 @@ if (RUN_GEMINI_PROVIDER_TESTS) {
 } else {
   test.skip("[gemini] stdio integration works", () => {});
 }
+
+test("[lexical fallback] stdio integration works when gemini is unavailable", async () => {
+  await runLexicalFallbackScenario();
+});

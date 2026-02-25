@@ -27,6 +27,7 @@ import {
   executeWithGeminiRetry
 } from "./gemini-retry.js";
 import { resolveProfileConfig } from "./profile-config.js";
+import { createLexicalProvider } from "./lexical-provider.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataRoot = getResolvedDataRoot();
@@ -1086,6 +1087,12 @@ async function loadSearchProvider(name) {
   let providerPromise;
   if (name === "fuse") {
     providerPromise = Promise.resolve(createFuseProvider());
+  } else if (name === "lexical") {
+    providerPromise = Promise.resolve(createLexicalProvider({
+      entries: resourceIndex,
+      entryMatchesScope,
+      attachScore
+    }));
   } else if (name === "local") {
     providerPromise = (async () => {
       const embedder = await getLocalEmbedder();
@@ -1164,7 +1171,7 @@ async function prewarmRagIndex() {
   logRagConfigOnce();
   const providers = resolveProviderChain();
   const primary = providers[0];
-  if (!primary || primary === "fuse") return;
+  if (!primary || primary === "fuse" || primary === "lexical") return;
   try {
     logRag(`prewarm start provider=${primary}`);
     const provider = await loadSearchProvider(primary);

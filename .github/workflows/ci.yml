@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test_fuse:
+  test_lite:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,8 +30,8 @@ jobs:
       - name: Verify data source wiring
         run: npm run data:verify-versions:strict
 
-      - name: Test (fuse + package runtime)
-        run: npm run test:fuse
+      - name: Test (lite + package runtime)
+        run: npm run test:lite
 
   test_local_provider:
     runs-on: ubuntu-latest

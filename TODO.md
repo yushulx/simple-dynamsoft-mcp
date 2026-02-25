@@ -76,13 +76,13 @@ Goal: avoid long local index build time whenever local embeddings are used (prim
 
 Goal: replace fuse-only fallback with lexical hybrid retrieval for no-model scenarios.
 
-- [ ] Add a lexical provider that combines BM25 keyword ranking with Fuse fuzzy matching.
-- [ ] Keep semantic providers (`gemini`/`local`) as primary, and use hybrid lexical for fallback.
-- [ ] Add score fusion/rerank strategy for BM25 + Fuse results with deterministic ordering.
-- [ ] Add env toggle for lexical fallback (for example `RAG_FALLBACK=lexical`).
-- [ ] Keep standalone `fuse` mode available for compatibility.
-- [ ] Add integration tests for lexical fallback in both stdio and native HTTP paths.
-- [ ] Document lexical fallback behavior in `README.md`, `AGENTS.md`, and `.env.example`.
+- [x] Add a lexical provider that combines BM25 keyword ranking with Fuse fuzzy matching.
+- [x] Keep semantic providers (`gemini`/`local`) as primary, and use hybrid lexical for fallback.
+- [x] Add score fusion/rerank strategy for BM25 + Fuse results with deterministic ordering.
+- [x] Add env toggle for lexical fallback (for example `RAG_FALLBACK=lexical`).
+- [x] Keep standalone `fuse` mode available for compatibility.
+- [x] Add integration tests for lexical fallback in both stdio and native HTTP paths.
+- [x] Document lexical fallback behavior in `README.md`, `AGENTS.md`, and `.env.example`.
 
 ## Workstream 5: Gemini Prewarm Rate-Limit Hardening
 
