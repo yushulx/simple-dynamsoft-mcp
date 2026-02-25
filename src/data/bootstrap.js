@@ -15,6 +15,12 @@ import { bundledDataRoot } from "./root.js";
 import { normalizeHydrationScopes } from "./hydration-policy.js";
 import { resolveRepoPathsForScopes } from "./repo-map.js";
 import { resolveHydrationMode } from "./hydration-mode.js";
+import {
+  shouldRetryDownloadError,
+  withRetry,
+  replaceDirectoryWithRollback,
+  buildHydrationFailureMessage
+} from "./download-utils.js";
 
 const manifestPath = join(bundledDataRoot, "metadata", "data-manifest.json");
 const sdkRegistryPath = join(bundledDataRoot, "metadata", "dynamsoft_sdks.json");
@@ -34,6 +40,14 @@ function readIntEnv(key, fallback) {
   if (value === undefined || value === "") return fallback;
   const parsed = Number.parseInt(String(value), 10);
   return Number.isNaN(parsed) ? fallback : parsed;
+}
+
+function readRetryConfig() {
+  return {
+    maxAttempts: Math.max(1, readIntEnv("MCP_DATA_DOWNLOAD_RETRY_MAX_ATTEMPTS", 3)),
+    baseDelayMs: Math.max(0, readIntEnv("MCP_DATA_DOWNLOAD_RETRY_BASE_DELAY_MS", 500)),
+    maxDelayMs: Math.max(1, readIntEnv("MCP_DATA_DOWNLOAD_RETRY_MAX_DELAY_MS", 5000))
+  };
 }
 
 function readStringEnv(key, fallback = "") {
@@ -92,21 +106,33 @@ function parseGithubSlug(repo) {
 }
 
 async function downloadFile(url, outputPath, timeoutMs) {
-  const startedAt = Date.now();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status} for ${url}`);
+  const retryConfig = readRetryConfig();
+  await withRetry(
+    async () => {
+      const startedAt = Date.now();
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status} for ${url}`);
+        }
+        const arrayBuffer = await response.arrayBuffer();
+        writeFileSync(outputPath, Buffer.from(arrayBuffer));
+        const elapsedMs = Date.now() - startedAt;
+        logData(`downloaded file=${basename(outputPath)} size=${arrayBuffer.byteLength}B elapsed_ms=${elapsedMs}`);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    {
+      ...retryConfig,
+      shouldRetry: shouldRetryDownloadError,
+      onRetry: ({ attempt, delayMs, error }) => {
+        logData(`download retry attempt=${attempt + 1} delay_ms=${delayMs} reason=${error.message}`);
+      }
     }
-    const arrayBuffer = await response.arrayBuffer();
-    writeFileSync(outputPath, Buffer.from(arrayBuffer));
-    const elapsedMs = Date.now() - startedAt;
-    logData(`downloaded file=${basename(outputPath)} size=${arrayBuffer.byteLength}B elapsed_ms=${elapsedMs}`);
-  } finally {
-    clearTimeout(timer);
-  }
+  );
 }
 
 function copyBundledMetadata(targetRoot) {
@@ -171,8 +197,7 @@ async function hydrateRepoInPlace({ repo, targetRoot, tempZipRoot, timeoutMs }) 
     }
   }
 
-  if (existsSync(targetPath)) rmSync(targetPath, { recursive: true, force: true });
-  renameSync(extractedFolder, targetPath);
+  replaceDirectoryWithRollback(targetPath, extractedFolder);
   logData(`repo ready path=${repo.path}`);
 }
 
@@ -380,11 +405,19 @@ async function ensureDataScopesHydrated(scopes) {
   }
 
   logData(`hydrate plan mode=lazy scopes=${normalizedScopes.length} repos=${repoPaths.length}`);
-  const result = await ensureDownloadedRepos(root, repoPaths);
-  if (result.hydrated.length > 0) {
-    logData(`hydrate done repos=${result.hydrated.length}`);
+  try {
+    const result = await ensureDownloadedRepos(root, repoPaths);
+    if (result.hydrated.length > 0) {
+      logData(`hydrate done repos=${result.hydrated.length}`);
+    }
+    return { hydrated: result.hydrated, mode, skipped: false };
+  } catch (error) {
+    const scopeSummary = normalizedScopes
+      .map((scope) => `product=${scope.product} edition=${scope.edition || "any"} type=${scope.type}`)
+      .join("; ");
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(buildHydrationFailureMessage({ reason, scopeSummary }));
   }
-  return { hydrated: result.hydrated, mode, skipped: false };
 }
 
 export {

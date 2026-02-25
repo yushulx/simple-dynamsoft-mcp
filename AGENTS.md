@@ -96,6 +96,7 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Optional profile env: `MCP_PROFILE=lite|semantic-local|semantic-gemini`
 - Optional runtime data env: `MCP_DATA_DIR`, `MCP_DATA_AUTO_DOWNLOAD`, `MCP_DATA_CACHE_DIR`, `MCP_DATA_REFRESH_ON_START`
 - Optional hydration env: `MCP_DATA_HYDRATION_MODE=lazy|eager` (default `lazy`; `lazy` hydrates repo scopes on demand)
+- Optional download retry env: `MCP_DATA_DOWNLOAD_RETRY_MAX_ATTEMPTS`, `MCP_DATA_DOWNLOAD_RETRY_BASE_DELAY_MS`, `MCP_DATA_DOWNLOAD_RETRY_MAX_DELAY_MS`
 - Optional retrieval env: `RAG_PROVIDER`, `RAG_FALLBACK` (explicit override of profile defaults)
   - `RAG_PROVIDER`: `fuse|lexical|local|gemini`
   - `RAG_FALLBACK`: `none|fuse|lexical|local`
