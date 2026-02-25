@@ -9,6 +9,11 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ensureDataScopesHydrated } from "../data/bootstrap.js";
+import {
+  createScopeHydrator,
+  formatScoreLabel,
+  formatScoreNote
+} from "./helpers/server-helpers.js";
 
 export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }) {
   const {
@@ -56,33 +61,17 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     refreshRagIndexes
   } = ragApi;
 
-  async function ensureScopeHydrated(scope) {
-    const result = await ensureDataScopesHydrated([scope]);
-    if (Array.isArray(result.hydrated) && result.hydrated.length > 0) {
-      if (typeof refreshResourceIndex === "function") {
-        refreshResourceIndex();
-      }
-      if (typeof refreshRagIndexes === "function") {
-        refreshRagIndexes();
-      }
-    }
-  }
+  const ensureScopeHydrated = createScopeHydrator({
+    ensureDataScopesHydrated,
+    refreshResourceIndex,
+    refreshRagIndexes
+  });
 
 const server = new McpServer({
   name: "simple-dynamsoft-mcp",
   version: pkgVersion,
   description: "MCP server for latest major versions of Dynamsoft SDKs: Capture Vision, Barcode Reader, Dynamic Web TWAIN, and Document Viewer. Includes guidance for choosing DBR vs DCV by scenario."
 });
-
-function formatScoreLabel(entry) {
-  if (!Number.isFinite(entry?.score)) return "";
-  return ` | score: ${entry.score.toFixed(3)}`;
-}
-
-function formatScoreNote(entry) {
-  if (!Number.isFinite(entry?.score)) return "";
-  return ` score=${entry.score.toFixed(3)}`;
-}
 
 // ============================================================================
 // TOOL: get_index
