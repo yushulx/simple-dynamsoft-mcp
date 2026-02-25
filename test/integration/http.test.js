@@ -36,13 +36,13 @@ async function runHttpScenario(provider, { fallback = "none", extraEnv = {} } = 
     const logs = server.getLogs();
     assert.match(
       `${logs.stdout}\n${logs.stderr}`,
-      /\[data\] mode=/,
-      "Expected data mode logs from native HTTP server output"
+      /\[data\].*event=startup_mode.*mode=/,
+      "Expected structured data startup mode logs from native HTTP server output"
     );
     assert.match(
       `${logs.stdout}\n${logs.stderr}`,
-      /\[transport\] mode=http/,
-      "Expected transport mode logs from native HTTP server output"
+      /\[transport\].*event=server_start.*mode=http/,
+      "Expected structured transport startup logs from native HTTP server output"
     );
   } finally {
     if (transport) {

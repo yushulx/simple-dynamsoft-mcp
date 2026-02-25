@@ -22,7 +22,7 @@ async function runStdioScenario(provider) {
     });
 
     const stderr = getStderr();
-    assert.match(stderr, /\[data\] mode=/, "Expected data mode log in stderr");
+    assert.match(stderr, /\[data\].*event=startup_mode.*mode=/, "Expected structured data startup mode log in stderr");
     if (provider === "local") {
       assert.match(stderr, /\[rag\]/, "Expected rag diagnostics in stderr for local provider");
     }

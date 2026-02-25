@@ -70,7 +70,11 @@ test("[lite] packaged tgz runs via npx --package with custom MCP_DATA_DIR", asyn
   try {
     await runCoreAssertions(client);
     const stderr = getStderr();
-    assert.match(stderr, /\[data\] mode=custom/, "Expected custom data mode when MCP_DATA_DIR is supplied");
+    assert.match(
+      stderr,
+      /\[data\].*event=startup_mode.*mode=custom/,
+      "Expected custom data startup mode when MCP_DATA_DIR is supplied"
+    );
   } finally {
     await transport.close();
     cleanupDir(workspaceDir);
