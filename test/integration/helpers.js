@@ -50,13 +50,13 @@ function sanitizeEnv(rawEnv) {
   return sanitized;
 }
 
-function resolveServerEnv({ provider, extra = {} }) {
+function resolveServerEnv({ provider, fallback = "none", extra = {} }) {
   const base = {
-    MCP_DATA_DIR: dataRoot,
+    MCP_DATA_DIR: process.env.MCP_DATA_DIR || dataRoot,
     MCP_DATA_AUTO_DOWNLOAD: "false",
     MCP_DATA_REFRESH_ON_START: "false",
     RAG_PROVIDER: provider,
-    RAG_FALLBACK: provider === "local" ? "none" : "none",
+    RAG_FALLBACK: fallback,
     RAG_REBUILD: "false",
     RAG_PREWARM: "false",
     RAG_PREWARM_BLOCK: "false",

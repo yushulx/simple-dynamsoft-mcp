@@ -187,7 +187,7 @@ Example:
       "command": "npx",
       "args": ["-y", "simple-dynamsoft-mcp"],
       "env": {
-        "RAG_PROVIDER": "auto",
+        "MCP_PROFILE": "lite",
         "MCP_DATA_AUTO_DOWNLOAD": "true",
         "MCP_DATA_REFRESH_ON_START": "false"
       }
@@ -245,7 +245,7 @@ Example (`.vscode/mcp.json`):
         "simple-dynamsoft-mcp"
       ],
       "env": {
-        "RAG_PROVIDER": "auto",
+        "RAG_PROVIDER": "local",
         "RAG_FALLBACK": "local",
         "RAG_REBUILD": "false",
         "RAG_LOCAL_MODEL": "Xenova/all-MiniLM-L6-v2",
@@ -273,7 +273,7 @@ Use profiles to keep end-user setup simple while preserving advanced internal mo
 
 | Profile | Intended use | Default provider/fallback | First-run cost | Network/model dependencies |
 |---|---|---|---|---|
-| `lite` | Public + default internal | `fuse` (soon `lexical`) / `none` | Lowest | No local embedding model download |
+| `lite` | Public + default internal | `fuse` / `none` | Lowest | No local embedding model download |
 | `semantic-local` | Internal semantic search | `local` / `none` | Higher | Downloads local embedding model + builds/loads vector cache |
 | `semantic-gemini` | Advanced semantic search | `gemini` / `none` | Medium | Requires `GEMINI_API_KEY` and network access |
 
@@ -577,9 +577,13 @@ At startup, the server logs data mode/path to stderr:
 Search providers are selected at runtime via profile defaults plus environment overrides.
 
 Profile targets:
-- `MCP_PROFILE=lite`: lightweight defaults (`fuse` now, `lexical` target after lexical provider is implemented), fallback `none`
+- `MCP_PROFILE=lite`: lightweight defaults (`fuse` primary, fallback `none`)
 - `MCP_PROFILE=semantic-local`: local embeddings
 - `MCP_PROFILE=semantic-gemini`: Gemini embeddings
+
+Lexical retrieval behavior:
+- `RAG_PROVIDER=lexical`: use hybrid lexical ranking (BM25 keyword ranking + Fuse fuzzy ranking).
+- `RAG_FALLBACK=lexical`: keep semantic providers (`gemini`/`local`) as primary but fall back to lexical when primary provider is unavailable.
 
 Key env vars:
 - `MCP_PROFILE`: `lite` | `semantic-local` | `semantic-gemini`

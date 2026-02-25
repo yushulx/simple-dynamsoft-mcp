@@ -96,6 +96,9 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Optional profile env: `MCP_PROFILE=lite|semantic-local|semantic-gemini`
 - Optional runtime data env: `MCP_DATA_DIR`, `MCP_DATA_AUTO_DOWNLOAD`, `MCP_DATA_CACHE_DIR`, `MCP_DATA_REFRESH_ON_START`
 - Optional retrieval env: `RAG_PROVIDER`, `RAG_FALLBACK` (explicit override of profile defaults)
+  - `RAG_PROVIDER`: `fuse|lexical|local|gemini`
+  - `RAG_FALLBACK`: `none|fuse|lexical|local`
+  - `lexical` mode is hybrid lexical retrieval (BM25 keyword ranking + Fuse fuzzy ranking)
 - Optional gemini retry env: `GEMINI_RETRY_MAX_ATTEMPTS`, `GEMINI_RETRY_BASE_DELAY_MS`, `GEMINI_RETRY_MAX_DELAY_MS`, `GEMINI_REQUEST_THROTTLE_MS`
 - Optional test toggles: `RUN_FUSE_PROVIDER_TESTS=true|false`, `RUN_LOCAL_PROVIDER_TESTS=true|false`, `RUN_GEMINI_PROVIDER_TESTS=true|false`
 - Optional prebuilt RAG env: `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD`, `RAG_PREBUILT_INDEX_URL`, `RAG_PREBUILT_INDEX_URL_LOCAL`, `RAG_PREBUILT_INDEX_URL_GEMINI`, `RAG_PREBUILT_INDEX_TIMEOUT_MS`

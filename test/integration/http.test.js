@@ -11,9 +11,9 @@ import {
   startNativeHttpServer
 } from "./helpers.js";
 
-async function runHttpScenario(provider) {
+async function runHttpScenario(provider, { fallback = "none", extraEnv = {} } = {}) {
   const port = await getFreePort();
-  const env = resolveServerEnv({ provider });
+  const env = resolveServerEnv({ provider, fallback, extra: extraEnv });
   const server = startNativeHttpServer({
     port,
     env
@@ -75,3 +75,12 @@ if (RUN_GEMINI_PROVIDER_TESTS) {
 } else {
   test.skip("[gemini] streamableHttp integration works", () => {});
 }
+
+test("[lexical fallback] streamableHttp integration works when gemini is unavailable", async () => {
+  await runHttpScenario("gemini", {
+    fallback: "lexical",
+    extraEnv: {
+      GEMINI_API_KEY: ""
+    }
+  });
+});
