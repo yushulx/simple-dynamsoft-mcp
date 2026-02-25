@@ -4,7 +4,9 @@ import {
   RUN_FUSE_PROVIDER_TESTS,
   RUN_LOCAL_PROVIDER_TESTS,
   RUN_GEMINI_PROVIDER_TESTS,
+  assertStructuredDataStartupMode,
   createStdioClient,
+  requestTimeoutForProvider,
   resolveServerEnv,
   runCoreAssertions
 } from "./helpers.js";
@@ -18,11 +20,11 @@ async function runStdioScenario(provider) {
 
   try {
     await runCoreAssertions(client, {
-      requestTimeoutMs: provider === "local" || provider === "gemini" ? 300000 : 60000
+      requestTimeoutMs: requestTimeoutForProvider(provider)
     });
 
     const stderr = getStderr();
-    assert.match(stderr, /\[data\].*event=startup_mode.*mode=/, "Expected structured data startup mode log in stderr");
+    assertStructuredDataStartupMode(stderr);
     if (provider === "local") {
       assert.match(stderr, /\[rag\]/, "Expected rag diagnostics in stderr for local provider");
     }

@@ -589,6 +589,9 @@ When reporting runtime issues, collect:
 - `npm run test:package`: `npm pack` + `npm exec --package` runtime test
 - `npm run test:lexical`: lexical-provider stdio/http integration tests
 - `npm run test:lazy`: lazy-hydration packaged runtime smoke test
+- `npm run test:regression:unit`: focused regression unit pack for server wiring/profile/hydration/logging
+- `npm run test:regression:integration`: focused packaged-runtime regression pack (`test:package` + `test:lazy`)
+- `npm run test:regression`: combined regression pack (`unit` + `integration`)
 - Optional env toggles:
 - `RUN_FUSE_PROVIDER_TESTS=true|false`
 - `RUN_LOCAL_PROVIDER_TESTS=true|false`
