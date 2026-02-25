@@ -33,6 +33,102 @@ jobs:
       - name: Test (lite + package runtime)
         run: npm run test:lite
 
+  test_lexical_provider:
+    runs-on: ubuntu-latest
+    env:
+      RAG_PROVIDER: lexical
+      RAG_FALLBACK: none
+      RAG_REBUILD: "false"
+      RAG_PREWARM: "false"
+      RAG_PREWARM_BLOCK: "false"
+      RUN_FUSE_PROVIDER_TESTS: "false"
+      RUN_LOCAL_PROVIDER_TESTS: "false"
+      RUN_GEMINI_PROVIDER_TESTS: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bootstrap data
+        run: npm run data:bootstrap
+
+      - name: Test (lexical provider)
+        run: npm run test:lexical
+
+  test_lazy_hydration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test (lazy hydration packaged runtime)
+        run: npm run test:lazy
+
+  test_package_runtime_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bootstrap data
+        run: npm run data:bootstrap
+
+      - name: Test (package runtime)
+        run: npm run test:package
+
+  test_package_runtime_macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bootstrap data
+        run: npm run data:bootstrap
+
+      - name: Test (package runtime)
+        run: npm run test:package
+
   test_local_provider:
     runs-on: ubuntu-latest
     env:

@@ -6,25 +6,27 @@ import test from "node:test";
 import {
   cleanupDir,
   createStdioClient,
-  dataRoot,
   npxCommand,
   npmCommand,
-  packProjectToTempDir,
-  runCoreAssertions
+  packProjectToTempDir
 } from "./helpers.js";
 
-test("[lite] packaged tgz runs via npx --package with custom MCP_DATA_DIR", async () => {
+test("[lazy] packaged runtime boots in lazy hydration mode with isolated cache", async () => {
   const packed = packProjectToTempDir();
-  const workspaceDir = mkdtempSync(join(tmpdir(), "simple-dynamsoft-mcp-project-"));
+  const workspaceDir = mkdtempSync(join(tmpdir(), "simple-dynamsoft-mcp-lazy-workspace-"));
+  const cacheDir = mkdtempSync(join(tmpdir(), "simple-dynamsoft-mcp-lazy-cache-"));
 
   const env = {
     ...process.env,
-    MCP_DATA_DIR: dataRoot,
-    MCP_DATA_AUTO_DOWNLOAD: "false",
+    MCP_DATA_AUTO_DOWNLOAD: "true",
+    MCP_DATA_HYDRATION_MODE: "lazy",
+    MCP_DATA_CACHE_DIR: cacheDir,
     MCP_DATA_REFRESH_ON_START: "false",
     RAG_PROVIDER: "lexical",
     RAG_FALLBACK: "none"
   };
+
+  delete env.MCP_DATA_DIR;
 
   const commandCandidates = [
     {
@@ -39,27 +41,24 @@ test("[lite] packaged tgz runs via npx --package with custom MCP_DATA_DIR", asyn
 
   let bundle = null;
   let lastError = null;
-  for (let attempt = 1; attempt <= 3 && !bundle; attempt += 1) {
-    for (const candidate of commandCandidates) {
-      try {
-        bundle = await createStdioClient({
-          command: candidate.command,
-          args: candidate.args,
-          cwd: workspaceDir,
-          env,
-          name: `integration-package-lite-${attempt}`
-        });
-        break;
-      } catch (error) {
-        lastError = error;
-      }
-    }
-    if (!bundle) {
-      await new Promise((resolvePromise) => setTimeout(resolvePromise, 1200));
+
+  for (const candidate of commandCandidates) {
+    try {
+      bundle = await createStdioClient({
+        command: candidate.command,
+        args: candidate.args,
+        cwd: workspaceDir,
+        env,
+        name: "integration-package-lazy-hydration"
+      });
+      break;
+    } catch (error) {
+      lastError = error;
     }
   }
 
   if (!bundle) {
+    cleanupDir(cacheDir);
     cleanupDir(workspaceDir);
     cleanupDir(packed.tempDir);
     throw lastError;
@@ -68,11 +67,13 @@ test("[lite] packaged tgz runs via npx --package with custom MCP_DATA_DIR", asyn
   const { client, transport, getStderr } = bundle;
 
   try {
-    await runCoreAssertions(client);
+    const tools = await client.listTools();
+    assert.ok(tools.tools.length > 0, "Expected server to expose MCP tools");
     const stderr = getStderr();
-    assert.match(stderr, /\[data\] mode=custom/, "Expected custom data mode when MCP_DATA_DIR is supplied");
+    assert.match(stderr, /\[data\] mode=downloaded-lazy/, "Expected downloaded-lazy startup mode");
   } finally {
     await transport.close();
+    cleanupDir(cacheDir);
     cleanupDir(workspaceDir);
     cleanupDir(packed.tempDir);
   }

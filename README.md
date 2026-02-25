@@ -550,6 +550,10 @@ At startup, the server logs data mode/path to stderr:
 - CI workflow: `.github/workflows/ci.yml`
 - CI jobs:
 - `test_lite` on `ubuntu-latest` runs `npm run test:lite` (stdio + native HTTP + package-runtime with lite defaults)
+- `test_lexical_provider` on `ubuntu-latest` runs `npm run test:lexical` with `RAG_PROVIDER=lexical`
+- `test_lazy_hydration` on `ubuntu-latest` runs `npm run test:lazy` with packaged runtime and isolated cache
+- `test_package_runtime_windows` on `windows-latest` runs `npm run test:package`
+- `test_package_runtime_macos` on `macos-latest` runs `npm run test:package`
 - `test_local_provider` on `ubuntu-latest` restores RAG caches, runs `npm run rag:prebuild`, then `npm run test:local`
 - `test_gemini_provider` on `ubuntu-latest` (when `GEMINI_API_KEY` secret exists) prebuilds gemini RAG cache, then runs `npm run test:gemini`
 - Daily data-lock refresh workflow: `.github/workflows/update-data-lock.yml`
@@ -573,6 +577,8 @@ At startup, the server logs data mode/path to stderr:
 - `npm run test:stdio`: stdio transport integration tests
 - `npm run test:http`: native streamable HTTP integration tests
 - `npm run test:package`: `npm pack` + `npm exec --package` runtime test
+- `npm run test:lexical`: lexical-provider stdio/http integration tests
+- `npm run test:lazy`: lazy-hydration packaged runtime smoke test
 - Optional env toggles:
 - `RUN_FUSE_PROVIDER_TESTS=true|false`
 - `RUN_LOCAL_PROVIDER_TESTS=true|false`
