@@ -108,6 +108,14 @@ Goal: keep stdio as default while adding first-class native Streamable HTTP serv
 - [x] Update docs (`README.md`, `AGENTS.md`) for stdio default + optional native HTTP mode.
 - [x] Validate CI paths still cover stdio + native HTTP transport scenarios.
 
+## Workstream 7: Runtime Profile Contract
+
+Goal: make default behavior lightweight and explicit for both internal and public users.
+
+- [x] Define profile contract in docs (`MCP_PROFILE=lite|semantic-local|semantic-gemini`) and map intended defaults.
+- [ ] Implement runtime profile resolver with env-var override precedence.
+- [ ] Switch runtime default behavior to `lite` profile.
+
 ## Key Points For Future Agents
 
 - Do not manually edit `data/metadata/data-manifest.json`; regenerate via `npm run data:lock`.

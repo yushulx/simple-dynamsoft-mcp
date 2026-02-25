@@ -197,8 +197,9 @@ Example:
 ```
 
 Commonly used settings:
-- `RAG_PROVIDER`: `auto` | `gemini` | `local` | `fuse`
-- `RAG_FALLBACK`: `fuse` | `local` | `none`
+- `MCP_PROFILE`: `lite` | `semantic-local` | `semantic-gemini`
+- `RAG_PROVIDER`: `lexical` | `gemini` | `local` | `fuse` (explicit override)
+- `RAG_FALLBACK`: `lexical` | `fuse` | `local` | `none`
 - `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD`: `true` by default; auto-fetch prebuilt index when local or gemini embeddings are selected
 - `RAG_PREBUILT_INDEX_URL`: global override release asset URL for prebuilt index archive
 - `RAG_PREBUILT_INDEX_URL_LOCAL`: override release asset URL for local prebuilt index archive
@@ -209,7 +210,7 @@ Commonly used settings:
 - `MCP_DATA_REFRESH_ON_START`: force re-download of pinned archives on startup
 - `MCP_DATA_CACHE_DIR`: customize downloaded data cache location
 
-If you want no embedding/model/network dependency for search, set `RAG_PROVIDER=fuse`.
+Default profile target is `MCP_PROFILE=lite` (lightweight startup, no local embedding model download).
 
 For the complete list and defaults, see `.env.example` and the sections `Submodule Setup` and `RAG Configuration` below.
 
@@ -265,6 +266,20 @@ Notes:
 - `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v<version>/prebuilt-rag-index-gemini-<version>.tar.gz`
 - Downloaded prebuilt cache is accepted when package version matches (with provider/model/payload sanity checks).
 - Prebuilt cache is used whenever provider execution resolves to local or gemini embeddings (primary or fallback).
+
+## Runtime Profiles (Internal + Public)
+
+Use profiles to keep end-user setup simple while preserving advanced internal modes.
+
+| Profile | Intended use | Default provider/fallback | First-run cost | Network/model dependencies |
+|---|---|---|---|---|
+| `lite` | Public + default internal | `fuse` (soon `lexical`) / `none` | Lowest | No local embedding model download |
+| `semantic-local` | Internal semantic search | `local` / `none` | Higher | Downloads local embedding model + builds/loads vector cache |
+| `semantic-gemini` | Advanced semantic search | `gemini` / `none` | Medium | Requires `GEMINI_API_KEY` and network access |
+
+Precedence:
+- Explicit env vars (for example `RAG_PROVIDER`) override profile defaults.
+- Profile defaults apply when explicit overrides are not provided.
 
 ## Supported SDKs
 
@@ -553,19 +568,23 @@ At startup, the server logs data mode/path to stderr:
 
 - On session start, let your client call `tools/list` and `resources/list` (pinned only, not exhaustive).
 - Read pinned `doc://product-selection` first to choose DBR vs DCV correctly for the scenario.
-- For any query, call `search`; it uses semantic RAG retrieval (with fuzzy fallback) and returns `resource_link` entries.
+- For any query, call `search`; retrieval behavior depends on the active profile/provider and returns `resource_link` entries.
 - Read only the links you need via `resources/read` to avoid bloating the context window.
 - If unsure what to search, call `get_index` first to see what is available.
 
 ## RAG Configuration
 
-Search providers are selected at runtime via environment variables (safe for public npm packages). Defaults to `auto` -> `gemini` if `GEMINI_API_KEY` is set, otherwise `local`, with `fuse` fallback on failure.
+Search providers are selected at runtime via profile defaults plus environment overrides.
 
-To keep the legacy fuzzy search (no model download), set `RAG_PROVIDER=fuse`.
+Profile targets:
+- `MCP_PROFILE=lite`: lightweight defaults (`fuse` now, `lexical` target after lexical provider is implemented), fallback `none`
+- `MCP_PROFILE=semantic-local`: local embeddings
+- `MCP_PROFILE=semantic-gemini`: Gemini embeddings
 
 Key env vars:
-- `RAG_PROVIDER`: `auto` | `gemini` | `local` | `fuse`
-- `RAG_FALLBACK`: `fuse` | `local` | `none`
+- `MCP_PROFILE`: `lite` | `semantic-local` | `semantic-gemini`
+- `RAG_PROVIDER`: `lexical` | `gemini` | `local` | `fuse`
+- `RAG_FALLBACK`: `lexical` | `fuse` | `local` | `none`
 - `GEMINI_API_KEY`: required for remote embeddings
 - `GEMINI_EMBED_MODEL`: e.g. `models/embedding-001` or `models/gemini-embedding-001`
 - `GEMINI_RETRY_MAX_ATTEMPTS`: max retry attempts for retryable errors (default `5`)
@@ -620,4 +639,3 @@ Edit `data/metadata/dynamsoft_sdks.json` manually only for non-version metadata 
 ## License
 
 MIT
-
