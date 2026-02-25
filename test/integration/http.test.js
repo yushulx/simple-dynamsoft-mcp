@@ -84,3 +84,7 @@ test("[lexical fallback] streamableHttp integration works when gemini is unavail
     }
   });
 });
+
+test("[lexical] streamableHttp integration works", async () => {
+  await runHttpScenario("lexical");
+});

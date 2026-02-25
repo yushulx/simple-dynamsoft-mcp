@@ -79,3 +79,7 @@ if (RUN_GEMINI_PROVIDER_TESTS) {
 test("[lexical fallback] stdio integration works when gemini is unavailable", async () => {
   await runLexicalFallbackScenario();
 });
+
+test("[lexical] stdio integration works", async () => {
+  await runStdioScenario("lexical");
+});

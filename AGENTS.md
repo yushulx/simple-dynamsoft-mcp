@@ -50,7 +50,7 @@ Supported products:
 - `test/integration/stdio.test.js`: stdio integration tests using MCP SDK client transport.
 - `test/integration/http.test.js`: HTTP integration tests against native streamable HTTP mode.
 - `test/integration/package-runtime.test.js`: packaged runtime test via `npm pack` + `npm exec --package`.
-- `.github/workflows/ci.yml`: CI test matrix (`test_lite` + `test_local_provider` on `ubuntu-latest`).
+- `.github/workflows/ci.yml`: CI test matrix (`test_lite`, `test_lexical_provider`, `test_lazy_hydration`, `test_local_provider`, plus package-runtime checks on `windows-latest` and `macos-latest`).
 - `.github/workflows/release.yml`: release pipeline for GitHub releases and attached artifacts.
 - `data/metadata/dynamsoft_sdks.json`: product metadata and latest version info.
 - `data/metadata/data-manifest.json`: pinned commit lockfile used for runtime data bootstrap.
@@ -77,10 +77,12 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Run unit tests: `npm run test:unit`
 - Run lite integration suite: `npm run test:lite`
 - Run local-provider integration suite: `npm run test:local`
+- Run lexical-provider integration suite: `npm run test:lexical`
 - Run gemini-provider integration suite: `npm run test:gemini`
 - Run stdio integration only: `npm run test:stdio`
 - Run native streamable HTTP integration only: `npm run test:http`
 - Run packaged runtime integration only: `npm run test:package`
+- Run lazy-hydration packaged smoke test: `npm run test:lazy`
 - Init submodules: `npm run data:bootstrap`
 - Sync submodules: `npm run data:sync`
 - Submodule status: `npm run data:status`
@@ -108,6 +110,10 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 CI notes:
 - `test_lite` runs on `ubuntu-latest` for every PR/push.
 - `test_lite` includes strict source-wiring validation via `npm run data:verify-versions:strict`.
+- `test_lexical_provider` runs on `ubuntu-latest` for every PR/push.
+- `test_lazy_hydration` runs on `ubuntu-latest` for every PR/push.
+- `test_package_runtime_windows` runs on `windows-latest` for every PR/push.
+- `test_package_runtime_macos` runs on `macos-latest` for every PR/push.
 - `test_local_provider` runs on `ubuntu-latest` for every PR/push.
 - `test_gemini_provider` runs on `ubuntu-latest` when `GEMINI_API_KEY` secret is configured.
 - `rag:prebuild` is run in the local-provider CI job before local-provider integration tests.
