@@ -9,6 +9,14 @@ Supported products:
 - DWT (Dynamic Web TWAIN): web
 - DDV (Document Viewer): web
 
+## Documentation Split
+- `README.md` is human-facing and should stay minimal.
+- Keep `README.md` focused on two usage scenarios only:
+  1) local `npx -y simple-dynamsoft-mcp@latest` with minimal/no env vars
+  2) Ubuntu HTTP deployment with full data + prebuilt indexes + Gemini embeddings
+- Keep editor/IDE MCP configuration guides in `README.md`.
+- Move advanced configuration, CI internals, and operator/developer details to `AGENTS.md` and `.env.example`.
+
 ## Core Design
 - Minimal tool surface: `get_index`, `search`, `list_samples`, `resolve_sample`, `resolve_version`, `get_quickstart`, `generate_project`.
 - Resources are discovered via tools and read on demand with `resources/read`.
@@ -110,6 +118,46 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Optional gemini retry env: `GEMINI_RETRY_MAX_ATTEMPTS`, `GEMINI_RETRY_BASE_DELAY_MS`, `GEMINI_RETRY_MAX_DELAY_MS`, `GEMINI_REQUEST_THROTTLE_MS`
 - Optional test toggles: `RUN_FUSE_PROVIDER_TESTS=true|false`, `RUN_LOCAL_PROVIDER_TESTS=true|false`, `RUN_GEMINI_PROVIDER_TESTS=true|false`
 - Optional prebuilt RAG env: `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD`, `RAG_PREBUILT_INDEX_URL`, `RAG_PREBUILT_INDEX_URL_LOCAL`, `RAG_PREBUILT_INDEX_URL_GEMINI`, `RAG_PREBUILT_INDEX_TIMEOUT_MS`
+
+## Deployment Runbook (Ubuntu HTTP + Gemini)
+
+Target scenario:
+- Ubuntu host
+- HTTP transport (`/mcp`)
+- full data/submodules available
+- Gemini embeddings with lexical fallback
+
+Recommended environment:
+- `GEMINI_API_KEY=<secret>`
+- `MCP_PROFILE=semantic-gemini`
+- `RAG_PROVIDER=gemini`
+- `RAG_FALLBACK=lexical`
+- `MCP_DATA_HYDRATION_MODE=eager`
+- `MCP_DATA_AUTO_DOWNLOAD=true`
+- `RAG_PREBUILT_INDEX_AUTO_DOWNLOAD=true`
+
+Startup command:
+- `node src/index.js --transport=http --host=0.0.0.0 --port=3333`
+
+Pre-release checklist:
+1. `npm run data:verify-versions:strict`
+2. `npm run data:verify-lock`
+3. `npm run test:lite`
+4. `npm run test:lexical`
+5. `npm run test:lazy`
+
+CI triage quick map:
+- `test_lite` failure: check stdio/http/package integration parity and startup logs.
+- `test_lexical_provider` failure: verify lexical provider behavior and fallback routing.
+- `test_lazy_hydration` failure: verify packaged runtime lazy hydration cache/bootstrap behavior.
+- `test_package_runtime_windows|macos` failure: check package contents and `npm exec --package` runtime behavior.
+- `test_local_provider` failure: verify `rag:prebuild` artifacts and local model/cache flow.
+- `test_gemini_provider` failure: verify `GEMINI_API_KEY`, retry settings, and prebuilt gemini cache path.
+
+Rollback and recovery:
+- For bad release behavior, revert the merge commit on `main` and rerun `test:lite` before redeploy.
+- If runtime says data is incomplete, run `npm run data:bootstrap && npm run data:sync` and restart.
+- If gemini path is unstable, temporarily switch to `MCP_PROFILE=lite` (or `RAG_PROVIDER=lexical`) to restore service while investigating.
 
 CI notes:
 - `test_lite` runs on `ubuntu-latest` for every PR/push.
