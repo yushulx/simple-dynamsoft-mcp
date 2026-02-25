@@ -540,10 +540,20 @@ Hydration modes:
 - `eager`: download all repos from the lock manifest during startup bootstrap.
 
 At startup, the server logs data mode/path to stderr:
-- `[data] mode=downloaded ... source=fresh-download|cache`
-- `[data] mode=downloaded-lazy ... source=cache`
-- `[data] mode=bundled ...`
-- `[data] mode=custom ...`
+- `[data] event=startup_mode mode=downloaded cache_source=fresh-download|cache ...`
+- `[data] event=startup_mode mode=downloaded-lazy cache_source=cache ...`
+- `[data] event=startup_mode mode=bundled ...`
+- `[data] event=startup_mode mode=custom ...`
+
+Structured diagnostics (stderr):
+- `profile`, `provider`, `fallback`, `cache_source`, `hydration_scope`, `latency_ms`, and `latency_bucket` are emitted in key events.
+- Set `MCP_VERBOSE_LOGS=true` or `MCP_LOG_LEVEL=debug` to include debug-level diagnostics.
+
+When reporting runtime issues, collect:
+- startup log lines (`[data]`, `[profile]`, `[transport]`)
+- the failing query/tool call and scope (`product`, `edition`, `platform`, `type`)
+- latest `[rag] event=search_complete|search_failed` line
+- relevant env values (`MCP_PROFILE`, `RAG_PROVIDER`, `RAG_FALLBACK`, `MCP_DATA_HYDRATION_MODE`)
 
 ## Automation
 

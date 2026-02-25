@@ -70,7 +70,11 @@ test("[lazy] packaged runtime boots in lazy hydration mode with isolated cache",
     const tools = await client.listTools();
     assert.ok(tools.tools.length > 0, "Expected server to expose MCP tools");
     const stderr = getStderr();
-    assert.match(stderr, /\[data\] mode=downloaded-lazy/, "Expected downloaded-lazy startup mode");
+    assert.match(
+      stderr,
+      /\[data\].*event=startup_mode.*mode=downloaded-lazy/,
+      "Expected downloaded-lazy structured startup mode"
+    );
   } finally {
     await transport.close();
     cleanupDir(cacheDir);

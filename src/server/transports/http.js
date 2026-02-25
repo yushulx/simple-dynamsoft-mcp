@@ -1,8 +1,9 @@
 import { createServer as createHttpServer } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { logEvent } from "../../observability/logging.js";
 
 async function startHttpServer({ host, port, mcpPath, createServer }) {
-  console.error(`[transport] mode=http host=${host} port=${port} path=${mcpPath}`);
+  logEvent("transport", "server_start", { mode: "http", host, port, path: mcpPath });
 
   const httpServer = createHttpServer(async (req, res) => {
     const requestUrl = new URL(req.url || "/", `http://${host}:${port}`);
@@ -38,7 +39,7 @@ async function startHttpServer({ host, port, mcpPath, createServer }) {
       await transport.handleRequest(req, res);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[transport] http request error: ${message}`);
+      logEvent("transport", "request_error", { mode: "http", message }, { level: "error" });
       if (!res.headersSent) {
         res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
         res.end(JSON.stringify({
@@ -63,7 +64,7 @@ async function startHttpServer({ host, port, mcpPath, createServer }) {
   });
 
   const shutdown = async (signal) => {
-    console.error(`[transport] shutting down http server signal=${signal}`);
+    logEvent("transport", "server_shutdown", { mode: "http", signal });
     await new Promise((resolve) => {
       httpServer.close(() => resolve());
     });
