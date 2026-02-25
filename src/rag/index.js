@@ -28,6 +28,7 @@ import {
 } from "./gemini-retry.js";
 import { resolveProfileConfig } from "./profile-config.js";
 import { createLexicalProvider } from "./lexical-provider.js";
+import { latencyBucket, logEvent } from "../observability/logging.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataRoot = getResolvedDataRoot();
@@ -127,8 +128,12 @@ const ragLogState = {
 
 const prebuiltDownloadAttempts = new Map();
 
-function logRag(message) {
-  console.error(`[rag] ${message}`);
+function logRag(eventOrMessage, fields = {}, options = {}) {
+  if (fields && typeof fields === "object" && Object.keys(fields).length > 0) {
+    logEvent("rag", eventOrMessage, fields, options);
+    return;
+  }
+  logEvent("rag", "detail", { message: String(eventOrMessage || "") }, { ...options, level: options.level || "debug" });
 }
 
 // ============================================================================
@@ -1132,13 +1137,18 @@ async function loadSearchProvider(name) {
   }
   if (!ragLogState.providerReady.has(name)) {
     ragLogState.providerReady.add(name);
-    logRag(`provider ready name=${name}`);
+    logRag("provider_ready", {
+      profile: ragConfig.profile,
+      provider: name,
+      fallback: ragConfig.fallback
+    });
   }
   providerCache.set(name, providerPromise);
   return providerPromise;
 }
 
 async function searchResources({ query, product, edition, platform, type, limit }) {
+  const startedAt = Date.now();
   const filters = normalizeSearchFilters({ product, edition, platform, type });
   const searchQuery = query ? String(query).trim() : "";
   const maxResults = limit ? Math.min(limit, 50) : undefined;
@@ -1152,7 +1162,12 @@ async function searchResources({ query, product, edition, platform, type, limit 
   const providers = resolveProviderChain();
   if (!ragLogState.providerChain) {
     ragLogState.providerChain = true;
-    logRag(`provider chain=${providers.join(" -> ")}`);
+    logRag("provider_chain", {
+      profile: ragConfig.profile,
+      provider: providers[0] || "unknown",
+      fallback: ragConfig.fallback,
+      chain: providers.join("->")
+    });
   }
   let lastError = null;
   for (const name of providers) {
@@ -1161,21 +1176,54 @@ async function searchResources({ query, product, edition, platform, type, limit 
       const results = await provider.search(searchQuery, filters, maxResults);
       if (!ragLogState.providerFirstUse.has(name)) {
         ragLogState.providerFirstUse.add(name);
-        logRag(`provider selected name=${name}`);
+        logRag("provider_selected", {
+          profile: ragConfig.profile,
+          provider: name,
+          fallback: ragConfig.fallback
+        });
       }
       if (name !== providers[0] && !ragLogState.fallbackUse.has(name)) {
         ragLogState.fallbackUse.add(name);
-        logRag(`fallback engaged selected=${name} primary=${providers[0]}`);
+        logRag("fallback_engaged", {
+          selected_provider: name,
+          primary_provider: providers[0],
+          fallback: ragConfig.fallback
+        });
       }
+      const elapsedMs = Date.now() - startedAt;
+      logRag("search_complete", {
+        profile: ragConfig.profile,
+        provider: name,
+        fallback: ragConfig.fallback,
+        product: filters.product || "any",
+        edition: filters.edition || "any",
+        platform: filters.platform || "any",
+        type: filters.type || "any",
+        result_count: results.length,
+        latency_ms: elapsedMs,
+        latency_bucket: latencyBucket(elapsedMs)
+      });
       return results;
     } catch (error) {
       lastError = error;
-      console.error(`[rag] provider "${name}" failed: ${error.message}`);
+      logRag("provider_failed", {
+        provider: name,
+        fallback: ragConfig.fallback,
+        error: error.message
+      }, { level: "error" });
     }
   }
 
   if (lastError) {
-    console.error(`[rag] all providers failed: ${lastError.message}`);
+    const elapsedMs = Date.now() - startedAt;
+    logRag("search_failed", {
+      profile: ragConfig.profile,
+      provider: providers[0] || "unknown",
+      fallback: ragConfig.fallback,
+      latency_ms: elapsedMs,
+      latency_bucket: latencyBucket(elapsedMs),
+      error: lastError.message
+    }, { level: "error" });
   }
   return [];
 }
@@ -1187,14 +1235,25 @@ async function prewarmRagIndex() {
   const primary = providers[0];
   if (!primary || primary === "fuse" || primary === "lexical") return;
   try {
-    logRag(`prewarm start provider=${primary}`);
+    logRag("prewarm_start", {
+      profile: ragConfig.profile,
+      provider: primary,
+      fallback: ragConfig.fallback
+    });
     const provider = await loadSearchProvider(primary);
     if (provider.warm) {
       await provider.warm();
     }
-    logRag(`prewarm done provider=${primary}`);
+    logRag("prewarm_done", {
+      profile: ragConfig.profile,
+      provider: primary,
+      fallback: ragConfig.fallback
+    });
   } catch (error) {
-    console.error(`[rag] prewarm failed: ${error.message}`);
+    logRag("prewarm_failed", {
+      provider: primary,
+      error: error.message
+    }, { level: "error" });
   }
 }
 

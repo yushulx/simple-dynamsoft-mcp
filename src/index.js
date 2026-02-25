@@ -6,28 +6,29 @@ import { createMcpServerInstance } from "./server/create-server.js";
 import { MCP_HTTP_PATH, resolveRuntimeConfig } from "./server/runtime-config.js";
 import { startStdioServer } from "./server/transports/stdio.js";
 import { startHttpServer } from "./server/transports/http.js";
+import { logEvent } from "./observability/logging.js";
 
 const pkgUrl = new URL("../package.json", import.meta.url);
 const pkg = JSON.parse(readFileSync(pkgUrl, "utf8"));
 
 await maybeSyncSubmodulesOnStart();
 const dataStatus = await ensureDataReady();
-if (dataStatus.mode === "downloaded") {
-  console.error(
-    `[data] mode=downloaded path=${dataStatus.dataRoot} source=${dataStatus.downloaded ? "fresh-download" : "cache"}`
-  );
-} else {
-  console.error(`[data] mode=${dataStatus.mode} path=${dataStatus.dataRoot}`);
-}
+logEvent("data", "startup_mode", {
+  mode: dataStatus.mode,
+  path: dataStatus.dataRoot,
+  cache_source: dataStatus.mode.includes("downloaded") ? (dataStatus.downloaded ? "fresh-download" : "cache") : "n/a"
+});
 
 const resourceIndexApi = await import("./server/resource-index.js");
 const ragApi = await import("./rag/index.js");
 
-console.error(
-  `[profile] name=${ragApi.ragConfig.profile} ` +
-  `provider=${ragApi.ragConfig.provider} provider_source=${ragApi.ragConfig.providerSource} ` +
-  `fallback=${ragApi.ragConfig.fallback} fallback_source=${ragApi.ragConfig.fallbackSource}`
-);
+logEvent("profile", "resolved", {
+  profile: ragApi.ragConfig.profile,
+  provider: ragApi.ragConfig.provider,
+  provider_source: ragApi.ragConfig.providerSource,
+  fallback: ragApi.ragConfig.fallback,
+  fallback_source: ragApi.ragConfig.fallbackSource
+});
 
 const createServer = () => createMcpServerInstance({
   pkgVersion: pkg.version,
@@ -49,7 +50,7 @@ try {
   runtimeConfig = resolveRuntimeConfig();
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`[transport] ${message}`);
+  logEvent("transport", "config_error", { message }, { level: "error" });
   process.exit(1);
 }
 

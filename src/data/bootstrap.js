@@ -21,12 +21,25 @@ import {
   replaceDirectoryWithRollback,
   buildHydrationFailureMessage
 } from "./download-utils.js";
+import { latencyBucket, logEvent } from "../observability/logging.js";
 
 const manifestPath = join(bundledDataRoot, "metadata", "data-manifest.json");
 const sdkRegistryPath = join(bundledDataRoot, "metadata", "dynamsoft_sdks.json");
 
-function logData(message) {
-  console.error(`[data] ${message}`);
+function logData(eventOrMessage, fields = {}, options = {}) {
+  if (typeof fields !== "object" || Array.isArray(fields)) {
+    logEvent("data", "detail", { message: String(eventOrMessage || "") }, options);
+    return;
+  }
+
+  if (fields && Object.keys(fields).length > 0) {
+    logEvent("data", eventOrMessage, fields, options);
+    return;
+  }
+
+  const message = String(eventOrMessage || "").trim();
+  if (!message) return;
+  logEvent("data", "detail", { message }, { ...options, level: options.level || "debug" });
 }
 
 function readBoolEnv(key, fallback = false) {
@@ -120,7 +133,12 @@ async function downloadFile(url, outputPath, timeoutMs) {
         const arrayBuffer = await response.arrayBuffer();
         writeFileSync(outputPath, Buffer.from(arrayBuffer));
         const elapsedMs = Date.now() - startedAt;
-        logData(`downloaded file=${basename(outputPath)} size=${arrayBuffer.byteLength}B elapsed_ms=${elapsedMs}`);
+        logData("download_file", {
+          file: basename(outputPath),
+          size_bytes: arrayBuffer.byteLength,
+          latency_ms: elapsedMs,
+          latency_bucket: latencyBucket(elapsedMs)
+        }, { level: "debug" });
       } finally {
         clearTimeout(timer);
       }
@@ -129,7 +147,11 @@ async function downloadFile(url, outputPath, timeoutMs) {
       ...retryConfig,
       shouldRetry: shouldRetryDownloadError,
       onRetry: ({ attempt, delayMs, error }) => {
-        logData(`download retry attempt=${attempt + 1} delay_ms=${delayMs} reason=${error.message}`);
+        logData("download_retry", {
+          attempt: attempt + 1,
+          delay_ms: delayMs,
+          reason: error.message
+        });
       }
     }
   );
@@ -179,7 +201,11 @@ async function hydrateRepoInPlace({ repo, targetRoot, tempZipRoot, timeoutMs }) 
   const targetPath = join(targetRoot, repo.path);
   const targetParent = dirname(targetPath);
 
-  logData(`repo start path=${repo.path} commit=${String(repo.commit || "").slice(0, 12)} host=codeload.github.com`);
+  logData("repo_hydrate_start", {
+    repo_path: repo.path,
+    commit: String(repo.commit || "").slice(0, 12),
+    host: "codeload.github.com"
+  }, { level: "debug" });
   mkdirSync(targetParent, { recursive: true });
   await downloadFile(archiveUrl, zipPath, timeoutMs);
   await extractZip(zipPath, { dir: extractRoot });
@@ -198,7 +224,7 @@ async function hydrateRepoInPlace({ repo, targetRoot, tempZipRoot, timeoutMs }) 
   }
 
   replaceDirectoryWithRollback(targetPath, extractedFolder);
-  logData(`repo ready path=${repo.path}`);
+  logData("repo_hydrate_done", { repo_path: repo.path });
 }
 
 async function populateFromManifest(targetRoot, manifest, timeoutMs) {
@@ -249,7 +275,11 @@ async function ensureDownloadedData(cacheRoot) {
   if (!refresh && existsSync(signaturePath)) {
     const existingSignature = readFileSync(signaturePath, "utf8").trim();
     if (existingSignature === signature && isDataRootReady(cacheRoot)) {
-      logData(`cache hit signature=${signature.slice(0, 12)} root=${cacheRoot}`);
+      logData("cache_hit", {
+        signature: signature.slice(0, 12),
+        root: cacheRoot,
+        cache_source: "cache"
+      });
       return { downloaded: false };
     }
     logData(`cache refresh required reason=signature_or_readiness_mismatch root=${cacheRoot}`);
@@ -269,11 +299,15 @@ async function ensureDownloadedData(cacheRoot) {
     copyBundledMetadata(stagingRoot);
     await populateFromManifest(stagingRoot, manifest, timeoutMs);
     finalizeCacheRoot(cacheRoot, stagingRoot, signature);
-    logData(`download complete root=${cacheRoot} repos=${manifest.repos.length}`);
+    logData("download_complete", {
+      root: cacheRoot,
+      repos: manifest.repos.length,
+      cache_source: "fresh-download"
+    });
     return { downloaded: true };
   } catch (error) {
     rmSync(stagingRoot, { recursive: true, force: true });
-    logData(`download failed root=${cacheRoot} error=${error.message}`);
+    logData("download_failed", { root: cacheRoot, error: error.message }, { level: "error" });
     throw error;
   }
 }
@@ -309,7 +343,7 @@ async function ensureDownloadedRepos(cacheRoot, repoPaths) {
       const knownCommit = String(state[repo.path] || "");
       const expectedCommit = String(repo.commit || "");
       if (isDirectoryReady(targetPath) && knownCommit === expectedCommit) {
-        logData(`hydrate cache hit path=${repo.path}`);
+        logData("hydrate_cache_hit", { repo_path: repo.path }, { level: "debug" });
         continue;
       }
 
@@ -339,14 +373,14 @@ async function ensureDataReady() {
     }
     process.env.MCP_RESOLVED_DATA_DIR = explicitRoot;
     process.env.MCP_DATA_RESOLVE_MODE = "custom";
-    logData(`resolve done mode=custom root=${explicitRoot}`);
+    logData("resolve_done", { mode: "custom", root: explicitRoot, cache_source: "custom" });
     return { dataRoot: explicitRoot, mode: "custom", downloaded: false };
   }
 
   if (isDataRootReady(bundledDataRoot)) {
     process.env.MCP_RESOLVED_DATA_DIR = bundledDataRoot;
     process.env.MCP_DATA_RESOLVE_MODE = "bundled";
-    logData(`resolve done mode=bundled root=${bundledDataRoot}`);
+    logData("resolve_done", { mode: "bundled", root: bundledDataRoot, cache_source: "bundled" });
     return { dataRoot: bundledDataRoot, mode: "bundled", downloaded: false };
   }
 
@@ -378,7 +412,11 @@ async function ensureDataReady() {
 
   process.env.MCP_RESOLVED_DATA_DIR = cacheRoot;
   process.env.MCP_DATA_RESOLVE_MODE = hydrationMode === "lazy" ? "downloaded-lazy" : "downloaded";
-  logData(`resolve done mode=${process.env.MCP_DATA_RESOLVE_MODE} root=${cacheRoot} source=${result?.downloaded ? "fresh-download" : "cache"}`);
+  logData("resolve_done", {
+    mode: process.env.MCP_DATA_RESOLVE_MODE,
+    root: cacheRoot,
+    cache_source: result?.downloaded ? "fresh-download" : "cache"
+  });
   return {
     dataRoot: cacheRoot,
     mode: process.env.MCP_DATA_RESOLVE_MODE,
@@ -404,11 +442,22 @@ async function ensureDataScopesHydrated(scopes) {
     return { hydrated: [], mode, skipped: true };
   }
 
-  logData(`hydrate plan mode=lazy scopes=${normalizedScopes.length} repos=${repoPaths.length}`);
+  logData("hydrate_plan", {
+    mode: "lazy",
+    hydration_scope_count: normalizedScopes.length,
+    hydration_scope: normalizedScopes
+      .map((scope) => `${scope.product}:${scope.edition || "any"}:${scope.type}`)
+      .join(","),
+    repos: repoPaths.length
+  });
   try {
     const result = await ensureDownloadedRepos(root, repoPaths);
     if (result.hydrated.length > 0) {
-      logData(`hydrate done repos=${result.hydrated.length}`);
+      logData("hydrate_done", {
+        mode: "lazy",
+        repos: result.hydrated.length,
+        cache_source: "fresh-download"
+      });
     }
     return { hydrated: result.hydrated, mode, skipped: false };
   } catch (error) {

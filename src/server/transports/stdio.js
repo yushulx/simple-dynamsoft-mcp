@@ -1,7 +1,8 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { logEvent } from "../../observability/logging.js";
 
 async function startStdioServer({ createServer }) {
-  console.error("[transport] mode=stdio");
+  logEvent("transport", "server_start", { mode: "stdio" });
   const server = createServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
