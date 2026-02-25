@@ -68,6 +68,69 @@ function resolveServerEnv({ provider, fallback = "none", extra = {} }) {
   return { ...process.env, ...base, ...extra };
 }
 
+function requestTimeoutForProvider(provider) {
+  return provider === "local" || provider === "gemini" ? 300000 : 60000;
+}
+
+function assertStructuredDataStartupMode(stderr, expectedMode = "") {
+  const modeToken = expectedMode ? `.*mode=${expectedMode}` : ".*mode=";
+  const pattern = new RegExp(`\\[data\\].*event=startup_mode${modeToken}`);
+  assert.match(stderr, pattern, "Expected structured data startup mode log in stderr");
+}
+
+function packageCommandCandidates(tgzPath) {
+  return [
+    {
+      command: npmCommand(),
+      args: ["exec", "--yes", "--package", tgzPath, "--", "simple-dynamsoft-mcp"]
+    },
+    {
+      command: npxCommand(),
+      args: ["-y", "--package", tgzPath, "simple-dynamsoft-mcp"]
+    }
+  ];
+}
+
+async function createPackagedRuntimeClient({
+  tgzPath,
+  workspaceDir,
+  env,
+  name,
+  retries = 1,
+  retryDelayMs = 0
+}) {
+  const commands = packageCommandCandidates(tgzPath);
+  const maxRetries = Math.max(1, Number(retries) || 1);
+  let bundle = null;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxRetries && !bundle; attempt += 1) {
+    for (const candidate of commands) {
+      try {
+        bundle = await createStdioClient({
+          command: candidate.command,
+          args: candidate.args,
+          cwd: workspaceDir,
+          env,
+          name: `${name}-${attempt}`
+        });
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (!bundle && attempt < maxRetries && retryDelayMs > 0) {
+      await sleep(retryDelayMs);
+    }
+  }
+
+  if (!bundle) {
+    throw lastError || new Error("Failed to launch packaged runtime client");
+  }
+  return bundle;
+}
+
 async function createStdioClient({
   command = nodeCommand(),
   args = [serverEntry],
@@ -289,8 +352,11 @@ export {
   npxCommand,
   packProjectToTempDir,
   projectRoot,
+  requestTimeoutForProvider,
   resolveServerEnv,
   runCoreAssertions,
+  assertStructuredDataStartupMode,
+  createPackagedRuntimeClient,
   serverEntry,
   startNativeHttpServer
 };

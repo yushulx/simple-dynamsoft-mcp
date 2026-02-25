@@ -4,10 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  assertStructuredDataStartupMode,
   cleanupDir,
-  createStdioClient,
-  npxCommand,
-  npmCommand,
+  createPackagedRuntimeClient,
   packProjectToTempDir
 } from "./helpers.js";
 
@@ -28,40 +27,19 @@ test("[lazy] packaged runtime boots in lazy hydration mode with isolated cache",
 
   delete env.MCP_DATA_DIR;
 
-  const commandCandidates = [
-    {
-      command: npmCommand(),
-      args: ["exec", "--yes", "--package", packed.tgzPath, "--", "simple-dynamsoft-mcp"]
-    },
-    {
-      command: npxCommand(),
-      args: ["-y", "--package", packed.tgzPath, "simple-dynamsoft-mcp"]
-    }
-  ];
-
   let bundle = null;
-  let lastError = null;
-
-  for (const candidate of commandCandidates) {
-    try {
-      bundle = await createStdioClient({
-        command: candidate.command,
-        args: candidate.args,
-        cwd: workspaceDir,
-        env,
-        name: "integration-package-lazy-hydration"
-      });
-      break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (!bundle) {
+  try {
+    bundle = await createPackagedRuntimeClient({
+      tgzPath: packed.tgzPath,
+      workspaceDir,
+      env,
+      name: "integration-package-lazy-hydration"
+    });
+  } catch (error) {
     cleanupDir(cacheDir);
     cleanupDir(workspaceDir);
     cleanupDir(packed.tempDir);
-    throw lastError;
+    throw error;
   }
 
   const { client, transport, getStderr } = bundle;
@@ -69,12 +47,7 @@ test("[lazy] packaged runtime boots in lazy hydration mode with isolated cache",
   try {
     const tools = await client.listTools();
     assert.ok(tools.tools.length > 0, "Expected server to expose MCP tools");
-    const stderr = getStderr();
-    assert.match(
-      stderr,
-      /\[data\].*event=startup_mode.*mode=downloaded-lazy/,
-      "Expected downloaded-lazy structured startup mode"
-    );
+    assertStructuredDataStartupMode(getStderr(), "downloaded-lazy");
   } finally {
     await transport.close();
     cleanupDir(cacheDir);

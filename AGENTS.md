@@ -83,6 +83,9 @@ Avoid modifying `data/` submodule content unless explicitly requested.
 - Run native streamable HTTP integration only: `npm run test:http`
 - Run packaged runtime integration only: `npm run test:package`
 - Run lazy-hydration packaged smoke test: `npm run test:lazy`
+- Run regression unit pack: `npm run test:regression:unit`
+- Run regression integration pack: `npm run test:regression:integration`
+- Run full regression pack: `npm run test:regression`
 - Init submodules: `npm run data:bootstrap`
 - Sync submodules: `npm run data:sync`
 - Submodule status: `npm run data:status`
