@@ -3,3 +3,4 @@ simple-dynamsoft-mcp.sln
 .env
 data/.rag-cache/
 .cache/
+.worktrees/

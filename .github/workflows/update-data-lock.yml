@@ -29,7 +29,14 @@ jobs:
         run: npm ci
 
       - name: Sync submodules
-        run: npm run data:sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run data:sync 2>&1 | tee /tmp/data-sync.log
+          if grep -Eq '\[data-sync\].* failed' /tmp/data-sync.log; then
+            echo "[data-refresh] submodule sync reported failures; aborting refresh job."
+            exit 1
+          fi
 
       - name: Update sdk versions from docs
         run: npm run data:versions:strict
@@ -147,6 +154,7 @@ jobs:
             echo "## Data Refresh Summary"
             echo ""
             echo "- data_changed: \`${{ steps.detect_changes.outputs.data_changed }}\`"
+            echo "- doc_changed: \`${{ steps.detect_changes.outputs.doc_changed }}\`"
             if [[ "${{ steps.detect_changes.outputs.data_changed }}" == "true" ]]; then
               echo "- version: \`v${{ steps.bump_version.outputs.old_version }} -> v${{ steps.bump_version.outputs.new_version }}\`"
             else
@@ -154,6 +162,15 @@ jobs:
             fi
             echo "- pr_title: \`${{ steps.pr_meta.outputs.title }}\`"
             echo "- pr_labels: \`${{ steps.pr_meta.outputs.labels }}\`"
+            echo ""
+            echo "### Changed files"
+            echo '```text'
+            if [[ -n "${{ steps.detect_changes.outputs.changed_files }}" ]]; then
+              echo "${{ steps.detect_changes.outputs.changed_files }}"
+            else
+              echo "(none)"
+            fi
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Ensure automation labels exist
