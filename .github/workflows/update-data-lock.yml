@@ -106,13 +106,47 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          declare -A submodule_url_by_path=()
+          while IFS= read -r key; do
+            submodule_path="$(git config --file .gitmodules --get "$key")"
+            url_key="${key%.path}.url"
+            submodule_url_by_path["$submodule_path"]="$(git config --file .gitmodules --get "$url_key" || true)"
+          done < <(git config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path$')
+
+          declare -A seen_repos=()
+          updated_repo_lines=""
+          while IFS= read -r changed_path; do
+            [[ -z "$changed_path" ]] && continue
+            case "$changed_path" in
+              data/documentation/*|data/samples/*)
+                repo_url="${submodule_url_by_path[$changed_path]:-}"
+                if [[ -n "$repo_url" ]]; then
+                  repo_slug="${repo_url%.git}"
+                  repo_slug="${repo_slug#https://github.com/}"
+                  repo_slug="${repo_slug#git@github.com:}"
+                  if [[ -n "$repo_slug" && -z "${seen_repos[$repo_slug]:-}" ]]; then
+                    seen_repos["$repo_slug"]=1
+                    updated_repo_lines+="- \`$repo_slug\`\n"
+                  fi
+                fi
+                ;;
+            esac
+          done <<< "${{ steps.detect_changes.outputs.changed_files }}"
+
+          if [[ -n "$updated_repo_lines" ]]; then
+            updated_repos_block="Updated source repositories:\n$(printf '%b' "$updated_repo_lines")"
+          else
+            updated_repos_block="Updated source repositories:\n- (none)"
+          fi
+
           if [[ "${{ steps.detect_changes.outputs.data_changed }}" == "true" ]]; then
             title="[data-release] chore: refresh data lock + patch bump v${{ steps.bump_version.outputs.new_version }}"
             commit_message="chore(data): refresh lock and bump version to v${{ steps.bump_version.outputs.new_version }}"
             labels="data-refresh,release:patch-data"
-            body=$(cat <<'EOF'
+            body=$(cat <<EOF
           Automated daily refresh:
           - Fast-forward data submodules to configured branches
+          ${updated_repos_block}
           - Update `data/metadata/data-manifest.json`
           - Auto-bump patch version for data refresh
 
@@ -125,9 +159,10 @@ jobs:
             title="[data-refresh] chore: update data lock manifest"
             commit_message="chore(data): update data lock manifest"
             labels="data-refresh"
-            body=$(cat <<'EOF'
+            body=$(cat <<EOF
           Automated daily refresh:
           - Fast-forward data submodules to configured branches
+          ${updated_repos_block}
           - Update `data/metadata/data-manifest.json`
 
           Note:
@@ -238,8 +273,29 @@ jobs:
               core.info(`Enabled auto-merge for PR #${pullNumber}`);
             } catch (error) {
               const message = String(error?.message || error);
+              const normalized = message.toLowerCase();
               if (message.toLowerCase().includes("already") && message.toLowerCase().includes("auto-merge")) {
                 core.info(`Auto-merge already enabled for PR #${pullNumber}`);
+                return;
+              }
+              if (normalized.includes("clean status")) {
+                core.info(`PR #${pullNumber} is already clean; attempting direct squash merge.`);
+                try {
+                  await github.rest.pulls.merge({
+                    owner,
+                    repo,
+                    pull_number: pullNumber,
+                    merge_method: "squash"
+                  });
+                  core.info(`Merged PR #${pullNumber} directly because it was already clean.`);
+                  return;
+                } catch (mergeError) {
+                  core.warning(`PR #${pullNumber} is clean but could not be merged directly: ${String(mergeError?.message || mergeError)}`);
+                  return;
+                }
+              }
+              if (normalized.includes("auto-merge") && normalized.includes("disabled")) {
+                core.warning(`Auto-merge is disabled for this repository; skipping for PR #${pullNumber}.`);
                 return;
               }
               throw error;
