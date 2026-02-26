@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           npm run data:sync 2>&1 | tee /tmp/data-sync.log
-          if grep -Eq '\[data-sync\].* failed' /tmp/data-sync.log; then
+          if grep -Eq '\[data-sync\] done ok=[0-9]+ failed=[1-9][0-9]*' /tmp/data-sync.log; then
             echo "[data-refresh] submodule sync reported failures; aborting refresh job."
             exit 1
           fi
