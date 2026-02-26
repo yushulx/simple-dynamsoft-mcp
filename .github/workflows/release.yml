@@ -3,6 +3,10 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Update Data Lock"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       force:
@@ -20,6 +24,7 @@ concurrency:
 
 jobs:
   detect:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     outputs:
       release_needed: ${{ steps.detect.outputs.release_needed }}
@@ -31,6 +36,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - name: Detect release trigger
         id: detect
