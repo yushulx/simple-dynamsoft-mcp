@@ -24,10 +24,9 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
     "get_index",
     "search",
     "list_samples",
-    "resolve_sample",
     "resolve_version",
     "get_quickstart",
-    "generate_project"
+    "get_sample_files"
   ];
 
   const registeredToolNames = [...registered.keys()];

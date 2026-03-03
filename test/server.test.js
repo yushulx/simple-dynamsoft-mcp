@@ -120,10 +120,9 @@ await test('tools/list returns the minimal tool surface', async () => {
         'get_index',
         'search',
         'list_samples',
-        'resolve_sample',
         'resolve_version',
         'get_quickstart',
-        'generate_project'
+        'get_sample_files'
     ];
 
     assert(response.result.tools.length === expectedTools.length, `Expected ${expectedTools.length} tools`);
@@ -271,23 +270,40 @@ await test('list_samples returns DBR maui mobile samples', async () => {
     assert(parsed.samples.every(s => s.platform === 'maui'), 'All samples should be maui platform');
 });
 
-await test('resolve_sample returns a matching DWT sample', async () => {
+await test('search returns exact match for a DWT sample ID', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
-            name: 'resolve_sample',
-            arguments: { sample_id: 'basic-scan', product: 'dwt' }
+            name: 'search',
+            arguments: { query: 'basic-scan', product: 'dwt', type: 'sample' }
         }
     });
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('Found'), 'Should report matches');
-    assert(text.includes('Plain URIs'), 'Should include plain URIs section');
+    assert(text.includes('exact match'), 'Should indicate exact match');
     const link = response.result.content.find(item => item.type === 'resource_link');
     assert(link, 'Should include resource link');
+});
+
+await test('search returns suggestions for non-existent sample ID', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'nonexistent-sample-xyz', product: 'dwt', type: 'sample' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    // Should either return suggestions or a no-results message, not crash
+    assert(text.includes('Related samples') || text.includes('No results'), 'Should return suggestions or no-results message');
 });
 
 await test('resources/list returns pinned resources', async () => {
@@ -447,13 +463,13 @@ await test('get_quickstart returns a DCV quickstart', async () => {
     assert(text.includes('Quick Start: DCV Server'), 'Should include DCV quickstart header');
 });
 
-await test('generate_project returns DDV project structure', async () => {
+await test('get_sample_files returns DDV project structure', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
-            name: 'generate_project',
+            name: 'get_sample_files',
             arguments: { product: 'ddv', edition: 'web', sample_id: 'hello-world' }
         }
     });
