@@ -27,10 +27,10 @@ export function registerProjectTools({
   getSampleSuggestions
 }) {
   server.registerTool(
-    "generate_project",
+    "get_sample_files",
     {
-      title: "Generate Project",
-      description: "Generate a project structure from a sample and return files inline (no zip/download).",
+      title: "Get Sample Files",
+      description: "Get project files for a known sample (by sample_id or resource_uri) and return them inline. Use list_samples or search to discover sample IDs first.",
       inputSchema: {
         product: z.string().describe("Product: dcv, dbr, dwt, or ddv"),
         edition: z.string().optional().describe("Edition: mobile, web, server/desktop"),
