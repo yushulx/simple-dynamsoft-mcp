@@ -18,7 +18,9 @@ Supported products:
 - Move advanced configuration, CI internals, and operator/developer details to `AGENTS.md` and `.env.example`.
 
 ## Core Design
-- Minimal tool surface: `get_index`, `search`, `list_samples`, `resolve_sample`, `resolve_version`, `get_quickstart`, `generate_project`.
+- Minimal tool surface: `get_index`, `search`, `list_samples`, `resolve_version`, `get_quickstart`, `get_sample_files`.
+- `resolve_sample` was removed: use `search` with `type: "sample"` for sample lookup (supports exact IDs and fuzzy matching).
+- `generate_project` was renamed to `get_sample_files` for clarity.
 - Resources are discovered via tools and read on demand with `resources/read`.
 - `resources/list` exposes only pinned resources to keep context small.
 - Resource indexing logic is split under `src/server/resource-index/` with `src/server/resource-index.js` as the composition layer.
@@ -220,7 +222,7 @@ Use this sequence when onboarding a new product family or edition docs/samples.
    - `src/server/resource-index/builders.js` (resource builders, scenario tags, pinned guidance resources)
 6. Update product normalization/routing:
    - `src/server/normalizers.js` (aliases, scenario inference terms)
-   - `src/server/create-server.js` (tool schema hints, resolve_version/get_quickstart/generate_project routes)
+   - `src/server/create-server.js` (tool schema hints, resolve_version/get_quickstart/get_sample_files routes)
    - `src/server/resource-index/version-policy.js` (latest-major policy and legacy messaging)
 7. Update metadata and public guidance:
    - `data/metadata/dynamsoft_sdks.json`
