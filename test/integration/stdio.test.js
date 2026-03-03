@@ -19,9 +19,20 @@ async function runStdioScenario(provider) {
   });
 
   try {
-    await runCoreAssertions(client, {
-      requestTimeoutMs: requestTimeoutForProvider(provider)
-    });
+    const requestTimeoutMs = requestTimeoutForProvider(provider);
+    await runCoreAssertions(client, { requestTimeoutMs });
+
+    if (provider === "local") {
+      // The core assertions search uses an exact sample ID ("basic-scan")
+      // which hits the fast path and bypasses the RAG provider. Run a
+      // keyword search here to exercise the local RAG provider so its
+      // [rag] diagnostic is emitted to stderr.
+      await client.callTool(
+        { name: "search", arguments: { query: "how to scan documents", product: "dwt", type: "doc", limit: 1 } },
+        undefined,
+        { timeout: requestTimeoutMs }
+      );
+    }
 
     const stderr = getStderr();
     assertStructuredDataStartupMode(stderr);

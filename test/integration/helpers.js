@@ -181,10 +181,9 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
     "get_index",
     "search",
     "list_samples",
-    "resolve_sample",
     "resolve_version",
     "get_quickstart",
-    "generate_project"
+    "get_sample_files"
   ];
   assert.equal(tools.tools.length, expectedTools.length, "Unexpected tool count");
   for (const tool of expectedTools) {

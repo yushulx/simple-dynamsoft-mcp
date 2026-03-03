@@ -75,7 +75,10 @@ registerIndexTools({
   buildIndexData,
   getSampleIdFromUri,
   formatScopeLabel,
-  searchResources
+  searchResources,
+  normalizeSampleName,
+  getSampleEntries,
+  getSampleSuggestions
 });
 
 registerSampleTools({
@@ -85,16 +88,10 @@ registerSampleTools({
   normalizeProduct,
   normalizePlatform,
   normalizeEdition,
-  normalizeSampleName,
-  parseSampleUri,
-  resourceIndex,
   getSampleEntries,
   getSampleIdFromUri,
   getDisplayEdition,
-  getDisplayPlatform,
-  formatScopeLabel,
-  searchResources,
-  getSampleSuggestions
+  getDisplayPlatform
 });
 
 registerVersionTools({

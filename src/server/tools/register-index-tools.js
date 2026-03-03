@@ -11,7 +11,10 @@ export function registerIndexTools({
   buildIndexData,
   getSampleIdFromUri,
   formatScopeLabel,
-  searchResources
+  searchResources,
+  normalizeSampleName,
+  getSampleEntries,
+  getSampleSuggestions
 }) {
   server.registerTool(
     "get_index",
@@ -29,7 +32,7 @@ export function registerIndexTools({
     "search",
     {
       title: "Search",
-      description: "Semantic (RAG) search across docs and samples with fuzzy fallback; returns resource links for lazy loading. Prefer DCV for MRZ/VIN/document-normalization/driver-license scenarios; DBR for barcode-only.",
+      description: "Search across docs and samples with semantic (RAG) search and fuzzy fallback. Accepts keywords or exact sample IDs. Returns resource links for lazy loading. Prefer DCV for MRZ/VIN/document-normalization/driver-license scenarios; DBR for barcode-only.",
       inputSchema: {
         query: z.string().describe("Keywords to search across docs and samples."),
         product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
@@ -68,16 +71,126 @@ export function registerIndexTools({
       }
 
       const maxResults = Math.min(limit || 5, 10);
+
+      // Exact sample-ID fast path (when searching for samples)
+      const effectiveType = type || "any";
+      if (effectiveType === "sample" || effectiveType === "any") {
+        const normalizedQuery = normalizeSampleName(query);
+        const scopedSamples = getSampleEntries({
+          product: normalizedProduct,
+          edition: normalizedEdition,
+          platform: normalizedPlatform
+        });
+        const exactMatches = scopedSamples.filter((entry) => {
+          const entryId = getSampleIdFromUri(entry.uri);
+          return entryId && entryId.toLowerCase() === normalizedQuery.toLowerCase();
+        });
+        if (exactMatches.length > 0) {
+          const selected = exactMatches.slice(0, maxResults);
+          const content = [
+            {
+              type: "text",
+              text: `Found ${selected.length} exact match(es) for "${query}". Read the links you need with resources/read.`
+            }
+          ];
+
+          for (const entry of selected) {
+            const versionLabel = entry.version ? `v${entry.version}` : "n/a";
+            const scopeLabel = formatScopeLabel(entry);
+            const sampleId = getSampleIdFromUri(entry.uri);
+            const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
+            const scoreLabel = formatScoreLabel(entry);
+            content.push({
+              type: "resource_link",
+              uri: entry.uri,
+              name: entry.title,
+              description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+              mimeType: entry.mimeType,
+              annotations: {
+                audience: ["assistant"],
+                priority: 0.8
+              }
+            });
+          }
+
+          const plainLines = selected.map((entry, index) => {
+            const sampleId = getSampleIdFromUri(entry.uri);
+            const action = "get_sample_files resource_uri";
+            const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
+            const scoreNote = formatScoreNote(entry);
+            return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote} (${action})`;
+          });
+          content.push({
+            type: "text",
+            text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
+          });
+
+          return { content };
+        }
+      }
+
       const topResults = await searchResources({
         query,
         product: normalizedProduct,
         edition: normalizedEdition,
         platform: normalizedPlatform,
-        type: type || "any",
+        type: effectiveType,
         limit: maxResults
       });
 
       if (topResults.length === 0) {
+        // Only try sample suggestions when searching samples or any type
+        if (effectiveType === "sample" || effectiveType === "any") {
+          const suggestions = await getSampleSuggestions({
+            query,
+            product: normalizedProduct,
+            edition: normalizedEdition,
+            platform: normalizedPlatform,
+            limit: maxResults
+          });
+
+          if (suggestions.length > 0) {
+            const content = [
+              {
+                type: "text",
+                text: `No exact results for "${query}". Related samples:`
+              }
+            ];
+
+            for (const entry of suggestions) {
+              const versionLabel = entry.version ? `v${entry.version}` : "n/a";
+              const scopeLabel = formatScopeLabel(entry);
+              const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+              const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
+              const scoreLabel = formatScoreLabel(entry);
+              content.push({
+                type: "resource_link",
+                uri: entry.uri,
+                name: entry.title,
+                description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+                mimeType: entry.mimeType,
+                annotations: {
+                  audience: ["assistant"],
+                  priority: 0.6
+                }
+              });
+            }
+
+            const plainLines = suggestions.map((entry, index) => {
+              const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+              const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
+              const scoreNote = formatScoreNote(entry);
+              return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote}`;
+            });
+            content.push({
+              type: "text",
+              text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
+            });
+
+            return { content };
+          }
+        }
+
         return {
           content: [{
             type: "text",
@@ -114,7 +227,7 @@ export function registerIndexTools({
 
       const plainLines = topResults.map((entry, index) => {
         const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-        const action = entry.type === "sample" ? "generate_project resource_uri" : "resources/read uri";
+        const action = entry.type === "sample" ? "get_sample_files resource_uri" : "resources/read uri";
         const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
         const scoreNote = formatScoreNote(entry);
         return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote} (${action})`;
