@@ -284,10 +284,10 @@ export function registerProjectTools({
       const validFiles = files.filter((f) => f.content.length < 50000);
 
       const output = [
-        `# Project Generation: ${sampleLabel}`,
+        `# Sample Files: ${sampleLabel}`,
         "",
-        "This output contains the file structure for the project.",
-        "Note: This tool returns files inline and does not create a downloadable zip.",
+        "Below are the retrieved sample project files.",
+        "Note: Files are returned inline and no downloadable zip is created.",
         ""
       ];
 

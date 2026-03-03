@@ -476,7 +476,7 @@ await test('get_sample_files returns DDV project structure', async () => {
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    assert(text.includes('# Project Generation:'), 'Should include project generation header');
+    assert(text.includes('# Sample Files:'), 'Should include sample files header');
 });
 
 await test('Invalid tool call returns error', async () => {

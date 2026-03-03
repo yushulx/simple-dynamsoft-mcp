@@ -237,7 +237,7 @@ For AI agents that support skills (Claude Code, OpenCode, Codex), install [dynam
     npx dynamsoft-sdk-skills install --all
 
 - **Skills** provide integration patterns, gotchas, and decision trees (loaded into agent context)
-- **MCP Server** provides runtime tools: version resolution, doc search, sample browsing, project generation
+- **MCP Server** provides runtime tools: version resolution, doc search, sample browsing, and retrieval of full sample project files
 
 Both work independently, but together the skills guide agents to use MCP tools at the right moments.
 

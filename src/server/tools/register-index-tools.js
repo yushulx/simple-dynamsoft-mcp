@@ -139,54 +139,56 @@ export function registerIndexTools({
       });
 
       if (topResults.length === 0) {
-        // Try sample suggestions before giving up
-        const suggestions = await getSampleSuggestions({
-          query,
-          product: normalizedProduct,
-          edition: normalizedEdition,
-          platform: normalizedPlatform,
-          limit: maxResults
-        });
+        // Only try sample suggestions when searching samples or any type
+        if (effectiveType === "sample" || effectiveType === "any") {
+          const suggestions = await getSampleSuggestions({
+            query,
+            product: normalizedProduct,
+            edition: normalizedEdition,
+            platform: normalizedPlatform,
+            limit: maxResults
+          });
 
-        if (suggestions.length > 0) {
-          const content = [
-            {
-              type: "text",
-              text: `No exact results for "${query}". Related samples:`
-            }
-          ];
-
-          for (const entry of suggestions) {
-            const versionLabel = entry.version ? `v${entry.version}` : "n/a";
-            const scopeLabel = formatScopeLabel(entry);
-            const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-            const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
-            const scoreLabel = formatScoreLabel(entry);
-            content.push({
-              type: "resource_link",
-              uri: entry.uri,
-              name: entry.title,
-              description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
-              mimeType: entry.mimeType,
-              annotations: {
-                audience: ["assistant"],
-                priority: 0.6
+          if (suggestions.length > 0) {
+            const content = [
+              {
+                type: "text",
+                text: `No exact results for "${query}". Related samples:`
               }
+            ];
+
+            for (const entry of suggestions) {
+              const versionLabel = entry.version ? `v${entry.version}` : "n/a";
+              const scopeLabel = formatScopeLabel(entry);
+              const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+              const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
+              const scoreLabel = formatScoreLabel(entry);
+              content.push({
+                type: "resource_link",
+                uri: entry.uri,
+                name: entry.title,
+                description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+                mimeType: entry.mimeType,
+                annotations: {
+                  audience: ["assistant"],
+                  priority: 0.6
+                }
+              });
+            }
+
+            const plainLines = suggestions.map((entry, index) => {
+              const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+              const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
+              const scoreNote = formatScoreNote(entry);
+              return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote}`;
             });
+            content.push({
+              type: "text",
+              text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
+            });
+
+            return { content };
           }
-
-          const plainLines = suggestions.map((entry, index) => {
-            const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-            const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
-            const scoreNote = formatScoreNote(entry);
-            return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote}`;
-          });
-          content.push({
-            type: "text",
-            text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
-          });
-
-          return { content };
         }
 
         return {
