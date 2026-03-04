@@ -127,3 +127,114 @@ test("createMcpServerInstance does not advertise subscribe capability", () => {
     "resources.subscribe should not be advertised"
   );
 });
+
+test("resource read dispatches through version policy and returns content", async () => {
+  const readResource = {
+    uri: "doc://dwt/web/web/18.x/getting-started",
+    mimeType: "text/markdown",
+    text: "# Getting Started with DWT"
+  };
+
+  let policyCalledWith = null;
+
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: (uri) => {
+        if (uri === "doc://dwt/web/web/18.x/getting-started") {
+          return { product: "dwt", edition: "web", platform: "web", version: "18.x" };
+        }
+        return null;
+      },
+      ensureLatestMajor: (params) => {
+        policyCalledWith = params;
+        return { ok: true };
+      },
+      readResourceContent: async (uri) => {
+        if (uri === "doc://dwt/web/web/18.x/getting-started") return readResource;
+        return null;
+      }
+    },
+    ragApi: {}
+  });
+
+  const handler = server.server._requestHandlers.get("resources/read");
+  assert.ok(handler, "read handler should be installed by SDK");
+
+  const result = await handler({
+    method: "resources/read",
+    params: { uri: "doc://dwt/web/web/18.x/getting-started" }
+  });
+
+  assert.deepEqual(result, { contents: [readResource] });
+  assert.deepEqual(policyCalledWith, {
+    product: "dwt",
+    edition: "web",
+    platform: "web",
+    version: "18.x"
+  });
+});
+
+test("resource read throws for version policy rejection", async () => {
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => ({ product: "dbr", edition: "server", platform: "python", version: "8.x" }),
+      ensureLatestMajor: () => ({ ok: false, message: "Version 8.x is not supported" }),
+      readResourceContent: async () => null
+    },
+    ragApi: {}
+  });
+
+  const handler = server.server._requestHandlers.get("resources/read");
+  await assert.rejects(
+    () => handler({
+      method: "resources/read",
+      params: { uri: "doc://dbr/server/python/8.x/api-reference" }
+    }),
+    { message: "Version 8.x is not supported" }
+  );
+});
+
+test("resource read for pinned resource bypasses version policy", async () => {
+  const pinnedContent = {
+    uri: "doc://product-selection",
+    mimeType: "text/markdown",
+    text: "# Product Selection"
+  };
+
+  let policyCalled = false;
+
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [{
+        uri: "doc://product-selection",
+        title: "Product Selection",
+        summary: "Guidance",
+        mimeType: "text/markdown"
+      }],
+      parseResourceUri: () => {
+        policyCalled = true;
+        return null;
+      },
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async (uri) => {
+        if (uri === "doc://product-selection") return pinnedContent;
+        return null;
+      }
+    },
+    ragApi: {}
+  });
+
+  const handler = server.server._requestHandlers.get("resources/read");
+  const result = await handler({
+    method: "resources/read",
+    params: { uri: "doc://product-selection" }
+  });
+
+  assert.deepEqual(result, { contents: [pinnedContent] });
+  assert.equal(policyCalled, false, "version policy should not be invoked for pinned resources");
+});
