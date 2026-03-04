@@ -32,7 +32,7 @@ export function registerIndexTools({
         "- Do not call get_index repeatedly; the index is static within a session.",
         "- If you already know the product/edition/platform, skip directly to search or get_quickstart.",
         "",
-        "RETURNS: A JSON object with top-level keys: products (dcv, dbr, dwt, ddv), each containing editions, platforms, latest versions, and counts of available docs and samples. Also includes selection_guidance with criteria for choosing between products.",
+        "RETURNS: A JSON object with top-level keys: productSelection and products. productSelection contains guidance for choosing between products (for example, DBR vs DCV), and products contains per-product entries (dcv, dbr, dwt, ddv) with editions, platforms, latest versions, and counts of available docs and samples.",
         "",
         "PARAMETERS: None.",
         "",
@@ -76,7 +76,7 @@ export function registerIndexTools({
         "- type: 'doc', 'sample', 'index', 'policy', or 'any' (default). Use 'sample' to restrict to sample results.",
         "- limit: 1-10 (default 5). Max number of results.",
         "",
-        "RETURNS: A list of resource_link items with URIs. Use resources/read to fetch full content of doc:// URIs. Use get_sample_files to fetch full project files for sample:// URIs.",
+        "RETURNS: An MCP response whose content array includes a leading text summary item followed by zero or more resource_link items with URIs. Use resources/read to fetch full content of doc:// URIs. Use get_sample_files to fetch full project files for sample:// URIs.",
         "",
         "RELATED TOOLS: get_index (discover products first), list_samples (browse all samples), get_sample_files (retrieve full sample project files), resources/read (read a doc resource)."
       ].join("\n"),

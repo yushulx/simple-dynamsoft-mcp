@@ -35,7 +35,7 @@ export function registerSampleTools({
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- limit: 1-200 (default 50). Max number of results.",
         "",
-        "RETURNS: A JSON object with total count and an array of sample entries. Each entry includes sample_id, uri (sample:// URI), product, edition, platform, version, title, and summary. Use sample_id or uri with get_sample_files to retrieve full project files.",
+        "RETURNS: A single text content item that starts with totals and plain URIs, then appends 'JSON:' followed by a JSON object with total count and sample entries. Each entry includes sample_id, uri (sample:// URI), product, edition, platform, version, title, and summary. Use sample_id or uri with get_sample_files to retrieve full project files.",
         "",
         "EXAMPLE: Call list_samples with product='dbr', edition='mobile', platform='android' to see all Android barcode reader samples.",
         "",

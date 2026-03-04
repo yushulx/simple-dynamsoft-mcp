@@ -3,7 +3,7 @@ import test from "node:test";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpServerInstance } from "../../src/server/create-server.js";
 
-test("createMcpServerInstance registers expected tool surface", { concurrency: false }, (t) => {
+function withRegisteredToolsSpy(t) {
   const registered = new Map();
   const originalRegisterTool = McpServer.prototype.registerTool;
   McpServer.prototype.registerTool = function registerToolSpy(name, def, handler) {
@@ -13,6 +13,11 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
   t.after(() => {
     McpServer.prototype.registerTool = originalRegisterTool;
   });
+  return registered;
+}
+
+test("createMcpServerInstance registers expected tool surface", { concurrency: false }, (t) => {
+  const registered = withRegisteredToolsSpy(t);
 
   createMcpServerInstance({
     pkgVersion: "0.0.0-test",
@@ -44,16 +49,8 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
   }
 });
 
-test("tool descriptions are comprehensive (10+ lines, required sections)", { concurrency: false }, (t) => {
-  const registered = new Map();
-  const originalRegisterTool = McpServer.prototype.registerTool;
-  McpServer.prototype.registerTool = function registerToolSpy(name, def, handler) {
-    registered.set(name, { def, handler });
-    return originalRegisterTool.call(this, name, def, handler);
-  };
-  t.after(() => {
-    McpServer.prototype.registerTool = originalRegisterTool;
-  });
+test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurrency: false }, (t) => {
+  const registered = withRegisteredToolsSpy(t);
 
   createMcpServerInstance({
     pkgVersion: "0.0.0-test",
@@ -87,6 +84,7 @@ test("tool descriptions are comprehensive (10+ lines, required sections)", { con
       requiredPhrases: ["sample_id", "resource_uri", "list_samples", "search", "inline"]
     }
   };
+  const requiredSections = ["WHEN TO USE:", "PARAMETERS:", "RETURNS:", "RELATED TOOLS:"];
 
   for (const [toolName, expected] of Object.entries(expectations)) {
     const toolDef = registered.get(toolName);
@@ -106,6 +104,10 @@ test("tool descriptions are comprehensive (10+ lines, required sections)", { con
         desc.toLowerCase().includes(phrase.toLowerCase()),
         `${toolName} description should mention "${phrase}"`
       );
+    }
+
+    for (const section of requiredSections) {
+      assert.ok(desc.includes(section), `${toolName} description should include section "${section}"`);
     }
   }
 });
