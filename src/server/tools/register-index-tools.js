@@ -40,7 +40,7 @@ export function registerIndexTools({
       title: "Search",
       description: "Search across docs and samples with semantic (RAG) search and fuzzy fallback. Accepts keywords or exact sample IDs. Returns resource links for lazy loading. Prefer DCV for MRZ/VIN/document-normalization/driver-license scenarios; DBR for barcode-only.",
       inputSchema: {
-        query: z.string().describe("Keywords to search across docs and samples."),
+        query: z.string().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
         product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
@@ -56,9 +56,6 @@ export function registerIndexTools({
       }
     },
     async ({ query, product, edition, platform, version, type, limit }) => {
-      if (!query || !query.trim()) {
-        return { isError: true, content: [{ type: "text", text: "Query is required." }] };
-      }
       const normalizedProduct = normalizeProduct(product);
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
