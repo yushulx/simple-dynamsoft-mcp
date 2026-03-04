@@ -32,13 +32,19 @@ export function registerProjectTools({
       title: "Get Sample Files",
       description: "Get project files for a known sample (by sample_id or resource_uri) and return them inline. Use list_samples or search to discover sample IDs first.",
       inputSchema: {
-        product: z.string().describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
         edition: z.string().optional().describe("Edition: mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview"),
         version: z.string().optional().describe("Version constraint"),
         sample_id: z.string().optional().describe("Sample identifier (name or path)"),
         resource_uri: z.string().optional().describe("Resource URI returned by search"),
         api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ product, edition, platform, version, sample_id, resource_uri, api_level }) => {
