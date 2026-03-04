@@ -49,63 +49,77 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
   }
 });
 
-test("createMcpServerInstance registers pinned resources via registerResource", () => {
+function withRegisteredResourcesSpy(t, run) {
+  const registered = [];
+  const originalRegisterResource = McpServer.prototype.registerResource;
+  McpServer.prototype.registerResource = function registerResourceSpy(name, uri, config, handler) {
+    registered.push({ name, uri, config, handler });
+    return originalRegisterResource.call(this, name, uri, config, handler);
+  };
+  t.after(() => {
+    McpServer.prototype.registerResource = originalRegisterResource;
+  });
+  return run(registered);
+}
+
+test("createMcpServerInstance registers pinned resources via registerResource", { concurrency: false }, (t) => {
   const pinned = [
     { uri: "doc://index", title: "Index", summary: "Catalog", mimeType: "application/json" },
     { uri: "doc://version-policy", title: "Version Policy", summary: "Policy", mimeType: "text/markdown" },
     { uri: "doc://product-selection", title: "Product Selection", summary: "Guidance", mimeType: "text/markdown" }
   ];
 
-  const server = createMcpServerInstance({
-    pkgVersion: "0.0.0-test",
-    resourceIndexApi: {
-      getPinnedResources: () => pinned,
-      parseResourceUri: () => null,
-      ensureLatestMajor: () => ({ ok: true }),
-      readResourceContent: async () => null
-    },
-    ragApi: {}
-  });
+  withRegisteredResourcesSpy(t, (registeredResources) => {
+    createMcpServerInstance({
+      pkgVersion: "0.0.0-test",
+      resourceIndexApi: {
+        getPinnedResources: () => pinned,
+        parseResourceUri: () => null,
+        ensureLatestMajor: () => ({ ok: true }),
+        readResourceContent: async () => null
+      },
+      ragApi: {}
+    });
 
-  for (const p of pinned) {
-    const registered = server._registeredResources[p.uri];
-    assert.ok(registered, `pinned resource ${p.uri} should be registered`);
-    assert.equal(registered.name, p.title);
-    assert.equal(registered.metadata.description, p.summary);
-    assert.equal(registered.metadata.mimeType, p.mimeType);
-  }
+    const pinnedRegistrations = registeredResources.filter((entry) => typeof entry.uri === "string");
+    assert.equal(pinnedRegistrations.length, pinned.length);
+
+    for (const p of pinned) {
+      const registration = pinnedRegistrations.find((entry) => entry.uri === p.uri);
+      assert.ok(registration, `pinned resource ${p.uri} should be registered`);
+      assert.equal(registration.name, p.title);
+      assert.equal(registration.config.description, p.summary);
+      assert.equal(registration.config.mimeType, p.mimeType);
+      assert.equal(typeof registration.handler, "function");
+    }
+  });
 });
 
-test("createMcpServerInstance registers doc and sample resource templates", () => {
-  const server = createMcpServerInstance({
-    pkgVersion: "0.0.0-test",
-    resourceIndexApi: {
-      getPinnedResources: () => [],
-      parseResourceUri: () => null,
-      ensureLatestMajor: () => ({ ok: true }),
-      readResourceContent: async () => null
-    },
-    ragApi: {}
+test("createMcpServerInstance registers doc and sample resource templates", { concurrency: false }, (t) => {
+  withRegisteredResourcesSpy(t, (registeredResources) => {
+    createMcpServerInstance({
+      pkgVersion: "0.0.0-test",
+      resourceIndexApi: {
+        getPinnedResources: () => [],
+        parseResourceUri: () => null,
+        ensureLatestMajor: () => ({ ok: true }),
+        readResourceContent: async () => null
+      },
+      ragApi: {}
+    });
+
+    const docTemplate = registeredResources.find((entry) => entry.name === "doc-resource");
+    const sampleTemplate = registeredResources.find((entry) => entry.name === "sample-resource");
+
+    assert.ok(docTemplate, "should register doc-resource template");
+    assert.ok(sampleTemplate, "should register sample-resource template");
+    assert.equal(String(docTemplate.uri.uriTemplate), "doc://{product}/{edition}/{platform}/{version}/{+slug}");
+    assert.equal(String(sampleTemplate.uri.uriTemplate), "sample://{product}/{edition}/{platform}/{version}/{+rest}");
+    assert.equal(docTemplate.uri.listCallback, undefined);
+    assert.equal(sampleTemplate.uri.listCallback, undefined);
+    assert.equal(typeof docTemplate.handler, "function");
+    assert.equal(typeof sampleTemplate.handler, "function");
   });
-
-  const templates = server._registeredResourceTemplates;
-  assert.ok(templates["doc-resource"], "should register doc-resource template");
-  assert.ok(templates["sample-resource"], "should register sample-resource template");
-
-  const docMatch = templates["doc-resource"].resourceTemplate.uriTemplate.match(
-    "doc://dbr/server/python/10.x/some-doc"
-  );
-  assert.ok(docMatch, "doc template should match doc:// URIs with 5 segments");
-  assert.equal(docMatch.product, "dbr");
-
-  const sampleMatch = templates["sample-resource"].resourceTemplate.uriTemplate.match(
-    "sample://dbr/server/python/10.x/hello-world"
-  );
-  assert.ok(sampleMatch, "sample template should match sample:// URIs");
-  assert.equal(sampleMatch.product, "dbr");
-
-  assert.equal(templates["doc-resource"].resourceTemplate.listCallback, undefined);
-  assert.equal(templates["sample-resource"].resourceTemplate.listCallback, undefined);
 });
 
 test("createMcpServerInstance does not advertise subscribe capability", () => {
@@ -128,7 +142,7 @@ test("createMcpServerInstance does not advertise subscribe capability", () => {
   );
 });
 
-test("resource read dispatches through version policy and returns content", async () => {
+test("resource read dispatches through template handler and returns content", { concurrency: false }, async (t) => {
   const readResource = {
     uri: "doc://dwt/web/web/18.x/getting-started",
     mimeType: "text/markdown",
@@ -137,68 +151,68 @@ test("resource read dispatches through version policy and returns content", asyn
 
   let policyCalledWith = null;
 
-  const server = createMcpServerInstance({
-    pkgVersion: "0.0.0-test",
-    resourceIndexApi: {
-      getPinnedResources: () => [],
-      parseResourceUri: (uri) => {
-        if (uri === "doc://dwt/web/web/18.x/getting-started") {
-          return { product: "dwt", edition: "web", platform: "web", version: "18.x" };
+  await withRegisteredResourcesSpy(t, async (registeredResources) => {
+    createMcpServerInstance({
+      pkgVersion: "0.0.0-test",
+      resourceIndexApi: {
+        getPinnedResources: () => [],
+        parseResourceUri: (uri) => {
+          if (uri === "doc://dwt/web/web/18.x/getting-started") {
+            return { product: "dwt", edition: "web", platform: "web", version: "18.x" };
+          }
+          return null;
+        },
+        ensureLatestMajor: (params) => {
+          policyCalledWith = params;
+          return { ok: true };
+        },
+        readResourceContent: async (uri) => {
+          if (uri === "doc://dwt/web/web/18.x/getting-started") return readResource;
+          return null;
         }
-        return null;
       },
-      ensureLatestMajor: (params) => {
-        policyCalledWith = params;
-        return { ok: true };
-      },
-      readResourceContent: async (uri) => {
-        if (uri === "doc://dwt/web/web/18.x/getting-started") return readResource;
-        return null;
-      }
-    },
-    ragApi: {}
-  });
+      ragApi: {}
+    });
 
-  const handler = server.server._requestHandlers.get("resources/read");
-  assert.ok(handler, "read handler should be installed by SDK");
+    const docTemplate = registeredResources.find((entry) => entry.name === "doc-resource");
+    assert.ok(docTemplate, "doc-resource should be registered");
 
-  const result = await handler({
-    method: "resources/read",
-    params: { uri: "doc://dwt/web/web/18.x/getting-started" }
-  });
+    const result = await docTemplate.handler(new URL("doc://dwt/web/web/18.x/getting-started"));
 
-  assert.deepEqual(result, { contents: [readResource] });
-  assert.deepEqual(policyCalledWith, {
-    product: "dwt",
-    edition: "web",
-    platform: "web",
-    version: "18.x"
+    assert.deepEqual(result, { contents: [readResource] });
+    assert.deepEqual(policyCalledWith, {
+      product: "dwt",
+      edition: "web",
+      platform: "web",
+      version: "18.x"
+    });
   });
 });
 
-test("resource read throws for version policy rejection", async () => {
-  const server = createMcpServerInstance({
-    pkgVersion: "0.0.0-test",
-    resourceIndexApi: {
-      getPinnedResources: () => [],
-      parseResourceUri: () => ({ product: "dbr", edition: "server", platform: "python", version: "8.x" }),
-      ensureLatestMajor: () => ({ ok: false, message: "Version 8.x is not supported" }),
-      readResourceContent: async () => null
-    },
-    ragApi: {}
-  });
+test("resource read throws for version policy rejection", { concurrency: false }, async (t) => {
+  await withRegisteredResourcesSpy(t, async (registeredResources) => {
+    createMcpServerInstance({
+      pkgVersion: "0.0.0-test",
+      resourceIndexApi: {
+        getPinnedResources: () => [],
+        parseResourceUri: () => ({ product: "dbr", edition: "server", platform: "python", version: "8.x" }),
+        ensureLatestMajor: () => ({ ok: false, message: "Version 8.x is not supported" }),
+        readResourceContent: async () => null
+      },
+      ragApi: {}
+    });
 
-  const handler = server.server._requestHandlers.get("resources/read");
-  await assert.rejects(
-    () => handler({
-      method: "resources/read",
-      params: { uri: "doc://dbr/server/python/8.x/api-reference" }
-    }),
-    { message: "Version 8.x is not supported" }
-  );
+    const docTemplate = registeredResources.find((entry) => entry.name === "doc-resource");
+    assert.ok(docTemplate, "doc-resource should be registered");
+
+    await assert.rejects(
+      () => docTemplate.handler(new URL("doc://dbr/server/python/8.x/api-reference")),
+      { message: "Version 8.x is not supported" }
+    );
+  });
 });
 
-test("resource read for pinned resource bypasses version policy", async () => {
+test("resource read for pinned resource bypasses version policy", { concurrency: false }, async (t) => {
   const pinnedContent = {
     uri: "doc://product-selection",
     mimeType: "text/markdown",
@@ -207,34 +221,35 @@ test("resource read for pinned resource bypasses version policy", async () => {
 
   let policyCalled = false;
 
-  const server = createMcpServerInstance({
-    pkgVersion: "0.0.0-test",
-    resourceIndexApi: {
-      getPinnedResources: () => [{
-        uri: "doc://product-selection",
-        title: "Product Selection",
-        summary: "Guidance",
-        mimeType: "text/markdown"
-      }],
-      parseResourceUri: () => {
-        policyCalled = true;
-        return null;
+  await withRegisteredResourcesSpy(t, async (registeredResources) => {
+    createMcpServerInstance({
+      pkgVersion: "0.0.0-test",
+      resourceIndexApi: {
+        getPinnedResources: () => [{
+          uri: "doc://product-selection",
+          title: "Product Selection",
+          summary: "Guidance",
+          mimeType: "text/markdown"
+        }],
+        parseResourceUri: () => {
+          policyCalled = true;
+          return null;
+        },
+        ensureLatestMajor: () => ({ ok: true }),
+        readResourceContent: async (uri) => {
+          if (uri === "doc://product-selection") return pinnedContent;
+          return null;
+        }
       },
-      ensureLatestMajor: () => ({ ok: true }),
-      readResourceContent: async (uri) => {
-        if (uri === "doc://product-selection") return pinnedContent;
-        return null;
-      }
-    },
-    ragApi: {}
-  });
+      ragApi: {}
+    });
 
-  const handler = server.server._requestHandlers.get("resources/read");
-  const result = await handler({
-    method: "resources/read",
-    params: { uri: "doc://product-selection" }
-  });
+    const pinnedRegistration = registeredResources.find((entry) => entry.uri === "doc://product-selection");
+    assert.ok(pinnedRegistration, "pinned product-selection resource should be registered");
 
-  assert.deepEqual(result, { contents: [pinnedContent] });
-  assert.equal(policyCalled, false, "version policy should not be invoked for pinned resources");
+    const result = await pinnedRegistration.handler(new URL("doc://product-selection"));
+
+    assert.deepEqual(result, { contents: [pinnedContent] });
+    assert.equal(policyCalled, false, "version policy should not be invoked for pinned resources");
+  });
 });
