@@ -41,6 +41,11 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
     const toolDef = registered.get(toolName);
     assert.ok(toolDef, `create-server should expose definition for ${toolName}`);
     assert.equal(typeof toolDef.handler, "function", `${toolName} should have a wired handler`);
+    assert.ok(toolDef.def.annotations, `${toolName} should have annotations`);
+    assert.equal(toolDef.def.annotations.readOnlyHint, true, `${toolName} should be readOnlyHint`);
+    assert.equal(toolDef.def.annotations.destructiveHint, false, `${toolName} should not be destructiveHint`);
+    assert.equal(toolDef.def.annotations.idempotentHint, true, `${toolName} should be idempotentHint`);
+    assert.equal(toolDef.def.annotations.openWorldHint, false, `${toolName} should not be openWorldHint`);
   }
 });
 
