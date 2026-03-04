@@ -16,7 +16,12 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
 
   createMcpServerInstance({
     pkgVersion: "0.0.0-test",
-    resourceIndexApi: {},
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null
+    },
     ragApi: {}
   });
 
@@ -44,49 +49,63 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
   }
 });
 
-test("createMcpServerInstance wires resources/list and resources/read handlers", async () => {
-  const pinned = [{
-    uri: "doc://product-selection",
-    title: "Product Selection",
-    summary: "Guidance",
-    mimeType: "text/markdown"
-  }];
-  const readResource = {
-    uri: "doc://product-selection",
-    mimeType: "text/markdown",
-    text: "Use DCV for document workflows"
-  };
+test("createMcpServerInstance registers pinned resources via registerResource", () => {
+  const pinned = [
+    { uri: "doc://index", title: "Index", summary: "Catalog", mimeType: "application/json" },
+    { uri: "doc://version-policy", title: "Version Policy", summary: "Policy", mimeType: "text/markdown" },
+    { uri: "doc://product-selection", title: "Product Selection", summary: "Guidance", mimeType: "text/markdown" }
+  ];
 
   const server = createMcpServerInstance({
     pkgVersion: "0.0.0-test",
     resourceIndexApi: {
       getPinnedResources: () => pinned,
-      parseResourceUri: () => ({ product: "dwt", version: "18", edition: "web", platform: "web" }),
+      parseResourceUri: () => null,
       ensureLatestMajor: () => ({ ok: true }),
-      readResourceContent: async () => readResource
+      readResourceContent: async () => null
     },
     ragApi: {}
   });
 
-  const handlers = server.server._requestHandlers;
-  const listHandler = handlers.get("resources/list");
-  const readHandler = handlers.get("resources/read");
+  for (const p of pinned) {
+    const registered = server._registeredResources[p.uri];
+    assert.ok(registered, `pinned resource ${p.uri} should be registered`);
+    assert.equal(registered.name, p.title);
+    assert.equal(registered.metadata.description, p.summary);
+    assert.equal(registered.metadata.mimeType, p.mimeType);
+  }
+});
 
-  const listResult = await listHandler({ method: "resources/list", params: {} });
-  assert.deepEqual(listResult, {
-    resources: [{
-      uri: pinned[0].uri,
-      name: pinned[0].title,
-      description: pinned[0].summary,
-      mimeType: pinned[0].mimeType
-    }]
+test("createMcpServerInstance registers doc and sample resource templates", () => {
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null
+    },
+    ragApi: {}
   });
 
-  const readResult = await readHandler({
-    method: "resources/read",
-    params: { uri: "doc://product-selection" }
-  });
-  assert.deepEqual(readResult, { contents: [readResource] });
+  const templates = server._registeredResourceTemplates;
+  assert.ok(templates["doc-resource"], "should register doc-resource template");
+  assert.ok(templates["sample-resource"], "should register sample-resource template");
+
+  const docMatch = templates["doc-resource"].resourceTemplate.uriTemplate.match(
+    "doc://dbr/server/python/10.x/some-doc"
+  );
+  assert.ok(docMatch, "doc template should match doc:// URIs with 5 segments");
+  assert.equal(docMatch.product, "dbr");
+
+  const sampleMatch = templates["sample-resource"].resourceTemplate.uriTemplate.match(
+    "sample://dbr/server/python/10.x/hello-world"
+  );
+  assert.ok(sampleMatch, "sample template should match sample:// URIs");
+  assert.equal(sampleMatch.product, "dbr");
+
+  assert.equal(templates["doc-resource"].resourceTemplate.listCallback, undefined);
+  assert.equal(templates["sample-resource"].resourceTemplate.listCallback, undefined);
 });
 
 test("createMcpServerInstance does not advertise subscribe capability", () => {
