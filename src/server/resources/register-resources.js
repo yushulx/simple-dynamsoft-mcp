@@ -1,8 +1,6 @@
 import {
   ListResourcesRequestSchema,
-  ReadResourceRequestSchema,
-  SubscribeRequestSchema,
-  UnsubscribeRequestSchema
+  ReadResourceRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 
 export function registerResourceHandlers({
@@ -14,8 +12,7 @@ export function registerResourceHandlers({
 }) {
   server.server.registerCapabilities({
     resources: {
-      listChanged: false,
-      subscribe: true
+      listChanged: false
     }
   });
 
@@ -50,7 +47,4 @@ export function registerResourceHandlers({
 
     return { contents: [resource] };
   });
-
-  server.server.setRequestHandler(SubscribeRequestSchema, async () => ({}));
-  server.server.setRequestHandler(UnsubscribeRequestSchema, async () => ({}));
 }

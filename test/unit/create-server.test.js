@@ -88,3 +88,23 @@ test("createMcpServerInstance wires resources/list and resources/read handlers",
   });
   assert.deepEqual(readResult, { contents: [readResource] });
 });
+
+test("createMcpServerInstance does not advertise subscribe capability", () => {
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null
+    },
+    ragApi: {}
+  });
+
+  const capabilities = server.server.getCapabilities();
+  assert.equal(
+    capabilities.resources?.subscribe,
+    undefined,
+    "resources.subscribe should not be advertised"
+  );
+});
