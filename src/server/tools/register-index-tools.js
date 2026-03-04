@@ -21,7 +21,13 @@ export function registerIndexTools({
     {
       title: "Get Index",
       description: "Get a compact index of products, editions, versions, samples/docs, plus DBR-vs-DCV selection guidance.",
-      inputSchema: {}
+      inputSchema: {},
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
     },
     async () => ({
       content: [{ type: "text", text: JSON.stringify(buildIndexData(), null, 2) }]
@@ -41,6 +47,12 @@ export function registerIndexTools({
         version: z.string().optional().describe("Version constraint (major or full version)"),
         type: z.enum(["doc", "sample", "index", "policy", "any"]).optional(),
         limit: z.number().int().min(1).max(10).optional().describe("Max results (default 5)")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ query, product, edition, platform, version, type, limit }) => {
