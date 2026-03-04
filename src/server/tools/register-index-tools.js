@@ -20,7 +20,28 @@ export function registerIndexTools({
     "get_index",
     {
       title: "Get Index",
-      description: "Get a compact index of products, editions, versions, samples/docs, plus DBR-vs-DCV selection guidance.",
+      description: [
+        "Get a compact index of all Dynamsoft products, editions, platforms, versions, and available docs/samples.",
+        "",
+        "WHEN TO USE:",
+        "- As the first call in any conversation to discover what is available.",
+        "- To determine valid product/edition/platform combinations before calling other tools.",
+        "- To get DBR-vs-DCV selection guidance (DBR for barcode-only; DCV for MRZ, VIN, document normalization, driver license).",
+        "",
+        "WHEN NOT TO USE:",
+        "- Do not call get_index repeatedly; the index is static within a session.",
+        "- If you already know the product/edition/platform, skip directly to search or get_quickstart.",
+        "",
+        "RETURNS: A JSON object with top-level keys: products (dcv, dbr, dwt, ddv), each containing editions, platforms, latest versions, and counts of available docs and samples. Also includes selection_guidance with criteria for choosing between products.",
+        "",
+        "PARAMETERS: None.",
+        "",
+        "EXAMPLE WORKFLOW:",
+        "1. Call get_index to discover available products.",
+        "2. Use the returned product/edition/platform values in search, list_samples, or get_quickstart.",
+        "",
+        "RELATED TOOLS: search (find specific resources), list_samples (browse samples), resolve_version (get exact version numbers)."
+      ].join("\n"),
       inputSchema: {}
     },
     async () => ({
