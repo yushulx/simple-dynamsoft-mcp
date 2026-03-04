@@ -39,11 +39,17 @@ export function registerVersionTools({
         "RELATED TOOLS: get_quickstart (includes version in starter code), get_index (shows version overview)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         constraint: z.string().optional().describe("Version constraint, e.g., latest, 11.x, 10"),
         feature: z.string().optional().describe("Optional feature hint")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ product, edition, platform, constraint, feature }) => {

@@ -42,7 +42,13 @@ export function registerIndexTools({
         "",
         "RELATED TOOLS: search (find specific resources), list_samples (browse samples), resolve_version (get exact version numbers)."
       ].join("\n"),
-      inputSchema: {}
+      inputSchema: {},
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
     },
     async () => ({
       content: [{ type: "text", text: JSON.stringify(buildIndexData(), null, 2) }]
@@ -81,19 +87,22 @@ export function registerIndexTools({
         "RELATED TOOLS: get_index (discover products first), list_samples (browse all samples), get_sample_files (retrieve full sample project files), resources/read (read a doc resource)."
       ].join("\n"),
       inputSchema: {
-        query: z.string().describe("Keywords to search across docs and samples."),
+        query: z.string().trim().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
         product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         version: z.string().optional().describe("Version constraint (major or full version)"),
         type: z.enum(["doc", "sample", "index", "policy", "any"]).optional(),
         limit: z.number().int().min(1).max(10).optional().describe("Max results (default 5)")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ query, product, edition, platform, version, type, limit }) => {
-      if (!query || !query.trim()) {
-        return { isError: true, content: [{ type: "text", text: "Query is required." }] };
-      }
       const normalizedProduct = normalizeProduct(product);
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
