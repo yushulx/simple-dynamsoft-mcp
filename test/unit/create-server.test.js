@@ -3,7 +3,7 @@ import test from "node:test";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpServerInstance } from "../../src/server/create-server.js";
 
-test("createMcpServerInstance registers expected tool surface", { concurrency: false }, (t) => {
+function withRegisteredToolsSpy(t) {
   const registered = new Map();
   const originalRegisterTool = McpServer.prototype.registerTool;
   McpServer.prototype.registerTool = function registerToolSpy(name, def, handler) {
@@ -13,6 +13,11 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
   t.after(() => {
     McpServer.prototype.registerTool = originalRegisterTool;
   });
+  return registered;
+}
+
+test("createMcpServerInstance registers expected tool surface", { concurrency: false }, (t) => {
+  const registered = withRegisteredToolsSpy(t);
 
   createMcpServerInstance({
     pkgVersion: "0.0.0-test",
@@ -51,6 +56,74 @@ test("createMcpServerInstance registers expected tool surface", { concurrency: f
     assert.equal(toolDef.def.annotations.destructiveHint, false, `${toolName} should not be destructiveHint`);
     assert.equal(toolDef.def.annotations.idempotentHint, true, `${toolName} should be idempotentHint`);
     assert.equal(toolDef.def.annotations.openWorldHint, false, `${toolName} should not be openWorldHint`);
+  }
+});
+
+test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurrency: false }, (t) => {
+  const registered = withRegisteredToolsSpy(t);
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null
+    },
+    ragApi: {}
+  });
+
+  const expectations = {
+    get_index: {
+      minLines: 10,
+      requiredPhrases: ["products", "editions", "versions", "DBR", "DCV", "get_index", "search"]
+    },
+    search: {
+      minLines: 10,
+      requiredPhrases: ["query", "keyword", "sample", "doc", "resource_link", "get_index", "list_samples"]
+    },
+    list_samples: {
+      minLines: 10,
+      requiredPhrases: ["sample", "product", "edition", "platform", "search", "get_sample_files"]
+    },
+    resolve_version: {
+      minLines: 10,
+      requiredPhrases: ["version", "product", "dcv", "dbr", "dwt", "ddv"]
+    },
+    get_quickstart: {
+      minLines: 10,
+      requiredPhrases: ["quickstart", "product", "edition", "platform", "scenario", "search"]
+    },
+    get_sample_files: {
+      minLines: 10,
+      requiredPhrases: ["sample_id", "resource_uri", "list_samples", "search", "inline"]
+    }
+  };
+  const requiredSections = ["WHEN TO USE:", "PARAMETERS:", "RETURNS:", "RELATED TOOLS:"];
+
+  for (const [toolName, expected] of Object.entries(expectations)) {
+    const toolDef = registered.get(toolName);
+    assert.ok(toolDef, `${toolName} must be registered`);
+
+    const desc = toolDef.def.description;
+    assert.ok(typeof desc === "string" && desc.length > 0, `${toolName} must have a description`);
+
+    const lines = desc.split("\n");
+    assert.ok(
+      lines.length >= expected.minLines,
+      `${toolName} description should have >= ${expected.minLines} lines, got ${lines.length}`
+    );
+
+    for (const phrase of expected.requiredPhrases) {
+      assert.ok(
+        desc.toLowerCase().includes(phrase.toLowerCase()),
+        `${toolName} description should mention "${phrase}"`
+      );
+    }
+
+    for (const section of requiredSections) {
+      assert.ok(desc.includes(section), `${toolName} description should include section "${section}"`);
+    }
   }
 });
 
