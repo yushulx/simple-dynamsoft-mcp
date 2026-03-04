@@ -39,6 +39,12 @@ export function registerProjectTools({
         sample_id: z.string().optional().describe("Sample identifier (name or path)"),
         resource_uri: z.string().optional().describe("Resource URI returned by search"),
         api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ product, edition, platform, version, sample_id, resource_uri, api_level }) => {
