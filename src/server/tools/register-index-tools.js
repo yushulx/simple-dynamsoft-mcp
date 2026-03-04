@@ -40,7 +40,7 @@ export function registerIndexTools({
       title: "Search",
       description: "Search across docs and samples with semantic (RAG) search and fuzzy fallback. Accepts keywords or exact sample IDs. Returns resource links for lazy loading. Prefer DCV for MRZ/VIN/document-normalization/driver-license scenarios; DBR for barcode-only.",
       inputSchema: {
-        query: z.string().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
+        query: z.string().trim().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
         product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
