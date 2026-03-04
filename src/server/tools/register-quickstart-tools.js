@@ -38,6 +38,12 @@ export function registerQuickstartTools({
         version: z.string().optional().describe("Version constraint"),
         api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)"),
         scenario: z.string().optional().describe("Scenario: camera, image, single, multiple, MRZ, VIN, document scan/normalization, driver license, react, etc.")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ product, edition, platform, language, version, api_level, scenario }) => {
