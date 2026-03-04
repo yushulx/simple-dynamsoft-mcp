@@ -31,7 +31,7 @@ export function registerQuickstartTools({
       title: "Get Quickstart",
       description: "Opinionated quickstart for a target product/edition/platform. DCV supports MRZ/VIN/document-normalization/driver-license workflows.",
       inputSchema: {
-        product: z.string().describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular"),
