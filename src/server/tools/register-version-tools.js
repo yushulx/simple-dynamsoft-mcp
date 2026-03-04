@@ -20,6 +20,12 @@ export function registerVersionTools({
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         constraint: z.string().optional().describe("Version constraint, e.g., latest, 11.x, 10"),
         feature: z.string().optional().describe("Optional feature hint")
+      },
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     },
     async ({ product, edition, platform, constraint, feature }) => {
