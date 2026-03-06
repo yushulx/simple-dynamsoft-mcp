@@ -9,6 +9,13 @@ const ragLogState = {
   fallbackUse: new Set()
 };
 
+const DEPRECATED_PREBUILT_ENV_KEYS = [
+  "RAG_PREBUILT_INDEX_AUTO_DOWNLOAD",
+  "RAG_PREBUILT_INDEX_URL",
+  "RAG_PREBUILT_INDEX_URL_GEMINI",
+  "RAG_PREBUILT_INDEX_TIMEOUT_MS"
+];
+
 function logRag(eventOrMessage, fields = {}, options = {}) {
   if (fields && typeof fields === "object" && Object.keys(fields).length > 0) {
     logEvent("rag", eventOrMessage, fields, options);
@@ -20,6 +27,16 @@ function logRag(eventOrMessage, fields = {}, options = {}) {
 function logRagConfigOnce(ragConfig) {
   if (ragLogState.config) return;
   ragLogState.config = true;
+  const deprecatedKeys = DEPRECATED_PREBUILT_ENV_KEYS.filter((key) => {
+    const value = process.env[key];
+    return value !== undefined && value !== "";
+  });
+  if (deprecatedKeys.length > 0) {
+    logRag("deprecated_prebuilt_env_vars", {
+      keys: deprecatedKeys.join(","),
+      recommendation: "Use RAG_SHARED_STATE_PATH for shared shard loading."
+    }, { level: "warn" });
+  }
   logRag(
     `config provider=${ragConfig.provider} fallback=${ragConfig.fallback} prewarm=${ragConfig.prewarm} rebuild=${ragConfig.rebuild} ` +
     `cache_dir=${ragConfig.cacheDir} shared_state_path=${ragConfig.sharedStatePath ? "set" : "empty"} ` +

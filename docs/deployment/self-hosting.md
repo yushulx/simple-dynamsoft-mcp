@@ -40,7 +40,12 @@ MCP_LOG_LEVEL=info
 Default behavior:
 - If `GEMINI_API_KEY` is set: provider is Gemini, fallback is lexical, hydration defaults to eager.
 - If `GEMINI_API_KEY` is not set: provider is lexical, hydration defaults to lazy.
-- Data and prebuilt RAG cache always check existing cache files first before download/build.
+- Runtime RAG loading uses local cache first, and can load shared per-repo shard files when `RAG_SHARED_STATE_PATH` is set.
+
+Optional shared-state configuration:
+- Set `RAG_SHARED_STATE_PATH` to the mounted `shared-state.json` file generated during your build/deploy pipeline.
+- The server reads repo signatures from `shared-state.json` and loads matching shard files (for example `shared/indexes/gemini/<signature>.json`) instead of rebuilding vectors at runtime.
+- If a required shared shard is missing, Gemini provider initialization fails and lexical fallback remains available for search.
 
 ## 4) Start HTTP Server
 
