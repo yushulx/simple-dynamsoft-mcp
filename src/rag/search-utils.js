@@ -145,12 +145,6 @@ function dotProduct(a, b) {
   return sum;
 }
 
-function isRateLimitError(error, isRateLimitGeminiStatus) {
-  if (error?.rateLimited) return true;
-  const status = Number(error?.status);
-  return isRateLimitGeminiStatus(status);
-}
-
 export {
   createFuseSearch,
   attachScore,
@@ -161,6 +155,5 @@ export {
   buildEmbeddingItems,
   buildIndexSignature,
   normalizeVector,
-  dotProduct,
-  isRateLimitError
+  dotProduct
 };

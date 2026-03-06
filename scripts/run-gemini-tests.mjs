@@ -8,8 +8,6 @@ const child = spawn(
     stdio: "inherit",
     env: {
       ...process.env,
-      RUN_FUSE_PROVIDER_TESTS: "false",
-      RUN_LOCAL_PROVIDER_TESTS: "false",
       RUN_GEMINI_PROVIDER_TESTS: "true"
     }
   }
@@ -22,4 +20,3 @@ child.on("exit", (code, signal) => {
   }
   process.exit(code ?? 1);
 });
-

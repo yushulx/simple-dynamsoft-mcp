@@ -1,48 +1,50 @@
-const PROFILE_DEFAULTS = {
-  lite: {
-    provider: "lexical",
-    fallback: "none"
-  },
-  "semantic-local": {
-    provider: "local",
-    fallback: "none"
-  },
-  "semantic-gemini": {
-    provider: "gemini",
-    fallback: "none"
-  }
-};
-
 function normalizeEnvValue(value) {
   if (value === undefined || value === null) return "";
   return String(value).trim().toLowerCase();
 }
 
-function resolveProfileConfig(env = process.env) {
-  const rawProfile = normalizeEnvValue(env.MCP_PROFILE);
-  const explicitProvider = normalizeEnvValue(env.RAG_PROVIDER);
-  const explicitFallback = normalizeEnvValue(env.RAG_FALLBACK);
+function hasGeminiKey(env) {
+  return normalizeEnvValue(env?.GEMINI_API_KEY) !== "";
+}
 
-  if (rawProfile && !PROFILE_DEFAULTS[rawProfile]) {
-    throw new Error(
-      `Invalid MCP_PROFILE "${rawProfile}". Expected one of: ${Object.keys(PROFILE_DEFAULTS).join(", ")}.`
-    );
+function resolveProvider(env) {
+  const explicit = normalizeEnvValue(env?.RAG_PROVIDER);
+  if (explicit === "gemini" || explicit === "lexical") {
+    return { value: explicit, source: "env" };
   }
-
-  const profile = rawProfile || "lite";
-  const defaults = PROFILE_DEFAULTS[profile];
-
   return {
-    profile,
-    defaults,
-    provider: explicitProvider || defaults.provider,
-    fallback: explicitFallback || defaults.fallback,
-    providerSource: explicitProvider ? "env" : "profile-default",
-    fallbackSource: explicitFallback ? "env" : "profile-default"
+    value: hasGeminiKey(env) ? "gemini" : "lexical",
+    source: "auto"
+  };
+}
+
+function resolveFallback(env, provider) {
+  const explicit = normalizeEnvValue(env?.RAG_FALLBACK);
+  if (explicit === "none" || explicit === "gemini" || explicit === "lexical") {
+    return { value: explicit, source: "env" };
+  }
+  return {
+    value: provider === "gemini" ? "lexical" : "none",
+    source: "auto"
+  };
+}
+
+function resolveProfileConfig(env = process.env) {
+  const provider = resolveProvider(env);
+  const fallback = resolveFallback(env, provider.value);
+  return {
+    profile: provider.value === "gemini" ? "semantic-gemini" : "lite",
+    defaults: {
+      provider: provider.value,
+      fallback: fallback.value
+    },
+    provider: provider.value,
+    fallback: fallback.value,
+    providerSource: provider.source,
+    fallbackSource: fallback.source
   };
 }
 
 export {
-  PROFILE_DEFAULTS,
   resolveProfileConfig
 };

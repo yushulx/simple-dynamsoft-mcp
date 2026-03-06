@@ -13,8 +13,6 @@ const legacyPrebuiltIndexUrl =
   `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-${pkg.version}.tar.gz`;
 
 const defaultPrebuiltIndexUrls = {
-  local:
-    `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-local-${pkg.version}.tar.gz`,
   gemini:
     `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-gemini-${pkg.version}.tar.gz`
 };
@@ -52,6 +50,7 @@ function normalizeGeminiModel(model) {
 }
 
 const profileConfig = resolveProfileConfig(process.env);
+const defaultPrewarm = profileConfig.provider === "gemini";
 
 const ragConfig = {
   profile: profileConfig.profile,
@@ -62,8 +61,6 @@ const ragConfig = {
   fallback: profileConfig.fallback,
   cacheDir: readEnvValue("RAG_CACHE_DIR", join(dataRoot, ".rag-cache")),
   modelCacheDir: readEnvValue("RAG_MODEL_CACHE_DIR", join(dataRoot, ".rag-cache", "models")),
-  localModel: readEnvValue("RAG_LOCAL_MODEL", "Xenova/all-MiniLM-L6-v2"),
-  localQuantized: readBoolEnv("RAG_LOCAL_QUANTIZED", true),
   chunkSize: readIntEnv("RAG_CHUNK_SIZE", 1200),
   chunkOverlap: readIntEnv("RAG_CHUNK_OVERLAP", 200),
   maxChunksPerDoc: readIntEnv("RAG_MAX_CHUNKS_PER_DOC", 6),
@@ -71,21 +68,14 @@ const ragConfig = {
   minScore: readFloatEnv("RAG_MIN_SCORE", 0.2),
   includeScore: readBoolEnv("RAG_INCLUDE_SCORE", false),
   rebuild: readBoolEnv("RAG_REBUILD", false),
-  prewarm: readBoolEnv("RAG_PREWARM", false),
+  prewarm: readBoolEnv("RAG_PREWARM", defaultPrewarm),
   prewarmBlock: readBoolEnv("RAG_PREWARM_BLOCK", false),
   prebuiltIndexAutoDownload: readBoolEnv("RAG_PREBUILT_INDEX_AUTO_DOWNLOAD", true),
   prebuiltIndexUrl: readEnvValue("RAG_PREBUILT_INDEX_URL", ""),
-  prebuiltIndexUrlLocal: readEnvValue("RAG_PREBUILT_INDEX_URL_LOCAL", defaultPrebuiltIndexUrls.local),
   prebuiltIndexUrlGemini: readEnvValue("RAG_PREBUILT_INDEX_URL_GEMINI", defaultPrebuiltIndexUrls.gemini),
   prebuiltIndexTimeoutMs: readIntEnv("RAG_PREBUILT_INDEX_TIMEOUT_MS", 180000),
   geminiApiKey: readEnvValue("GEMINI_API_KEY", ""),
-  geminiModel: normalizeGeminiModel(readEnvValue("GEMINI_EMBED_MODEL", "models/gemini-embedding-001")),
-  geminiBaseUrl: readEnvValue("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com"),
-  geminiBatchSize: readIntEnv("GEMINI_EMBED_BATCH_SIZE", 16),
-  geminiRetryMaxAttempts: readIntEnv("GEMINI_RETRY_MAX_ATTEMPTS", 5),
-  geminiRetryBaseDelayMs: readIntEnv("GEMINI_RETRY_BASE_DELAY_MS", 500),
-  geminiRetryMaxDelayMs: readIntEnv("GEMINI_RETRY_MAX_DELAY_MS", 10000),
-  geminiRequestThrottleMs: readIntEnv("GEMINI_REQUEST_THROTTLE_MS", 0)
+  geminiModel: normalizeGeminiModel(readEnvValue("GEMINI_EMBED_MODEL", "models/gemini-embedding-001"))
 };
 
 export {

@@ -168,11 +168,7 @@ jobs:
       RAG_PREWARM: "true"
       RAG_PREWARM_BLOCK: "true"
       RAG_REBUILD: "true"
-      RAG_LOCAL_MODEL: Xenova/all-MiniLM-L6-v2
-      RAG_LOCAL_QUANTIZED: "true"
-      PREBUILT_LOCAL_CACHE_DIR: ${{ github.workspace }}/release-assets/prebuilt-rag/local/cache
       PREBUILT_GEMINI_CACHE_DIR: ${{ github.workspace }}/release-assets/prebuilt-rag/gemini/cache
-      PREBUILT_LOCAL_MODEL_CACHE_DIR: ${{ github.workspace }}/.cache/release-rag-models-local
       PREBUILT_GEMINI_MODEL_CACHE_DIR: ${{ github.workspace }}/.cache/release-rag-models-gemini
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_EMBED_BATCH_SIZE: 16
@@ -193,14 +189,6 @@ jobs:
 
       - name: Bootstrap data
         run: npm run data:bootstrap
-
-      - name: Prebuild local RAG index
-        env:
-          RAG_PROVIDER: local
-          RAG_FALLBACK: none
-          RAG_CACHE_DIR: ${{ env.PREBUILT_LOCAL_CACHE_DIR }}
-          RAG_MODEL_CACHE_DIR: ${{ env.PREBUILT_LOCAL_MODEL_CACHE_DIR }}
-        run: npm run rag:prebuild
 
       - name: Ensure Gemini API key is configured
         shell: bash
@@ -224,12 +212,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "[release] local prebuilt rag cache dir: $PREBUILT_LOCAL_CACHE_DIR"
-          if [[ -d "$PREBUILT_LOCAL_CACHE_DIR" ]]; then
-            find "$PREBUILT_LOCAL_CACHE_DIR" -maxdepth 2 -type f -print
-          else
-            echo "[release] local cache dir missing"
-          fi
           echo "[release] gemini prebuilt rag cache dir: $PREBUILT_GEMINI_CACHE_DIR"
           if [[ -d "$PREBUILT_GEMINI_CACHE_DIR" ]]; then
             find "$PREBUILT_GEMINI_CACHE_DIR" -maxdepth 2 -type f -print
@@ -285,11 +267,9 @@ jobs:
         run: |
           set -euo pipefail
           version="${{ needs.detect.outputs.version }}"
-          tar -czf "release-assets/prebuilt-rag-index-local-${version}.tar.gz" -C release-assets/prebuilt-rag local
           tar -czf "release-assets/prebuilt-rag-index-gemini-${version}.tar.gz" -C release-assets/prebuilt-rag gemini
           ls -lah release-assets
           ls -lah release-assets/npm
-          echo "[release] prebuilt archive ready release-assets/prebuilt-rag-index-local-${version}.tar.gz"
           echo "[release] prebuilt archive ready release-assets/prebuilt-rag-index-gemini-${version}.tar.gz"
 
       - name: Publish GitHub release
@@ -300,7 +280,6 @@ jobs:
           generate_release_notes: true
           files: |
             release-assets/npm/*.tgz
-            release-assets/prebuilt-rag-index-local-${{ needs.detect.outputs.version }}.tar.gz
             release-assets/prebuilt-rag-index-gemini-${{ needs.detect.outputs.version }}.tar.gz
 
       - name: Release summary
@@ -312,7 +291,6 @@ jobs:
             echo "- tag: \`${{ needs.detect.outputs.tag }}\`"
             echo "- version: \`${{ needs.detect.outputs.version }}\`"
             echo "- npm_artifacts: \`release-assets/npm/*.tgz\`"
-            echo "- prebuilt_rag_local: \`release-assets/prebuilt-rag-index-local-${{ needs.detect.outputs.version }}.tar.gz\`"
             echo "- prebuilt_rag_gemini: \`release-assets/prebuilt-rag-index-gemini-${{ needs.detect.outputs.version }}.tar.gz\`"
           } >> "$GITHUB_STEP_SUMMARY"
 

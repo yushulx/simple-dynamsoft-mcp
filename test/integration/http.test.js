@@ -1,8 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  RUN_FUSE_PROVIDER_TESTS,
-  RUN_LOCAL_PROVIDER_TESTS,
   RUN_GEMINI_PROVIDER_TESTS,
   assertStructuredDataStartupMode,
   connectStreamableClientWithRetry,
@@ -48,22 +46,6 @@ async function runHttpScenario(provider, { fallback = "none", extraEnv = {} } = 
     }
     await server.stop();
   }
-}
-
-if (RUN_FUSE_PROVIDER_TESTS) {
-  test("[fuse] streamableHttp integration works", async () => {
-    await runHttpScenario("fuse");
-  });
-} else {
-  test.skip("[fuse] streamableHttp integration works", () => {});
-}
-
-if (RUN_LOCAL_PROVIDER_TESTS) {
-  test("[local] streamableHttp integration works", async () => {
-    await runHttpScenario("local");
-  });
-} else {
-  test.skip("[local] streamableHttp integration works", () => {});
 }
 
 if (RUN_GEMINI_PROVIDER_TESTS) {
