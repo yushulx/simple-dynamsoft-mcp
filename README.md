@@ -301,17 +301,6 @@ The server exposes this minimal tool surface:
 - `get_quickstart` -- opinionated quickstart: picks a sample by scenario, returns code + install instructions
 - `get_sample_files` -- get full project files for a known sample (discovered via list_samples or search)
 
-## Companion: Dynamsoft SDK Skills
-
-For AI agents that support skills (Claude Code, OpenCode, Codex), install [dynamsoft-sdk-skills](https://github.com/user/dynamsoft-sdk-skills) for guided integration workflows:
-
-    npx dynamsoft-sdk-skills install --all
-
-- **Skills** provide integration patterns, gotchas, and decision trees (loaded into agent context)
-- **MCP Server** provides runtime tools: version resolution, doc search, sample browsing, and retrieval of full sample project files
-
-Both work independently, but together the skills guide agents to use MCP tools at the right moments.
-
 ## Advanced Configuration And Operator Docs
 
 Advanced settings, CI/runbook details, and maintenance workflows live in:
