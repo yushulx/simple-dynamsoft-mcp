@@ -74,19 +74,13 @@ Create `.env` in repo root:
 
 ```dotenv
 GEMINI_API_KEY=your_key_here
-
-MCP_PROFILE=semantic-gemini
-RAG_PROVIDER=gemini
-RAG_FALLBACK=lexical
-
-MCP_DATA_HYDRATION_MODE=eager
-MCP_DATA_AUTO_DOWNLOAD=true
-MCP_DATA_REFRESH_ON_START=false
-
-RAG_PREBUILT_INDEX_AUTO_DOWNLOAD=true
-
 MCP_LOG_LEVEL=info
 ```
+
+Behavior with defaults:
+- if `GEMINI_API_KEY` is set: primary provider is Gemini with lexical fallback; data hydration defaults to eager
+- if `GEMINI_API_KEY` is not set: provider is lexical; data hydration defaults to lazy
+- data and prebuilt RAG cache always check existing cache files first before any download/build
 
 ### 4) Start HTTP server
 

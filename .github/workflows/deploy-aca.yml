@@ -408,9 +408,6 @@ jobs:
             --min-replicas 0 \
             --max-replicas 1 \
             --set-env-vars \
-              MCP_PROFILE=semantic-gemini \
-              RAG_PROVIDER=gemini \
-              RAG_FALLBACK=lexical \
               MCP_DATA_AUTO_DOWNLOAD=false \
               MCP_DATA_DIR="$data_root" \
               MCP_LOG_LEVEL=info \

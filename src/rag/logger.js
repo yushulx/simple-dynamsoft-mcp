@@ -3,6 +3,7 @@ import { logEvent } from "../observability/logging.js";
 const ragLogState = {
   config: false,
   providerChain: false,
+  degradedNotices: new Set(),
   providerReady: new Set(),
   providerFirstUse: new Set(),
   fallbackUse: new Set()
@@ -31,6 +32,7 @@ function logRagConfigOnce(ragConfig) {
 }
 
 function resetRagProviderLogState() {
+  ragLogState.degradedNotices.clear();
   ragLogState.providerReady.clear();
   ragLogState.providerFirstUse.clear();
   ragLogState.fallbackUse.clear();
