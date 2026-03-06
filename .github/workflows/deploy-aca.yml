@@ -16,6 +16,11 @@ on:
         required: false
         default: simple-dynamsoft-mcp
         type: string
+      data_artifact_name:
+        description: Optional artifact name containing hydrated data tree
+        required: false
+        default: ""
+        type: string
   workflow_dispatch:
     inputs:
       version:
@@ -30,6 +35,11 @@ on:
         description: Image repository name inside registry
         required: false
         default: simple-dynamsoft-mcp
+        type: string
+      data_artifact_name:
+        description: Optional artifact name containing hydrated data tree
+        required: false
+        default: ""
         type: string
 
 permissions:
@@ -96,7 +106,10 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: ACR login
-        run: az acr login --name "${{ steps.vars.outputs.acr_name }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          az acr login --name "${{ steps.vars.outputs.acr_name }}"
 
       - name: Build and push image
         id: image
@@ -113,6 +126,132 @@ jobs:
           docker push "$sha_tag"
 
           echo "image_ref=$version_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Download hydrated data artifact
+        if: ${{ inputs.data_artifact_name != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.data_artifact_name }}
+          path: ${{ runner.temp }}/hydrated-data-artifact
+
+      - name: Prepare data cache on runner
+        id: prepare_data
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.vars.outputs.version }}"
+          cache_root="$RUNNER_TEMP/mcp-cache/${version}"
+          data_root="${cache_root}/data"
+          artifact_name="${{ inputs.data_artifact_name }}"
+          artifact_root="${RUNNER_TEMP}/hydrated-data-artifact"
+          artifact_data_root="${artifact_root}/data"
+
+          mkdir -p "$data_root"
+
+          if [[ -n "$artifact_name" ]]; then
+            if [[ ! -d "$artifact_data_root" ]]; then
+              echo "Expected hydrated data artifact content at $artifact_data_root"
+              exit 1
+            fi
+            cp -R "$artifact_data_root/." "$data_root/"
+            echo "data_source=artifact" >> "$GITHUB_OUTPUT"
+          else
+            npm run data:bootstrap
+            cp -R data/metadata "$data_root/metadata"
+            cp -R data/documentation "$data_root/documentation"
+            cp -R data/samples "$data_root/samples"
+            echo "data_source=submodule-bootstrap" >> "$GITHUB_OUTPUT"
+          fi
+
+          for required_path in \
+            "metadata/dynamsoft_sdks.json" \
+            "metadata/data-manifest.json" \
+            "documentation" \
+            "samples"; do
+            if [[ ! -e "${data_root}/${required_path}" ]]; then
+              echo "Prepared data is missing required path: ${data_root}/${required_path}"
+              exit 1
+            fi
+          done
+
+          echo "cache_root=$cache_root" >> "$GITHUB_OUTPUT"
+          echo "data_root=$data_root" >> "$GITHUB_OUTPUT"
+
+      - name: Upload hydrated cache to Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.cache_share }}"
+          version="${{ steps.vars.outputs.version }}"
+          local_data="${{ steps.prepare_data.outputs.data_root }}"
+
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+
+          az storage directory create \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --name "$version" >/dev/null
+
+          az storage directory create \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --name "$version/data" >/dev/null
+
+          az storage file upload-batch \
+            --account-name "$account" \
+            --account-key "$key" \
+            --source "$local_data" \
+            --destination "$share" \
+            --destination-path "$version/data" \
+            --overwrite true
+
+      - name: Verify uploaded cache data readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.cache_share }}"
+          version="${{ steps.vars.outputs.version }}"
+
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+
+          for required_path in \
+            "metadata/dynamsoft_sdks.json" \
+            "metadata/data-manifest.json"; do
+            file_exists="$(az storage file exists \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$version/data/${required_path}" \
+              --query exists \
+              -o tsv)"
+
+            if [[ "$file_exists" != "true" ]]; then
+              echo "Missing uploaded cache file at $version/data/${required_path}"
+              exit 1
+            fi
+          done
+
+          for required_dir in documentation samples; do
+            dir_exists="$(az storage directory exists \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$version/data/${required_dir}" \
+              --query exists \
+              -o tsv)"
+
+            if [[ "$dir_exists" != "true" ]]; then
+              echo "Missing uploaded cache directory at $version/data/${required_dir}"
+              exit 1
+            fi
+          done
 
       - name: Configure ACA registry auth (managed identity)
         shell: bash
@@ -138,36 +277,46 @@ jobs:
 
           echo "old_revisions_file=/tmp/old_revisions.txt" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy warm-up revision (min=max=1)
+      - name: Deploy single steady revision
+        id: deploy
         shell: bash
         run: |
           set -euo pipefail
 
           version="${{ steps.vars.outputs.version }}"
           cache_root="/mnt/mcp-cache/${version}"
+          data_root="${cache_root}/data"
+          safe_version="$(printf '%s' "$version" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-')"
+          revision_suffix="$(printf '%s-%s' "$safe_version" "$GITHUB_RUN_NUMBER" | tr -s '-' | cut -c1-63)"
+          revision_suffix="${revision_suffix%-}"
+
+          if [[ -z "$revision_suffix" ]]; then
+            revision_suffix="r${GITHUB_RUN_NUMBER}"
+          fi
 
           az containerapp update \
             --name "${{ steps.vars.outputs.container_app }}" \
             --resource-group "${{ steps.vars.outputs.resource_group }}" \
             --image "${{ steps.image.outputs.image_ref }}" \
-            --min-replicas 1 \
+            --revision-suffix "$revision_suffix" \
+            --min-replicas 0 \
             --max-replicas 1 \
             --set-env-vars \
               MCP_PROFILE=semantic-gemini \
               RAG_PROVIDER=gemini \
               RAG_FALLBACK=lexical \
-              MCP_DATA_AUTO_DOWNLOAD=true \
-              MCP_DATA_HYDRATION_MODE=eager \
+              MCP_DATA_AUTO_DOWNLOAD=false \
+              MCP_DATA_DIR="$data_root" \
               MCP_LOG_LEVEL=info \
               MCP_DATA_CACHE_DIR="${cache_root}/data" \
+              RAG_CACHE_DIR="${cache_root}/rag/cache" \
+              RAG_MODEL_CACHE_DIR="${cache_root}/rag/models" \
               TMPDIR="${cache_root}/tmp" \
               TMP="${cache_root}/tmp" \
-              TEMP="${cache_root}/tmp" \
-              RAG_CACHE_DIR="${cache_root}/rag/cache" \
-              RAG_MODEL_CACHE_DIR="${cache_root}/rag/models"
+              TEMP="${cache_root}/tmp"
 
-      - name: Wait for warm-up revision ready
-        id: warm
+      - name: Wait for deployed revision ready
+        id: ready
         shell: bash
         run: |
           set -euo pipefail
@@ -175,22 +324,22 @@ jobs:
           app="${{ steps.vars.outputs.container_app }}"
           rg="${{ steps.vars.outputs.resource_group }}"
 
-          warm_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestRevisionName -o tsv)"
-          echo "warm_revision=$warm_revision" >> "$GITHUB_OUTPUT"
+          deployed_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestRevisionName -o tsv)"
+          echo "deployed_revision=$deployed_revision" >> "$GITHUB_OUTPUT"
 
           for i in {1..40}; do
             ready_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestReadyRevisionName -o tsv)"
-            if [[ "$ready_revision" == "$warm_revision" ]]; then
-              echo "Warm-up revision is ready: $warm_revision"
+            if [[ "$ready_revision" == "$deployed_revision" ]]; then
+              echo "Deployed revision is ready: $deployed_revision"
               exit 0
             fi
             sleep 15
           done
 
-          echo "Timed out waiting for warm-up revision to become ready."
+          echo "Timed out waiting for deployed revision to become ready."
           exit 1
 
-      - name: Shift traffic to warm-up revision
+      - name: Route traffic to deployed revision
         shell: bash
         run: |
           set -euo pipefail
@@ -198,53 +347,7 @@ jobs:
           az containerapp ingress traffic set \
             --name "${{ steps.vars.outputs.container_app }}" \
             --resource-group "${{ steps.vars.outputs.resource_group }}" \
-            --revision-weight "${{ steps.warm.outputs.warm_revision }}=100"
-
-      - name: Set steady-state scale (min=0 max=1)
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          az containerapp update \
-            --name "${{ steps.vars.outputs.container_app }}" \
-            --resource-group "${{ steps.vars.outputs.resource_group }}" \
-            --image "${{ steps.image.outputs.image_ref }}" \
-            --min-replicas 0 \
-            --max-replicas 1
-
-      - name: Wait for steady-state revision ready
-        id: steady
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          app="${{ steps.vars.outputs.container_app }}"
-          rg="${{ steps.vars.outputs.resource_group }}"
-
-          steady_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestRevisionName -o tsv)"
-          echo "steady_revision=$steady_revision" >> "$GITHUB_OUTPUT"
-
-          for i in {1..40}; do
-            ready_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestReadyRevisionName -o tsv)"
-            if [[ "$ready_revision" == "$steady_revision" ]]; then
-              echo "Steady-state revision is ready: $steady_revision"
-              exit 0
-            fi
-            sleep 15
-          done
-
-          echo "Timed out waiting for steady-state revision to become ready."
-          exit 1
-
-      - name: Route traffic to steady-state revision
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          az containerapp ingress traffic set \
-            --name "${{ steps.vars.outputs.container_app }}" \
-            --resource-group "${{ steps.vars.outputs.resource_group }}" \
-            --revision-weight "${{ steps.steady.outputs.steady_revision }}=100"
+            --revision-weight "${{ steps.ready.outputs.deployed_revision }}=100"
 
       - name: Deactivate old revisions
         shell: bash
@@ -253,7 +356,7 @@ jobs:
 
           app="${{ steps.vars.outputs.container_app }}"
           rg="${{ steps.vars.outputs.resource_group }}"
-          current="${{ steps.steady.outputs.steady_revision }}"
+          current="${{ steps.ready.outputs.deployed_revision }}"
 
           while read -r revision; do
             if [[ -n "$revision" && "$revision" != "$current" ]]; then
@@ -283,8 +386,47 @@ jobs:
             --query "[].name" \
             -o tsv)
 
+          version_regex='^[0-9]+(\.[0-9]+){1,3}([.-][0-9A-Za-z]+)*$'
+          versioned_dirs=()
           for dir in "${dirs[@]}"; do
-            if [[ -z "$dir" || "$dir" == "$current_version" ]]; then
+            if [[ -n "$dir" && "$dir" =~ $version_regex ]]; then
+              versioned_dirs+=("$dir")
+            fi
+          done
+
+          if (( ${#versioned_dirs[@]} == 0 )); then
+            echo "No versioned cache directories found; skipping cleanup"
+            exit 0
+          fi
+
+          mapfile -t sorted_versions < <(printf '%s\n' "${versioned_dirs[@]}" | sort -V)
+          keep_versions=("$current_version")
+          current_index=-1
+          for i in "${!sorted_versions[@]}"; do
+            if [[ "${sorted_versions[$i]}" == "$current_version" ]]; then
+              current_index="$i"
+              break
+            fi
+          done
+
+          if (( current_index > 0 )); then
+            previous_version="${sorted_versions[$((current_index - 1))]}"
+            keep_versions+=("$previous_version")
+          fi
+
+          should_keep() {
+            local candidate="$1"
+            for keep in "${keep_versions[@]}"; do
+              if [[ "$candidate" == "$keep" ]]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          for dir in "${versioned_dirs[@]}"; do
+            if should_keep "$dir"; then
+              echo "Keeping cache directory: $dir"
               continue
             fi
 
@@ -314,7 +456,6 @@ jobs:
             echo ""
             echo "- version: \\`${{ steps.vars.outputs.version }}\\`"
             echo "- image: \\`${{ steps.image.outputs.image_ref }}\\`"
-            echo "- warm_revision: \\`${{ steps.warm.outputs.warm_revision }}\\`"
-            echo "- steady_revision: \\`${{ steps.steady.outputs.steady_revision }}\\`"
+            echo "- deployed_revision: \\`${{ steps.ready.outputs.deployed_revision }}\\`"
             echo "- endpoint: \\`https://${fqdn}/mcp\\`"
           } >> "$GITHUB_STEP_SUMMARY"
