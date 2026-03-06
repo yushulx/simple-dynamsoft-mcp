@@ -1,0 +1,145 @@
+name: Data Sync Azure
+
+on:
+  workflow_run:
+    workflows: ["Update Data Lock"]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  data-sync-azure:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    environment: azure-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve Azure shared-state variables
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ vars.AZURE_CACHE_STORAGE_ACCOUNT }}"
+          share="${{ vars.AZURE_CACHE_FILE_SHARE }}"
+          state_path="${{ vars.AZURE_SHARED_STATE_PATH }}"
+
+          if [[ -z "$account" ]]; then
+            account="simpledynamsoftmcpsa"
+          fi
+          if [[ -z "$share" ]]; then
+            share="mcp-cache"
+          fi
+          if [[ -z "$state_path" ]]; then
+            state_path="shared-state/current.json"
+          fi
+
+          echo "storage_account=$account" >> "$GITHUB_OUTPUT"
+          echo "share_name=$share" >> "$GITHUB_OUTPUT"
+          echo "state_path=$state_path" >> "$GITHUB_OUTPUT"
+
+      - name: Download existing shared state from Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.share_name }}"
+          state_path="${{ steps.vars.outputs.state_path }}"
+          local_root="$RUNNER_TEMP/azure-shared-state"
+          local_current="$local_root/current.json"
+
+          mkdir -p "$local_root"
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+          exists="$(az storage file exists \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --path "$state_path" \
+            --query exists \
+            -o tsv)"
+
+          if [[ "$exists" == "true" ]]; then
+            az storage file download \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$state_path" \
+              --dest "$local_current" \
+              --only-show-errors \
+              --no-progress >/dev/null
+            echo "[data-sync-azure] downloaded existing state: $state_path"
+          else
+            echo "[data-sync-azure] no existing state found at $state_path; initializing empty state"
+          fi
+
+          echo "AZURE_SHARED_STATE_CURRENT=$local_current" >> "$GITHUB_ENV"
+          echo "AZURE_SHARED_STATE_ROOT=$local_root" >> "$GITHUB_ENV"
+
+      - name: Plan incremental sync and promote local state
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          node scripts/data-sync-azure.mjs \
+            --current-state "$AZURE_SHARED_STATE_CURRENT" \
+            --next-state "$AZURE_SHARED_STATE_ROOT/next-state.json" \
+            --plan-output "$AZURE_SHARED_STATE_ROOT/plan.json"
+
+      - name: Upload promoted shared state to Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.share_name }}"
+          state_path="${{ steps.vars.outputs.state_path }}"
+          local_current="$AZURE_SHARED_STATE_CURRENT"
+
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+          state_dir="$(dirname "$state_path")"
+          if [[ "$state_dir" != "." ]]; then
+            az storage directory create \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$state_dir" >/dev/null
+          fi
+
+          az storage file upload \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --path "$state_path" \
+            --source "$local_current" \
+            --overwrite true \
+            --only-show-errors \
+            --no-progress >/dev/null
+
+      - name: Workflow summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const fs=require("node:fs"); const p=process.env.AZURE_SHARED_STATE_ROOT+"/plan.json"; const plan=JSON.parse(fs.readFileSync(p,"utf8")); const s=plan.summary; console.log("## Data Sync Azure"); console.log("- has_changes: `"+s.hasChanges+"`"); console.log("- repos_changed: `"+s.changed+"`"); console.log("- repos_added: `"+s.added+"`"); console.log("- repos_removed: `"+s.removed+"`");' >> "$GITHUB_STEP_SUMMARY"
