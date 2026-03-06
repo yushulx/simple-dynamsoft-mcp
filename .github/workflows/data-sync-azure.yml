@@ -130,10 +130,30 @@ jobs:
         run: |
           set -euo pipefail
 
+          embedding_model="${{ vars.DATA_SYNC_AZURE_EMBEDDING_MODEL }}"
+          index_version="${{ vars.DATA_SYNC_AZURE_INDEX_VERSION }}"
+          chunk_size="${{ vars.DATA_SYNC_AZURE_CHUNK_SIZE }}"
+          chunk_overlap="${{ vars.DATA_SYNC_AZURE_CHUNK_OVERLAP }}"
+          max_chunks_per_doc="${{ vars.DATA_SYNC_AZURE_MAX_CHUNKS_PER_DOC }}"
+          max_text_chars="${{ vars.DATA_SYNC_AZURE_MAX_TEXT_CHARS }}"
+
+          if [[ -z "$embedding_model" ]]; then embedding_model="models/gemini-embedding-001"; fi
+          if [[ -z "$index_version" ]]; then index_version="azure-shared-v1"; fi
+          if [[ -z "$chunk_size" ]]; then chunk_size="1200"; fi
+          if [[ -z "$chunk_overlap" ]]; then chunk_overlap="200"; fi
+          if [[ -z "$max_chunks_per_doc" ]]; then max_chunks_per_doc="6"; fi
+          if [[ -z "$max_text_chars" ]]; then max_text_chars="4000"; fi
+
           node scripts/data-sync-azure.mjs \
             --current-state "$AZURE_SHARED_STATE_CURRENT" \
             --next-state "$AZURE_SHARED_STATE_ROOT/state/next-state.json" \
-            --plan-output "$AZURE_SHARED_STATE_ROOT/state/plan.json"
+            --plan-output "$AZURE_SHARED_STATE_ROOT/state/plan.json" \
+            --embedding-model "$embedding_model" \
+            --index-version "$index_version" \
+            --chunk-size "$chunk_size" \
+            --chunk-overlap "$chunk_overlap" \
+            --max-chunks-per-doc "$max_chunks_per_doc" \
+            --max-text-chars "$max_text_chars"
 
       - name: Upload promoted shared state to Azure Files
         shell: bash

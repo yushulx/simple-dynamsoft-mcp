@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 
 import { buildReposState, parseArgs } from "../../scripts/compute-repo-signatures.mjs";
 
-test("parseArgs accepts integer signature options", () => {
+test("parseArgs accepts signature options", () => {
   const args = parseArgs([
     "--index-version",
-    "2",
+    "azure-shared-v2",
     "--chunk-size",
     "1800",
     "--chunk-overlap",
@@ -17,7 +17,7 @@ test("parseArgs accepts integer signature options", () => {
     "12000"
   ]);
 
-  assert.equal(args.indexVersion, 2);
+  assert.equal(args.indexVersion, "azure-shared-v2");
   assert.equal(args.indexConfig.chunkSize, 1800);
   assert.equal(args.indexConfig.chunkOverlap, 250);
   assert.equal(args.indexConfig.maxChunksPerDoc, 30);
@@ -25,18 +25,29 @@ test("parseArgs accepts integer signature options", () => {
 });
 
 test("parseArgs rejects non-integer numeric options", () => {
-  assert.throws(() => parseArgs(["--index-version", "1.5"]), /--index-version/);
   assert.throws(() => parseArgs(["--chunk-size", "ten"]), /--chunk-size/);
   assert.throws(() => parseArgs(["--chunk-overlap", "2.4"]), /--chunk-overlap/);
   assert.throws(() => parseArgs(["--max-text-chars", "12abc"]), /--max-text-chars/);
 });
 
 test("parseArgs enforces lower bounds for numeric options", () => {
-  assert.throws(() => parseArgs(["--index-version", "0"]), />= 1/);
   assert.throws(() => parseArgs(["--chunk-size", "-1"]), />= 0/);
   assert.throws(() => parseArgs(["--chunk-overlap", "-1"]), />= 0/);
   assert.throws(() => parseArgs(["--max-text-chars", "-1"]), />= 0/);
   assert.throws(() => parseArgs(["--max-chunks-per-doc", "0"]), />= 1/);
+});
+
+test("parseArgs defaults match runtime gemini signature inputs", () => {
+  const args = parseArgs([], {});
+
+  assert.equal(args.embeddingModel, "models/gemini-embedding-001");
+  assert.equal(args.indexVersion, "azure-shared-v1");
+  assert.deepEqual(args.indexConfig, {
+    chunkSize: 1200,
+    chunkOverlap: 200,
+    maxChunksPerDoc: 6,
+    maxTextChars: 4000
+  });
 });
 
 test("buildReposState throws when two repos collide on normalized key", () => {
@@ -55,7 +66,7 @@ test("buildReposState throws when two repos collide on normalized key", () => {
         ],
         {
           embeddingModel: "text-embedding-3-large",
-          indexVersion: 1,
+          indexVersion: "azure-shared-v1",
           schemaVersion: 1,
           indexConfig: {}
         }
@@ -75,7 +86,7 @@ test("buildReposState uses flat rag cache shard paths", () => {
     ],
     {
       embeddingModel: "text-embedding-3-large",
-      indexVersion: 1,
+      indexVersion: "azure-shared-v1",
       schemaVersion: 1,
       indexConfig: {}
     }

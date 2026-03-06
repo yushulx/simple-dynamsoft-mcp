@@ -43,7 +43,7 @@ async function embedTextsWithProgress(
     onChunk = null,
     providerName = "",
     logRag,
-    isRateLimitError
+    isRateLimitError = () => false
   } = {}
 ) {
   const results = [];

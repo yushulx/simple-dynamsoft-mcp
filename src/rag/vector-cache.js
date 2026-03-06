@@ -133,6 +133,11 @@ function resolveSharedShardFile(sharedStatePath, shardPath) {
     return rawShardPath;
   }
 
+  const rawSegments = rawShardPath.replace(/\\/g, "/").split("/").filter(Boolean);
+  if (rawSegments.includes("..")) {
+    throw new Error("shared shard path must not include parent traversal segments");
+  }
+
   const normalizedShardPath = normalizeRepoPath(rawShardPath);
   if (!normalizedShardPath) {
     throw new Error("shared shard path is empty");

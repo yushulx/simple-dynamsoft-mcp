@@ -13,6 +13,14 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
+const DEFAULT_EMBEDDING_MODEL = "models/gemini-embedding-001";
+const DEFAULT_INDEX_VERSION = "azure-shared-v1";
+const DEFAULT_INDEX_CONFIG = {
+  chunkSize: 1200,
+  chunkOverlap: 200,
+  maxChunksPerDoc: 6,
+  maxTextChars: 4000
+};
 
 function parseIntegerOption(flag, rawValue, { min = 0 } = {}) {
   const valueText = String(rawValue ?? "").trim();
@@ -31,15 +39,30 @@ function parseIntegerOption(flag, rawValue, { min = 0 } = {}) {
   return value;
 }
 
-function parseArgs(argv) {
+function parseArgs(argv, env = process.env) {
+  const defaultIndexConfig = {
+    chunkSize: env.DATA_SYNC_AZURE_CHUNK_SIZE
+      ? parseIntegerOption("--chunk-size", env.DATA_SYNC_AZURE_CHUNK_SIZE, { min: 0 })
+      : DEFAULT_INDEX_CONFIG.chunkSize,
+    chunkOverlap: env.DATA_SYNC_AZURE_CHUNK_OVERLAP
+      ? parseIntegerOption("--chunk-overlap", env.DATA_SYNC_AZURE_CHUNK_OVERLAP, { min: 0 })
+      : DEFAULT_INDEX_CONFIG.chunkOverlap,
+    maxChunksPerDoc: env.DATA_SYNC_AZURE_MAX_CHUNKS_PER_DOC
+      ? parseIntegerOption("--max-chunks-per-doc", env.DATA_SYNC_AZURE_MAX_CHUNKS_PER_DOC, { min: 1 })
+      : DEFAULT_INDEX_CONFIG.maxChunksPerDoc,
+    maxTextChars: env.DATA_SYNC_AZURE_MAX_TEXT_CHARS
+      ? parseIntegerOption("--max-text-chars", env.DATA_SYNC_AZURE_MAX_TEXT_CHARS, { min: 0 })
+      : DEFAULT_INDEX_CONFIG.maxTextChars
+  };
+
   const args = {
     manifest: "data/metadata/data-manifest.json",
     output: "",
-    embeddingModel: "text-embedding-3-large",
-    indexVersion: 1,
+    embeddingModel: env.DATA_SYNC_AZURE_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+    indexVersion: env.DATA_SYNC_AZURE_INDEX_VERSION || DEFAULT_INDEX_VERSION,
     generatedAt: new Date().toISOString(),
     schemaVersion: SHARED_STATE_SCHEMA_VERSION,
-    indexConfig: {}
+    indexConfig: defaultIndexConfig
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -62,7 +85,7 @@ function parseArgs(argv) {
       continue;
     }
     if (arg === "--index-version" && value) {
-      args.indexVersion = parseIntegerOption("--index-version", value, { min: 1 });
+      args.indexVersion = String(value).trim();
       i++;
       continue;
     }

@@ -14,6 +14,14 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
+const DEFAULT_EMBEDDING_MODEL = "models/gemini-embedding-001";
+const DEFAULT_INDEX_VERSION = "azure-shared-v1";
+const DEFAULT_INDEX_CONFIG = {
+  chunkSize: 1200,
+  chunkOverlap: 200,
+  maxChunksPerDoc: 6,
+  maxTextChars: 4000
+};
 
 function parseIntegerOption(flag, rawValue, { min = 0 } = {}) {
   const text = String(rawValue ?? "").trim();
@@ -37,16 +45,30 @@ function toAbsolutePath(pathValue) {
 
 function parseArgs(argv, env = process.env) {
   const currentStatePath = env.DATA_SYNC_AZURE_CURRENT_STATE_PATH || ".tmp/azure-shared-state/state/current.json";
+  const defaultIndexConfig = {
+    chunkSize: env.DATA_SYNC_AZURE_CHUNK_SIZE
+      ? parseIntegerOption("--chunk-size", env.DATA_SYNC_AZURE_CHUNK_SIZE, { min: 0 })
+      : DEFAULT_INDEX_CONFIG.chunkSize,
+    chunkOverlap: env.DATA_SYNC_AZURE_CHUNK_OVERLAP
+      ? parseIntegerOption("--chunk-overlap", env.DATA_SYNC_AZURE_CHUNK_OVERLAP, { min: 0 })
+      : DEFAULT_INDEX_CONFIG.chunkOverlap,
+    maxChunksPerDoc: env.DATA_SYNC_AZURE_MAX_CHUNKS_PER_DOC
+      ? parseIntegerOption("--max-chunks-per-doc", env.DATA_SYNC_AZURE_MAX_CHUNKS_PER_DOC, { min: 1 })
+      : DEFAULT_INDEX_CONFIG.maxChunksPerDoc,
+    maxTextChars: env.DATA_SYNC_AZURE_MAX_TEXT_CHARS
+      ? parseIntegerOption("--max-text-chars", env.DATA_SYNC_AZURE_MAX_TEXT_CHARS, { min: 0 })
+      : DEFAULT_INDEX_CONFIG.maxTextChars
+  };
   const defaults = {
     manifestPath: env.DATA_SYNC_AZURE_MANIFEST_PATH || "data/metadata/data-manifest.json",
     currentStatePath,
     nextStatePath: env.DATA_SYNC_AZURE_NEXT_STATE_PATH || ".tmp/azure-shared-state/state/next-state.json",
     planOutputPath: env.DATA_SYNC_AZURE_PLAN_OUTPUT_PATH || ".tmp/azure-shared-state/state/plan.json",
-    embeddingModel: env.DATA_SYNC_AZURE_EMBEDDING_MODEL || "text-embedding-3-large",
-    indexVersion: env.DATA_SYNC_AZURE_INDEX_VERSION || "azure-shared-v1",
+    embeddingModel: env.DATA_SYNC_AZURE_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+    indexVersion: env.DATA_SYNC_AZURE_INDEX_VERSION || DEFAULT_INDEX_VERSION,
     generatedAt: env.DATA_SYNC_AZURE_GENERATED_AT || new Date().toISOString(),
     schemaVersion: SHARED_STATE_SCHEMA_VERSION,
-    indexConfig: {}
+    indexConfig: defaultIndexConfig
   };
 
   for (let i = 0; i < argv.length; i++) {

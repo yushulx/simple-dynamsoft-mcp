@@ -115,6 +115,14 @@ test("parseArgs defaults local simulation state paths under state directory", ()
   assert.match(args.currentStatePath, /\.tmp\/azure-shared-state\/state\/current\.json$/);
   assert.match(args.nextStatePath, /\.tmp\/azure-shared-state\/state\/next-state\.json$/);
   assert.match(args.planOutputPath, /\.tmp\/azure-shared-state\/state\/plan\.json$/);
+  assert.equal(args.embeddingModel, "models/gemini-embedding-001");
+  assert.equal(args.indexVersion, "azure-shared-v1");
+  assert.deepEqual(args.indexConfig, {
+    chunkSize: 1200,
+    chunkOverlap: 200,
+    maxChunksPerDoc: 6,
+    maxTextChars: 4000
+  });
 });
 
 test("runDataSyncAzure writes plan, next state, and promotes current state atomically", () => {

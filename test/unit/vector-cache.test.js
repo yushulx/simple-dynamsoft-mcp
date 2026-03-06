@@ -264,6 +264,69 @@ test("shared shard missing returns graceful failure metadata", async () => {
   }
 });
 
+test("shared shard path traversal is rejected", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "vector-cache-shared-traversal-"));
+  const cacheDir = join(rootDir, "cache");
+  const sharedStatePath = join(rootDir, "state", "current.json");
+  const model = "models/gemini-embedding-001";
+  const indexVersion = "azure-shared-v1";
+
+  try {
+    const manifestRepos = [
+      {
+        path: "documentation/capture-vision-docs-js",
+        commit: "3137b83d966e795190a9681e544045a5e526c083"
+      }
+    ];
+    createManifest(rootDir, manifestRepos);
+
+    const repoSignature = computeRepoSignature({
+      repo: manifestRepos[0],
+      embeddingModel: model,
+      indexConfig: {
+        chunkSize: 1200,
+        chunkOverlap: 200,
+        maxChunksPerDoc: 6,
+        maxTextChars: 4000
+      },
+      indexVersion
+    });
+
+    const sharedState = createSharedState({
+      indexVersion,
+      repos: {
+        "documentation/capture-vision-docs-js": {
+          path: "documentation/capture-vision-docs-js",
+          commit: manifestRepos[0].commit,
+          signature: repoSignature,
+          shardPath: "../../etc/passwd"
+        }
+      }
+    });
+    mkdirSync(dirname(sharedStatePath), { recursive: true });
+    writeFileSync(sharedStatePath, JSON.stringify(sharedState));
+
+    const ragConfig = makeRagConfig({ rootDir, cacheDir, sharedStatePath });
+    const vectorCache = makeHelpers(ragConfig);
+
+    const result = await vectorCache.maybeLoadSharedVectorIndex({
+      provider: "gemini",
+      model,
+      cacheKey: "1234567890abcdef1234567890abcdef",
+      signature: "runtime-signature",
+      cacheFile: join(cacheDir, "gemini-cache.json")
+    });
+
+    assert.equal(result.loaded, false);
+    assert.equal(result.fatal, true);
+    assert.equal(result.reason, "shared_shard_error");
+    assert.ok(result.error instanceof Error);
+    assert.match(result.error.message, /must not include parent traversal segments/);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("absolute shard paths are used directly without normalization", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "vector-cache-shared-absolute-"));
   const cacheDir = join(rootDir, "cache");
