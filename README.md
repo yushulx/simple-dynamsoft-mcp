@@ -33,7 +33,8 @@ npx -y simple-dynamsoft-mcp@latest
 
 ## Deployment Guides
 
-- Azure Container Apps runbook: `docs/deployment/azure-container-apps.md`
+- Azure Container Apps runbook (two-lane release/data architecture): `docs/deployment/azure-container-apps.md`
+- Shared Azure data/index sync runbook: `docs/deployment/data-sync-azure.md`
 - Self-hosting (Ubuntu/any server): `docs/deployment/self-hosting.md`
 
 ## MCP Client Configuration
