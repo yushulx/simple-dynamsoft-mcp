@@ -17,7 +17,7 @@ function resolveProviderChain(ragConfig) {
 async function embedTextsWithProgress(
   texts,
   embedder,
-  _batchSize = 1,
+  batchSize = 1,
   {
     offset = 0,
     total = texts.length,
@@ -27,6 +27,7 @@ async function embedTextsWithProgress(
   } = {}
 ) {
   const results = [];
+  const normalizedBatchSize = Math.max(1, Number(batchSize) || 1);
   let completed = offset;
 
   const reportChunk = async (vectors, mode, sourceBatchSize) => {
@@ -43,10 +44,35 @@ async function embedTextsWithProgress(
     }
   };
 
-  for (const text of texts) {
-    const vector = await embedder.embed(text);
-    results.push(vector);
-    await reportChunk([vector], "single", 1);
+  if (embedder.embedBatch && normalizedBatchSize > 1) {
+    for (let index = 0; index < texts.length; index += normalizedBatchSize) {
+      const chunk = texts.slice(index, index + normalizedBatchSize);
+      try {
+        const vectors = await embedder.embedBatch(chunk);
+        if (!Array.isArray(vectors) || vectors.length !== chunk.length) {
+          throw new Error(
+            `Gemini batch response size mismatch expected=${chunk.length} actual=${vectors?.length || 0}`
+          );
+        }
+        results.push(...vectors);
+        await reportChunk(vectors, "batch", chunk.length);
+      } catch (error) {
+        logRag(
+          `batch embedding fallback provider=${providerName || "unknown"} batch_size=${chunk.length} reason=${error.message}`
+        );
+        for (const text of chunk) {
+          const vector = await embedder.embed(text);
+          results.push(vector);
+          await reportChunk([vector], "single_fallback", 1);
+        }
+      }
+    }
+  } else {
+    for (const text of texts) {
+      const vector = await embedder.embed(text);
+      results.push(vector);
+      await reportChunk([vector], "single", 1);
+    }
   }
 
   if (providerName) {
@@ -84,18 +110,40 @@ function createProviderOrchestrator({
     if (geminiEmbedderPromise) return geminiEmbedderPromise;
     geminiEmbedderPromise = Promise.resolve((() => {
       const client = new GoogleGenAI({ apiKey: ragConfig.geminiApiKey });
+      const extractEmbeddingValues = (payloadItem) => {
+        const values = payloadItem?.values || payloadItem?.embedding?.values;
+        if (!Array.isArray(values) || values.length === 0) {
+          throw new Error("Gemini embedding response missing embedding values.");
+        }
+        return values;
+      };
+
+      const embedBatch = async (texts) => {
+        const payload = await client.models.embedContent({
+          model: ragConfig.geminiModel,
+          contents: texts
+        });
+        const embeddings = Array.isArray(payload?.embeddings)
+          ? payload.embeddings
+          : payload?.embedding
+            ? [payload.embedding]
+            : [];
+
+        if (embeddings.length !== texts.length) {
+          throw new Error(
+            `Gemini batch response size mismatch expected=${texts.length} actual=${embeddings.length}`
+          );
+        }
+
+        return embeddings.map((item) => extractEmbeddingValues(item));
+      };
+
       return {
         embed: async (text) => {
-          const payload = await client.models.embedContent({
-            model: ragConfig.geminiModel,
-            contents: text
-          });
-          const embedding = payload?.embeddings?.[0]?.values || payload?.embedding?.values;
-          if (!Array.isArray(embedding) || embedding.length === 0) {
-            throw new Error("Gemini embedding response missing embedding values.");
-          }
-          return embedding;
-        }
+          const vectors = await embedBatch([text]);
+          return vectors[0];
+        },
+        embedBatch
       };
     })());
     return geminiEmbedderPromise;
@@ -206,14 +254,15 @@ function createProviderOrchestrator({
         };
 
         if (resumeFrom < texts.length) {
+          const plannedBatchSize = name === "gemini" ? Math.max(1, ragConfig.geminiBatchSize || 1) : 1;
           logRag(
-            `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=1`
+            `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=${plannedBatchSize}`
           );
           try {
             const embeddingResult = await embedTextsWithProgress(
               texts.slice(resumeFrom),
               embedder,
-              1,
+              plannedBatchSize,
               {
                 offset: resumeFrom,
                 total: texts.length,

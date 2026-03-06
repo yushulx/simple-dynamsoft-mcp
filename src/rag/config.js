@@ -75,7 +75,8 @@ const ragConfig = {
   prebuiltIndexUrlGemini: readEnvValue("RAG_PREBUILT_INDEX_URL_GEMINI", defaultPrebuiltIndexUrls.gemini),
   prebuiltIndexTimeoutMs: readIntEnv("RAG_PREBUILT_INDEX_TIMEOUT_MS", 180000),
   geminiApiKey: readEnvValue("GEMINI_API_KEY", ""),
-  geminiModel: normalizeGeminiModel(readEnvValue("GEMINI_EMBED_MODEL", "models/gemini-embedding-001"))
+  geminiModel: normalizeGeminiModel(readEnvValue("GEMINI_EMBED_MODEL", "models/gemini-embedding-001")),
+  geminiBatchSize: readIntEnv("GEMINI_EMBED_BATCH_SIZE", 16)
 };
 
 export {
