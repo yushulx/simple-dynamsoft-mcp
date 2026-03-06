@@ -120,6 +120,86 @@ test("loads shared state shards for gemini provider", async () => {
   }
 });
 
+test("loads shared shards when shared-state.json is in a top-level state directory", async () => {
+  const rootDir = mkdtempSync(join(tmpdir(), "vector-cache-shared-state-top-level-"));
+  const cacheDir = join(rootDir, "cache");
+  const sharedStatePath = join(rootDir, "state", "shared-state.json");
+  const model = "models/gemini-embedding-001";
+  const indexVersion = "azure-shared-v1";
+
+  try {
+    const manifestRepos = [
+      {
+        path: "documentation/capture-vision-docs-js",
+        commit: "3137b83d966e795190a9681e544045a5e526c083"
+      }
+    ];
+    createManifest(rootDir, manifestRepos);
+
+    const repoSignature = computeRepoSignature({
+      repo: manifestRepos[0],
+      embeddingModel: model,
+      indexConfig: {
+        chunkSize: 1200,
+        chunkOverlap: 200,
+        maxChunksPerDoc: 6,
+        maxTextChars: 4000
+      },
+      indexVersion
+    });
+
+    const shardPath = `shared/indexes/gemini/${repoSignature}.json`;
+    const shardFile = join(rootDir, shardPath);
+    mkdirSync(dirname(shardFile), { recursive: true });
+    writeFileSync(shardFile, JSON.stringify({
+      items: [{ id: "chunk-1", uri: "doc://1" }],
+      vectors: [[0.1, 0.2, 0.3]]
+    }));
+
+    const sharedState = createSharedState({
+      indexVersion,
+      repos: {
+        "documentation/capture-vision-docs-js": {
+          path: "documentation/capture-vision-docs-js",
+          commit: manifestRepos[0].commit,
+          signature: repoSignature,
+          shardPath
+        }
+      }
+    });
+    mkdirSync(dirname(sharedStatePath), { recursive: true });
+    writeFileSync(sharedStatePath, JSON.stringify(sharedState));
+
+    const ragConfig = makeRagConfig({ rootDir, cacheDir, sharedStatePath });
+    const vectorCache = makeHelpers(ragConfig);
+
+    const cacheKey = "1234567890abcdef1234567890abcdef";
+    const cacheFile = join(cacheDir, vectorCache.makeCacheFileName("gemini", model, cacheKey));
+    const signature = "runtime-signature";
+
+    const result = await vectorCache.maybeLoadSharedVectorIndex({
+      provider: "gemini",
+      model,
+      cacheKey,
+      signature,
+      cacheFile
+    });
+
+    assert.equal(result.loaded, true, JSON.stringify(result));
+    const loaded = vectorCache.loadVectorIndexCache(cacheFile, {
+      cacheKey,
+      provider: "gemini",
+      model,
+      signature
+    });
+    assert.equal(loaded.hit, true);
+    assert.equal(loaded.payload.items.length, 1);
+    assert.equal(loaded.payload.vectors.length, 1);
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
 test("shared shard missing returns graceful failure metadata", async () => {
   const rootDir = mkdtempSync(join(tmpdir(), "vector-cache-shared-missing-"));
   const cacheDir = join(rootDir, "cache");

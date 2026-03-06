@@ -134,9 +134,11 @@ function resolveSharedShardFile(sharedStatePath, shardPath) {
   }
 
   const stateDir = dirname(sharedStatePath);
-  const workspaceRoot = dirname(dirname(stateDir));
+  const sharedRoot = dirname(stateDir);
+  const workspaceRoot = dirname(sharedRoot);
   const candidates = [
     resolve(stateDir, normalizedShardPath),
+    resolve(sharedRoot, normalizedShardPath),
     resolve(workspaceRoot, normalizedShardPath),
     resolve(process.cwd(), normalizedShardPath)
   ];
