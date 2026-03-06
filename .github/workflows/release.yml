@@ -378,4 +378,5 @@ jobs:
       tag: ${{ needs.detect.outputs.tag }}
       image_repository: simple-dynamsoft-mcp
       data_artifact_name: hydrated-release-data
+      rag_artifact_name: prebuilt-rag-index
     secrets: inherit
