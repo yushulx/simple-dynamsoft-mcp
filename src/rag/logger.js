@@ -25,9 +25,7 @@ function logRagConfigOnce(ragConfig) {
     `cache_dir=${ragConfig.cacheDir} prebuilt_auto_download=${ragConfig.prebuiltIndexAutoDownload} ` +
     `prebuilt_url_override=${ragConfig.prebuiltIndexUrl ? "set" : "empty"} ` +
     `prebuilt_url_gemini=${ragConfig.prebuiltIndexUrlGemini ? "set" : "empty"} ` +
-    `prebuilt_timeout_ms=${ragConfig.prebuiltIndexTimeoutMs} gemini_retry_max_attempts=${ragConfig.geminiRetryMaxAttempts} ` +
-    `gemini_retry_base_delay_ms=${ragConfig.geminiRetryBaseDelayMs} gemini_retry_max_delay_ms=${ragConfig.geminiRetryMaxDelayMs} ` +
-    `gemini_request_throttle_ms=${ragConfig.geminiRequestThrottleMs}`
+    `prebuilt_timeout_ms=${ragConfig.prebuiltIndexTimeoutMs}`
   );
 }
 

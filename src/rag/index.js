@@ -27,8 +27,7 @@ import {
   buildEmbeddingItems,
   buildIndexSignature,
   normalizeVector,
-  dotProduct,
-  isRateLimitError
+  dotProduct
 } from "./search-utils.js";
 import { createProviderOrchestrator } from "./providers.js";
 import { createVectorCacheHelpers } from "./vector-cache.js";
@@ -42,7 +41,6 @@ const searchUtils = {
   buildIndexSignature,
   normalizeVector,
   dotProduct,
-  isRateLimitError,
   entryMatchesScope: (entry, filters) => entryMatchesScope(entry, filters, {
     editionMatches,
     platformMatches
