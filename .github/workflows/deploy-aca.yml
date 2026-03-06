@@ -255,6 +255,41 @@ jobs:
             fi
           done
 
+      - name: Probe RAG cache storage readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.cache_share }}"
+          version="${{ steps.vars.outputs.version }}"
+
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+
+          for required_dir in \
+            "$version/rag" \
+            "$version/rag/cache" \
+            "$version/rag/models"; do
+            az storage directory create \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$required_dir" >/dev/null
+
+            dir_exists="$(az storage directory exists \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$required_dir" \
+              --query exists \
+              -o tsv)"
+
+            if [[ "$dir_exists" != "true" ]]; then
+              echo "RAG storage readiness probe failed: missing directory $required_dir in share $share (account $account)"
+              exit 1
+            fi
+          done
+
       - name: Configure ACA registry auth (managed identity)
         shell: bash
         run: |
