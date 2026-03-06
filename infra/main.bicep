@@ -203,6 +203,18 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: '/mnt/mcp-cache/bootstrap/data'
             }
             {
+              name: 'TMPDIR'
+              value: '/mnt/mcp-cache/bootstrap/tmp'
+            }
+            {
+              name: 'TMP'
+              value: '/mnt/mcp-cache/bootstrap/tmp'
+            }
+            {
+              name: 'TEMP'
+              value: '/mnt/mcp-cache/bootstrap/tmp'
+            }
+            {
               name: 'MCP_LOG_LEVEL'
               value: 'info'
             }

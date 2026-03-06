@@ -308,6 +308,7 @@ jobs:
               MCP_DATA_AUTO_DOWNLOAD=false \
               MCP_DATA_DIR="$data_root" \
               MCP_LOG_LEVEL=info \
+              MCP_DATA_CACHE_DIR="${cache_root}/data" \
               RAG_CACHE_DIR="${cache_root}/rag/cache" \
               RAG_MODEL_CACHE_DIR="${cache_root}/rag/models" \
               TMPDIR="${cache_root}/tmp" \
