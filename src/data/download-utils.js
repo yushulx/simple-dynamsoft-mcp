@@ -1,9 +1,6 @@
 import { dirname, join } from "node:path";
 import { existsSync, renameSync, rmSync } from "node:fs";
-
-function sleepMs(delayMs) {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
-}
+import pRetry from "p-retry";
 
 function parseHttpStatus(message) {
   const match = String(message || "").match(/HTTP\s+(\d{3})/i);
@@ -36,22 +33,30 @@ async function withRetry(operation, {
   shouldRetry,
   onRetry
 }) {
-  let lastError = null;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      return await operation(attempt);
-    } catch (error) {
-      lastError = error;
-      const canRetry = attempt < maxAttempts && shouldRetry(error);
-      if (!canRetry) throw error;
-      const delayMs = getBackoffDelayMs(attempt, baseDelayMs, maxDelayMs);
-      if (typeof onRetry === "function") {
-        onRetry({ attempt, delayMs, error });
+  return pRetry(
+    async (attempt) => operation(attempt),
+    {
+      retries: Math.max(0, maxAttempts - 1),
+      factor: 2,
+      minTimeout: baseDelayMs,
+      maxTimeout: maxDelayMs,
+      randomize: false,
+      shouldRetry: (error) => {
+        if (!Number.isFinite(error?.attemptNumber)) return false;
+        if (error.attemptNumber >= maxAttempts) return false;
+        return shouldRetry(error);
+      },
+      onFailedAttempt: (error) => {
+        if (typeof onRetry !== "function") return;
+        if (!Number.isFinite(error?.retriesLeft) || error.retriesLeft <= 0) return;
+        onRetry({
+          attempt: error.attemptNumber,
+          delayMs: getBackoffDelayMs(error.attemptNumber, baseDelayMs, maxDelayMs),
+          error
+        });
       }
-      await sleepMs(delayMs);
     }
-  }
-  throw lastError || new Error("Retry operation failed");
+  );
 }
 
 function replaceDirectoryWithRollback(targetPath, stagedPath) {

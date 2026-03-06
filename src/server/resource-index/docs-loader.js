@@ -1,31 +1,8 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
-function parseFrontMatter(markdown) {
-  if (!markdown || !markdown.startsWith("---")) {
-    return { meta: {}, body: markdown || "" };
-  }
-  const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (!match) {
-    return { meta: {}, body: markdown };
-  }
-  const metaBlock = match[1];
-  const body = markdown.slice(match[0].length);
-  const meta = {};
-  for (const rawLine of metaBlock.split("\n")) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    const colon = line.indexOf(":");
-    if (colon < 0) continue;
-    const key = line.slice(0, colon).trim();
-    let value = line.slice(colon + 1).trim();
-    if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
-    meta[key] = value;
-  }
-  return { meta, body };
-}
+import fg from "fast-glob";
+import matter from "gray-matter";
 
 function getHeadingTitle(markdownBody) {
   if (!markdownBody) return "";
@@ -57,29 +34,31 @@ function buildBreadcrumbFromPath(relativePath) {
 }
 
 function collectMarkdownFiles(rootDir, options = {}) {
-  const files = [];
   const excludeDirs = new Set(options.excludeDirs || []);
   const excludeFiles = new Set(options.excludeFiles || []);
   const includeDirNames = new Set(options.includeDirNames || []);
 
-  function walk(dir) {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".") && !includeDirNames.has(entry.name)) continue;
-      if (entry.isDirectory()) {
-        if (excludeDirs.has(entry.name)) continue;
-        walk(join(dir, entry.name));
-        continue;
-      }
-      if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-        if (excludeFiles.has(entry.name)) continue;
-        files.push(join(dir, entry.name));
-      }
-    }
-  }
+  const files = fg.sync("**/*.md", {
+    cwd: rootDir,
+    onlyFiles: true,
+    dot: true
+  });
 
-  walk(rootDir);
-  return files.sort();
+  return files
+    .filter((relativePath) => {
+      const normalized = relativePath.replace(/\\/g, "/");
+      const segments = normalized.split("/").filter(Boolean);
+      const fileName = segments[segments.length - 1] || "";
+      if (excludeFiles.has(fileName)) return false;
+      for (let i = 0; i < segments.length - 1; i += 1) {
+        const segment = segments[i];
+        if (excludeDirs.has(segment)) return false;
+        if (segment.startsWith(".") && !includeDirNames.has(segment)) return false;
+      }
+      if (fileName.startsWith(".") && !includeDirNames.has(fileName)) return false;
+      return true;
+    })
+    .sort();
 }
 
 function markdownPathToUrl(baseUrl, relativePath) {
@@ -93,17 +72,19 @@ function loadMarkdownDocs({ rootDir, urlBase, includeDirNames = [], excludeDirs 
   const files = collectMarkdownFiles(rootDir, { includeDirNames, excludeDirs, excludeFiles });
   const articles = [];
 
-  for (const filePath of files) {
-    const relativePath = relative(rootDir, filePath).replace(/\\/g, "/");
+  for (const relativePath of files) {
+    const filePath = join(rootDir, relativePath);
     const raw = readFileSync(filePath, "utf8");
-    const parsed = parseFrontMatter(raw);
-    const title = parsed.meta.title || getHeadingTitle(parsed.body) || formatSegmentLabel(relativePath.replace(/\.md$/i, "").split("/").pop());
+    const parsed = matter(raw);
+    const frontmatterTitle = typeof parsed.data?.title === "string" ? parsed.data.title.trim() : "";
+    const title = frontmatterTitle || getHeadingTitle(parsed.content) || formatSegmentLabel(relativePath.replace(/\.md$/i, "").split("/").pop());
     if (!title) continue;
-    const breadcrumb = parsed.meta.breadcrumbText || buildBreadcrumbFromPath(relativePath) || title;
+    const frontmatterBreadcrumb = typeof parsed.data?.breadcrumbText === "string" ? parsed.data.breadcrumbText.trim() : "";
+    const breadcrumb = frontmatterBreadcrumb || buildBreadcrumbFromPath(relativePath) || title;
     articles.push({
       title,
       url: markdownPathToUrl(urlBase, relativePath),
-      content: parsed.body.trim(),
+      content: parsed.content.trim(),
       breadcrumb,
       path: relativePath
     });

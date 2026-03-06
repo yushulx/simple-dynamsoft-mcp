@@ -52,6 +52,37 @@ test("withRetry does not retry non-retryable failures", async () => {
   assert.equal(attempts, 1);
 });
 
+test("withRetry reports retry attempts and capped backoff delay", async () => {
+  let attempts = 0;
+  const retries = [];
+
+  await assert.rejects(
+    () => withRetry(
+      async () => {
+        attempts += 1;
+        throw new Error("HTTP 503 still failing");
+      },
+      {
+        maxAttempts: 4,
+        baseDelayMs: 1,
+        maxDelayMs: 2,
+        shouldRetry: shouldRetryDownloadError,
+        onRetry: (retry) => {
+          retries.push({ attempt: retry.attempt, delayMs: retry.delayMs });
+        }
+      }
+    ),
+    /HTTP 503/
+  );
+
+  assert.equal(attempts, 4);
+  assert.deepEqual(retries, [
+    { attempt: 1, delayMs: 1 },
+    { attempt: 2, delayMs: 2 },
+    { attempt: 3, delayMs: 2 }
+  ]);
+});
+
 test("replaceDirectoryWithRollback swaps directory content", () => {
   const root = mkdtempSync(join(tmpdir(), "mcp-atomic-replace-"));
   const target = join(root, "target");
