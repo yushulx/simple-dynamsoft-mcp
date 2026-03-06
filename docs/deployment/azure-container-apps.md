@@ -3,7 +3,7 @@
 This runbook covers production deployment on Azure with a two-lane operating model:
 
 1. `update-data-lock` -> `data-sync-azure` for shared Azure data/index maintenance.
-2. `release` for code/package/image deploys only.
+2. `release` for code/package/image deploys.
 
 Core platform pieces:
 
@@ -19,9 +19,16 @@ Core platform pieces:
 - `RAG_FALLBACK=lexical`
 - `MCP_DATA_HYDRATION_MODE=eager`
 
-In production, set `RAG_SHARED_STATE_PATH` to the mounted shared state file so workers load shared Gemini shard metadata:
+In production, set fixed mounted paths:
 
-- `RAG_SHARED_STATE_PATH=/mnt/mcp-cache/shared-state/current.json`
+- `MCP_DATA_DIR=/mnt/mcp-cache/data`
+- `MCP_DATA_CACHE_DIR=/mnt/mcp-cache/data`
+- `RAG_CACHE_DIR=/mnt/mcp-cache/rag/cache`
+- `RAG_MODEL_CACHE_DIR=/mnt/mcp-cache/rag/models`
+- `RAG_SHARED_STATE_PATH=/mnt/mcp-cache/state/current.json`
+- `TMPDIR=/mnt/mcp-cache/tmp`
+- `TMP=/mnt/mcp-cache/tmp`
+- `TEMP=/mnt/mcp-cache/tmp`
 
 ## First-Time Bootstrap
 
@@ -35,80 +42,52 @@ Use `infra/main.bicep` to create baseline resources in your target resource grou
 
 Ingress target port stays `80` end-to-end (bootstrap and release deployment).
 
-If using a shared resource group, keep resource tags in `infra/params/prod.bicepparam` and use `cleanupGroup` for safe cleanup later.
-
 ## Two-Lane Architecture
 
 ### Lane 1: Shared data/index maintenance
 
 - `update-data-lock.yml` refreshes submodules and lock metadata.
-- On successful default-branch completion, `data-sync-azure.yml` computes shared state updates and promotes a new `shared-state/current.json`.
-- This lane is the only writer for shared state metadata and shard index references.
+- On successful default-branch completion, `data-sync-azure.yml` computes shared state updates and promotes `state/current.json`.
+- This lane is the only writer for shared state metadata and shard references.
 
 Detailed operator runbook: `docs/deployment/data-sync-azure.md`.
 
 ### Lane 2: Release deploys
 
 - `release.yml` verifies/tests/publishes package and image, then invokes `deploy-aca.yml`.
-- Release deploys upload versioned runtime data and switch ACA revisions.
-- Release deploys do not mutate shared state topology; they consume it at runtime via `RAG_SHARED_STATE_PATH`.
+- Release deploys upload hydrated data to `data/` and switch ACA revisions.
+- Release deploys do not mutate shared state topology.
 
 ## Release Deploy Flow
 
 On release, workflow sequence is:
 
-1. `release.yml` publishes npm package
-2. `release.yml` calls reusable `deploy-aca.yml`
-3. `deploy-aca.yml` builds and pushes image to ACR
-4. `deploy-aca.yml` configures ACA registry auth using system-assigned identity
-5. Deploy warm-up revision with `minReplicas=1`, `maxReplicas=1`
-6. Wait for warm-up revision to become ready
-7. Set steady-state scale to `minReplicas=0`, `maxReplicas=1`
-8. Route traffic to newest ready revision
-9. Deactivate previous revisions
-10. Remove old cache version directories from Azure Files (keep current plus one previous)
+1. `release.yml` publishes npm package.
+2. `release.yml` calls reusable `deploy-aca.yml`.
+3. `deploy-aca.yml` builds and pushes image to ACR.
+4. `deploy-aca.yml` configures ACA registry auth using system-assigned identity.
+5. Upload hydrated runtime data to Azure Files `data/`.
+6. Ensure Azure Files readiness for `rag/`, `rag/cache/`, and `rag/models/`.
+7. Deploy a new ACA revision with fixed cache/env paths.
+8. Route traffic to newest ready revision.
+9. Deactivate previous revisions.
 
-## Permanent Azure Files Layout
-
-The Azure Files share keeps release-scoped data and shared-state data side by side:
+## Azure Files Layout
 
 ```text
 /mcp-cache/
-  <version>/
-    data/
-      metadata/
-      documentation/
-      samples/
-    rag/
-      cache/
-      models/
-    tmp/
-  shared/
-    indexes/
-      gemini/
-        <repo-signature>.json
-  shared-state/
+  data/
+    metadata/
+    documentation/
+    samples/
+  rag/
+    cache/
+      gemini-<repo-signature>.json
+    models/
+  state/
     current.json
-    history/
-      <timestamp>-<sha>.json
+  tmp/
 ```
-
-`data-sync-azure` promotes `shared-state/current.json` after new shard outputs are ready. Keep `shared-state/history/` for rollback and audit snapshots.
-
-## Version-Scoped Cache Contract
-
-Cache paths are release-version scoped only.
-
-For a release version `<version>`, the container uses:
-
-- `/mnt/mcp-cache/<version>/data`
-- `/mnt/mcp-cache/<version>/tmp`
-- `/mnt/mcp-cache/<version>/rag/cache`
-- `/mnt/mcp-cache/<version>/rag/models`
-
-Temporary directories (`TMPDIR`, `TMP`, `TEMP`) are pinned to `/mnt/mcp-cache/<version>/tmp` so hydration staging and final cache paths are on the same filesystem.
-
-Old versions are deleted only after traffic is moved off old revisions.
 
 ## Runtime Degraded Fallback Behavior
 
@@ -117,8 +96,8 @@ If Gemini shared state or shard loading fails at startup/query time, runtime deg
 Operational expectations:
 
 - MCP endpoint remains available.
-- Search quality may degrade until shared state/shards are corrected.
-- Logs include degraded/fallback events and the related shared-state cause.
+- Search quality may degrade until state/shards are corrected.
+- Logs include degraded/fallback events and the related cause.
 
 ## Endpoint
 

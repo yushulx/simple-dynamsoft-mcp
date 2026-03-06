@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { tmpdir } from "node:os";
 
-import { buildDesiredRepos, computeRepoDiff, runDataSyncAzure } from "../../scripts/data-sync-azure.mjs";
+import { buildDesiredRepos, computeRepoDiff, parseArgs, runDataSyncAzure } from "../../scripts/data-sync-azure.mjs";
 
 test("computeRepoDiff classifies changed/new/unchanged/removed repos", () => {
   const currentRepos = {
@@ -93,6 +93,28 @@ test("buildDesiredRepos throws when normalized keys collide", () => {
     }),
     /Repo key collision/
   );
+});
+
+test("buildDesiredRepos uses flat rag cache shard paths", () => {
+  const repos = buildDesiredRepos(
+    [{ path: "documentation/core", commit: "abc123" }],
+    {
+      embeddingModel: "text-embedding-3-large",
+      indexConfig: {},
+      indexVersion: "azure-shared-v1",
+      schemaVersion: 1
+    }
+  );
+
+  assert.match(repos.documentation_core.shardPath, /^rag\/cache\/gemini-[a-f0-9]{64}\.json$/);
+});
+
+test("parseArgs defaults local simulation state paths under state directory", () => {
+  const args = parseArgs([], {});
+
+  assert.match(args.currentStatePath, /\.tmp\/azure-shared-state\/state\/current\.json$/);
+  assert.match(args.nextStatePath, /\.tmp\/azure-shared-state\/state\/next-state\.json$/);
+  assert.match(args.planOutputPath, /\.tmp\/azure-shared-state\/state\/plan\.json$/);
 });
 
 test("runDataSyncAzure writes plan, next state, and promotes current state atomically", () => {

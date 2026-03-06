@@ -63,7 +63,7 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Resolve Azure shared-state variables
+      - name: Resolve Azure shared state variables
         id: vars
         shell: bash
         run: |
@@ -80,7 +80,7 @@ jobs:
             share="mcp-cache"
           fi
           if [[ -z "$state_path" ]]; then
-            state_path="shared-state/current.json"
+            state_path="state/current.json"
           fi
 
           echo "storage_account=$account" >> "$GITHUB_OUTPUT"
@@ -96,9 +96,9 @@ jobs:
           share="${{ steps.vars.outputs.share_name }}"
           state_path="${{ steps.vars.outputs.state_path }}"
           local_root="$RUNNER_TEMP/azure-shared-state"
-          local_current="$local_root/current.json"
+          local_current="$local_root/state/current.json"
 
-          mkdir -p "$local_root"
+          mkdir -p "$(dirname "$local_current")"
           key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
           exists="$(az storage file exists \
             --account-name "$account" \
@@ -132,8 +132,8 @@ jobs:
 
           node scripts/data-sync-azure.mjs \
             --current-state "$AZURE_SHARED_STATE_CURRENT" \
-            --next-state "$AZURE_SHARED_STATE_ROOT/next-state.json" \
-            --plan-output "$AZURE_SHARED_STATE_ROOT/plan.json"
+            --next-state "$AZURE_SHARED_STATE_ROOT/state/next-state.json" \
+            --plan-output "$AZURE_SHARED_STATE_ROOT/state/plan.json"
 
       - name: Upload promoted shared state to Azure Files
         shell: bash
@@ -172,4 +172,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node -e 'const fs=require("node:fs"); const p=process.env.AZURE_SHARED_STATE_ROOT+"/plan.json"; const plan=JSON.parse(fs.readFileSync(p,"utf8")); const s=plan.summary; console.log("## Data Sync Azure"); console.log("- has_changes: `"+s.hasChanges+"`"); console.log("- repos_changed: `"+s.changed+"`"); console.log("- repos_added: `"+s.added+"`"); console.log("- repos_removed: `"+s.removed+"`");' >> "$GITHUB_STEP_SUMMARY"
+          node -e 'const fs=require("node:fs"); const p=process.env.AZURE_SHARED_STATE_ROOT+"/state/plan.json"; const plan=JSON.parse(fs.readFileSync(p,"utf8")); const s=plan.summary; console.log("## Data Sync Azure"); console.log("- has_changes: `"+s.hasChanges+"`"); console.log("- repos_changed: `"+s.changed+"`"); console.log("- repos_added: `"+s.added+"`"); console.log("- repos_removed: `"+s.removed+"`");' >> "$GITHUB_STEP_SUMMARY"

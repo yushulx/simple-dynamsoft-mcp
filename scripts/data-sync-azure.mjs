@@ -36,12 +36,12 @@ function toAbsolutePath(pathValue) {
 }
 
 function parseArgs(argv, env = process.env) {
-  const currentStatePath = env.DATA_SYNC_AZURE_CURRENT_STATE_PATH || ".tmp/azure-shared-state/current.json";
+  const currentStatePath = env.DATA_SYNC_AZURE_CURRENT_STATE_PATH || ".tmp/azure-shared-state/state/current.json";
   const defaults = {
     manifestPath: env.DATA_SYNC_AZURE_MANIFEST_PATH || "data/metadata/data-manifest.json",
     currentStatePath,
-    nextStatePath: env.DATA_SYNC_AZURE_NEXT_STATE_PATH || ".tmp/azure-shared-state/next-state.json",
-    planOutputPath: env.DATA_SYNC_AZURE_PLAN_OUTPUT_PATH || ".tmp/azure-shared-state/plan.json",
+    nextStatePath: env.DATA_SYNC_AZURE_NEXT_STATE_PATH || ".tmp/azure-shared-state/state/next-state.json",
+    planOutputPath: env.DATA_SYNC_AZURE_PLAN_OUTPUT_PATH || ".tmp/azure-shared-state/state/plan.json",
     embeddingModel: env.DATA_SYNC_AZURE_EMBEDDING_MODEL || "text-embedding-3-large",
     indexVersion: env.DATA_SYNC_AZURE_INDEX_VERSION || "azure-shared-v1",
     generatedAt: env.DATA_SYNC_AZURE_GENERATED_AT || new Date().toISOString(),
@@ -137,7 +137,7 @@ function readManifest(manifestPath) {
 }
 
 function buildShardPath(repoPath, signature) {
-  return `shared/indexes/${normalizeRepoPath(repoPath)}/${signature}.json`;
+  return `rag/cache/gemini-${signature}.json`;
 }
 
 function buildDesiredRepos(manifestRepos, options) {

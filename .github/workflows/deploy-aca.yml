@@ -140,8 +140,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          version="${{ steps.vars.outputs.version }}"
-          cache_root="$RUNNER_TEMP/mcp-cache/${version}"
+          cache_root="$RUNNER_TEMP/mcp-cache"
           data_root="${cache_root}/data"
           artifact_name="${{ inputs.data_artifact_name }}"
           artifact_root="${RUNNER_TEMP}/hydrated-data-artifact"
@@ -185,7 +184,6 @@ jobs:
 
           account="${{ steps.vars.outputs.storage_account }}"
           share="${{ steps.vars.outputs.cache_share }}"
-          version="${{ steps.vars.outputs.version }}"
           local_data="${{ steps.prepare_data.outputs.data_root }}"
 
           key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
@@ -194,20 +192,14 @@ jobs:
             --account-name "$account" \
             --account-key "$key" \
             --share-name "$share" \
-            --name "$version" >/dev/null
-
-          az storage directory create \
-            --account-name "$account" \
-            --account-key "$key" \
-            --share-name "$share" \
-            --name "$version/data" >/dev/null
+            --name "data" >/dev/null
 
           az storage file upload-batch \
             --account-name "$account" \
             --account-key "$key" \
             --source "$local_data" \
             --destination "$share" \
-            --destination-path "$version/data" \
+            --destination-path "data" \
             --max-connections 64 \
             --only-show-errors \
             -o none
@@ -219,7 +211,6 @@ jobs:
 
           account="${{ steps.vars.outputs.storage_account }}"
           share="${{ steps.vars.outputs.cache_share }}"
-          version="${{ steps.vars.outputs.version }}"
 
           key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
 
@@ -230,12 +221,12 @@ jobs:
               --account-name "$account" \
               --account-key "$key" \
               --share-name "$share" \
-              --path "$version/data/${required_path}" \
+              --path "data/${required_path}" \
               --query exists \
               -o tsv)"
 
             if [[ "$file_exists" != "true" ]]; then
-              echo "Missing uploaded cache file at $version/data/${required_path}"
+              echo "Missing uploaded cache file at data/${required_path}"
               exit 1
             fi
           done
@@ -245,12 +236,12 @@ jobs:
               --account-name "$account" \
               --account-key "$key" \
               --share-name "$share" \
-              --name "$version/data/${required_dir}" \
+              --name "data/${required_dir}" \
               --query exists \
               -o tsv)"
 
             if [[ "$dir_exists" != "true" ]]; then
-              echo "Missing uploaded cache directory at $version/data/${required_dir}"
+              echo "Missing uploaded cache directory at data/${required_dir}"
               exit 1
             fi
           done
@@ -262,14 +253,13 @@ jobs:
 
           account="${{ steps.vars.outputs.storage_account }}"
           share="${{ steps.vars.outputs.cache_share }}"
-          version="${{ steps.vars.outputs.version }}"
 
           key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
 
           for required_dir in \
-            "$version/rag" \
-            "$version/rag/cache" \
-            "$version/rag/models"; do
+            "rag" \
+            "rag/cache" \
+            "rag/models"; do
             az storage directory create \
               --account-name "$account" \
               --account-key "$key" \
@@ -321,8 +311,6 @@ jobs:
           set -euo pipefail
 
           version="${{ steps.vars.outputs.version }}"
-          cache_root="/mnt/mcp-cache/${version}"
-          data_root="${cache_root}/data"
           safe_version="$(printf '%s' "$version" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-')"
           revision_suffix="$(printf '%s-%s' "$safe_version" "$GITHUB_RUN_NUMBER" | tr -s '-' | cut -c1-63)"
           revision_suffix="${revision_suffix%-}"
@@ -340,14 +328,15 @@ jobs:
             --max-replicas 1 \
             --set-env-vars \
               MCP_DATA_AUTO_DOWNLOAD=false \
-              MCP_DATA_DIR="$data_root" \
+              MCP_DATA_DIR="/mnt/mcp-cache/data" \
               MCP_LOG_LEVEL=info \
-              MCP_DATA_CACHE_DIR="${cache_root}/data" \
-              RAG_CACHE_DIR="${cache_root}/rag/cache" \
-              RAG_MODEL_CACHE_DIR="${cache_root}/rag/models" \
-              TMPDIR="${cache_root}/tmp" \
-              TMP="${cache_root}/tmp" \
-              TEMP="${cache_root}/tmp"
+              MCP_DATA_CACHE_DIR="/mnt/mcp-cache/data" \
+              RAG_CACHE_DIR="/mnt/mcp-cache/rag/cache" \
+              RAG_MODEL_CACHE_DIR="/mnt/mcp-cache/rag/models" \
+              RAG_SHARED_STATE_PATH="/mnt/mcp-cache/state/current.json" \
+              TMPDIR="/mnt/mcp-cache/tmp" \
+              TMP="/mnt/mcp-cache/tmp" \
+              TEMP="/mnt/mcp-cache/tmp"
 
       - name: Wait for deployed revision ready
         id: ready
@@ -401,83 +390,6 @@ jobs:
                 --revision "$revision" || true
             fi
           done < "${{ steps.pre_revisions.outputs.old_revisions_file }}"
-
-      - name: Clean up old cache versions in Azure Files
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          account="${{ steps.vars.outputs.storage_account }}"
-          share="${{ steps.vars.outputs.cache_share }}"
-          current_version="${{ steps.vars.outputs.version }}"
-
-          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
-
-          mapfile -t dirs < <(az storage directory list \
-            --account-name "$account" \
-            --account-key "$key" \
-            --share-name "$share" \
-            --query "[].name" \
-            -o tsv)
-
-          version_regex='^[0-9]+(\.[0-9]+){1,3}([.-][0-9A-Za-z]+)*$'
-          versioned_dirs=()
-          for dir in "${dirs[@]}"; do
-            if [[ -n "$dir" && "$dir" =~ $version_regex ]]; then
-              versioned_dirs+=("$dir")
-            fi
-          done
-
-          if (( ${#versioned_dirs[@]} == 0 )); then
-            echo "No versioned cache directories found; skipping cleanup"
-            exit 0
-          fi
-
-          mapfile -t sorted_versions < <(printf '%s\n' "${versioned_dirs[@]}" | sort -V)
-          keep_versions=("$current_version")
-          current_index=-1
-          for i in "${!sorted_versions[@]}"; do
-            if [[ "${sorted_versions[$i]}" == "$current_version" ]]; then
-              current_index="$i"
-              break
-            fi
-          done
-
-          if (( current_index > 0 )); then
-            previous_version="${sorted_versions[$((current_index - 1))]}"
-            keep_versions+=("$previous_version")
-          fi
-
-          should_keep() {
-            local candidate="$1"
-            for keep in "${keep_versions[@]}"; do
-              if [[ "$candidate" == "$keep" ]]; then
-                return 0
-              fi
-            done
-            return 1
-          }
-
-          for dir in "${versioned_dirs[@]}"; do
-            if should_keep "$dir"; then
-              echo "Keeping cache directory: $dir"
-              continue
-            fi
-
-            echo "Cleaning old cache directory: $dir"
-            az storage file delete-batch \
-              --account-name "$account" \
-              --account-key "$key" \
-              --source "$share" \
-              --pattern "${dir}/*" || true
-
-            az storage directory delete \
-              --account-name "$account" \
-              --account-key "$key" \
-              --share-name "$share" \
-              --name "$dir" \
-              --fail-not-exist || true
-          done
 
       - name: Deployment summary
         shell: bash

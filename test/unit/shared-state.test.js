@@ -102,7 +102,7 @@ test("createSharedState and loadSharedState normalize repo keys and paths", () =
         path: "\\documentation\\capture-vision-docs-js\\",
         commit: "0f0c2b405ee16f5a19ee4af0a8c4f36e6a457f6c",
         signature: "abc123",
-        shardPath: "shared/indexes/documentation/capture-vision-docs-js/abc123.json"
+        shardPath: "rag/cache/gemini-abc123.json"
       }
     }
   });
@@ -127,13 +127,13 @@ test("createSharedState throws when different repos normalize to same key", () =
             path: "documentation/capture-vision-docs-js",
             commit: "1111111111111111111111111111111111111111",
             signature: "sig-a",
-            shardPath: "shared/indexes/documentation/capture-vision-docs-js/sig-a.json"
+            shardPath: "rag/cache/gemini-sig-a.json"
           },
           "documentation_capture vision docs js": {
             path: "documentation/capture_vision_docs_js",
             commit: "2222222222222222222222222222222222222222",
             signature: "sig-b",
-            shardPath: "shared/indexes/documentation/capture_vision_docs_js/sig-b.json"
+            shardPath: "rag/cache/gemini-sig-b.json"
           }
         }
       });

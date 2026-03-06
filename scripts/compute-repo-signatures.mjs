@@ -118,7 +118,7 @@ function loadManifest(pathToManifest) {
 }
 
 function buildShardPath(repoPath, signature) {
-  return `shared/indexes/${normalizeRepoPath(repoPath)}/${signature}.json`;
+  return `rag/cache/gemini-${signature}.json`;
 }
 
 function buildReposState(manifestRepos, options) {

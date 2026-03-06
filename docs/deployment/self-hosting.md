@@ -43,8 +43,8 @@ Default behavior:
 - Runtime RAG loading uses local cache first, and can load shared per-repo shard files when `RAG_SHARED_STATE_PATH` is set.
 
 Optional shared-state configuration:
-- Set `RAG_SHARED_STATE_PATH` to the mounted `shared-state.json` file generated during your build/deploy pipeline.
-- The server reads repo signatures from `shared-state.json` and loads matching shard files (for example `shared/indexes/gemini/<signature>.json`) instead of rebuilding vectors at runtime.
+- Set `RAG_SHARED_STATE_PATH` to your mounted state pointer file (for example `/mnt/mcp-cache/state/current.json`).
+- The server reads repo signatures from `state/current.json` and loads matching shard files (for example `rag/cache/gemini-<signature>.json`) instead of rebuilding vectors at runtime.
 - If a required shared shard is missing, Gemini provider initialization fails and lexical fallback remains available for search.
 
 ## 4) Start HTTP Server

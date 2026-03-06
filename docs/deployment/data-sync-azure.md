@@ -4,18 +4,13 @@ This runbook documents the shared Azure data/index maintenance lane:
 
 - Trigger lane: `update-data-lock.yml`
 - Writer lane: `data-sync-azure.yml`
-- Scope: shared state and shared Gemini index shard references only
+- Scope: shared state and Gemini shard references only
 
 Use this with `docs/deployment/azure-container-apps.md`.
 
 ## Purpose
 
-The data-sync lane keeps a single shared state document in Azure Files aligned with the latest default-branch data manifest, so all ACA revisions can consume the same deterministic shard map.
-
-This separates concerns:
-
-1. Data/index maintenance updates shared state.
-2. Release deployment updates code/package/image and version-scoped runtime data.
+The data-sync lane keeps `state/current.json` in Azure Files aligned with the latest default-branch manifest so all ACA revisions consume the same deterministic shard map.
 
 ## Trigger and Guardrails
 
@@ -28,60 +23,49 @@ This separates concerns:
 Additional safety controls:
 
 - Workflow-level concurrency serializes writers: `data-sync-azure-${repository}`.
-- The workflow verifies checkout SHA matches the triggering successful `workflow_run` SHA.
-- Shared-state path defaults to `shared-state/current.json` unless `AZURE_SHARED_STATE_PATH` is set.
+- The workflow verifies checkout SHA matches the triggering `workflow_run` SHA.
+- Shared state path defaults to `state/current.json` unless `AZURE_SHARED_STATE_PATH` is set.
 
-## Permanent Shared Azure Layout
-
-Shared artifacts live in the same Azure Files share as release data (`mcp-cache` by default):
+## Azure Files Layout
 
 ```text
 /mcp-cache/
-  <version>/
-    data/
-      metadata/
-      documentation/
-      samples/
-    rag/
-      cache/
-      models/
-    tmp/
-  shared/
-    indexes/
-      gemini/
-        <repo-signature>.json
-  shared-state/
+  data/
+    metadata/
+    documentation/
+    samples/
+  rag/
+    cache/
+      gemini-<repo-signature>.json
+  state/
     current.json
-    history/
-      <timestamp>-<sha>.json
 ```
 
-Layout notes:
+Ownership notes:
 
-- `<version>/...` is release-lane owned and cleaned by deploy lifecycle.
-- `shared/indexes/gemini/*` and `shared-state/*` are data-sync-lane owned.
-- `shared-state/current.json` is the runtime pointer consumed by `RAG_SHARED_STATE_PATH`.
-- `shared-state/history/*` stores previous promoted snapshots for rollback and audit.
+- `data/` is hydrated deployment data.
+- `rag/cache/gemini-<repo-signature>.json` stores shared Gemini shard payloads.
+- `state/current.json` is the runtime pointer consumed by `RAG_SHARED_STATE_PATH`.
 
 ## Atomic State Promotion Model
 
-Promotion uses a pointer-swap model:
+Promotion uses pointer-swap semantics in local staging before upload:
 
 1. Generate next state from `data/metadata/data-manifest.json`.
-2. Write plan artifact (`plan.json`) and staged next state (`next-state.json`).
-3. Atomically replace local `current.json` via temp-file rename.
-4. Upload the promoted `current.json` to Azure Files.
+2. Write `state/plan.json` and `state/next-state.json` in local staging.
+3. Atomically replace local `state/current.json` via temp-file rename.
+4. Upload promoted `state/current.json` to Azure Files.
 
-Operationally, this means workers either read the previous full state or the new full state, not a partial JSON write.
+This ensures workers read either the previous full state or the new full state, never a partial JSON write.
 
 ## Operational Checks
 
-Run these checks after a sync, and before/after major releases.
+Run these checks after a sync and before/after major releases.
 
 ### 1) Verify workflow summary
 
 - Confirm `has_changes`, `repos_changed`, `repos_added`, `repos_removed` in the `Data Sync Azure` summary.
-- Unexpected large churn usually means manifest/index-config drift and should be investigated.
+- Unexpected large churn usually indicates manifest/index-config drift.
 
 ### 2) Verify state pointer exists in Azure Files
 
@@ -89,7 +73,7 @@ Run these checks after a sync, and before/after major releases.
 az storage file exists \
   --account-name "$AZURE_CACHE_STORAGE_ACCOUNT" \
   --share-name "$AZURE_CACHE_FILE_SHARE" \
-  --path "shared-state/current.json" \
+  --path "state/current.json" \
   --auth-mode login
 ```
 
@@ -101,8 +85,8 @@ Expected: `true`.
 az storage file download \
   --account-name "$AZURE_CACHE_STORAGE_ACCOUNT" \
   --share-name "$AZURE_CACHE_FILE_SHARE" \
-  --path "shared-state/current.json" \
-  --dest /tmp/shared-state-current.json \
+  --path "state/current.json" \
+  --dest /tmp/mcp-state-current.json \
   --auth-mode login \
   --overwrite
 ```
@@ -117,13 +101,13 @@ Confirm fields:
 
 ### 4) Spot-check referenced shard paths
 
-Use one `repos[*].shardPath` from `current.json` and verify it exists.
+Use one `repos[*].shardPath` value from `state/current.json` and verify it exists.
 
 ```bash
 az storage file exists \
   --account-name "$AZURE_CACHE_STORAGE_ACCOUNT" \
   --share-name "$AZURE_CACHE_FILE_SHARE" \
-  --path "shared/indexes/gemini/<repo-signature>.json" \
+  --path "rag/cache/gemini-<repo-signature>.json" \
   --auth-mode login
 ```
 
@@ -131,7 +115,7 @@ Expected: `true`.
 
 ## Runtime Degraded Fallback Behavior
 
-If runtime cannot use Gemini shared shards (for example missing `current.json`, missing shard file, or invalid state), the service degrades to lexical fallback when configured (`RAG_FALLBACK=lexical`).
+If runtime cannot use Gemini shared shards (missing `state/current.json`, missing shard file, invalid state), the service degrades to lexical fallback when configured (`RAG_FALLBACK=lexical`).
 
 Expected behavior:
 
@@ -141,11 +125,8 @@ Expected behavior:
 
 Treat degraded mode as an operational warning, not a healthy steady state.
 
-## Recovery and Rollback
+## Recovery
 
-1. Identify the last known-good snapshot under `shared-state/history/`.
-2. Copy it to `shared-state/current.json`.
-3. Re-run data-sync lane to reconcile if needed.
-4. Verify runtime logs no longer report degraded Gemini/shared-state load failures.
-
-If history snapshots are not automatically generated in your environment yet, create them as part of the promotion process before overwriting `current.json`.
+1. Restore a known-good `state/current.json`.
+2. Re-run data-sync lane to reconcile if needed.
+3. Verify runtime logs no longer report degraded Gemini/state load failures.

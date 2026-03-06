@@ -64,3 +64,24 @@ test("buildReposState throws when two repos collide on normalized key", () => {
     /Repo key collision/
   );
 });
+
+test("buildReposState uses flat rag cache shard paths", () => {
+  const repos = buildReposState(
+    [
+      {
+        path: "documentation/capture-vision-docs-js",
+        commit: "1111111111111111111111111111111111111111"
+      }
+    ],
+    {
+      embeddingModel: "text-embedding-3-large",
+      indexVersion: 1,
+      schemaVersion: 1,
+      indexConfig: {}
+    }
+  );
+
+  const stateRepo = repos.documentation_capture_vision_docs_js;
+  assert.ok(stateRepo);
+  assert.match(stateRepo.shardPath, /^rag\/cache\/gemini-[a-f0-9]{64}\.json$/);
+});
