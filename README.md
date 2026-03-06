@@ -127,6 +127,14 @@ sudo systemctl start simple-dynamsoft-mcp
 sudo systemctl status simple-dynamsoft-mcp
 ```
 
+## Azure Container Apps (v1)
+
+For Azure deployment with ACR + ACA + Azure Files cache, see:
+
+- `docs/deployment/azure-container-apps.md`
+
+v1 uses the default ACA HTTPS domain (`*.azurecontainerapps.io`) with custom domain/certificate deferred.
+
 ## MCP Client Configuration
 
 Use one of the following client configs.

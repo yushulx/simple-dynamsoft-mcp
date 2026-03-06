@@ -1,0 +1,124 @@
+name: Apply Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply infra changes (false = what-if only)"
+        required: false
+        default: false
+        type: boolean
+      resource_group:
+        description: "Azure resource group override"
+        required: false
+        default: ""
+        type: string
+      location:
+        description: "Azure location override for RG bootstrap"
+        required: false
+        default: ""
+        type: string
+      params_file:
+        description: "Bicep params file path"
+        required: false
+        default: "infra/params/prod.bicepparam"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      resource_group: ${{ steps.vars.outputs.resource_group }}
+      location: ${{ steps.vars.outputs.location }}
+      params_file: ${{ steps.vars.outputs.params_file }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve input variables
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          resource_group="${{ inputs.resource_group }}"
+          if [[ -z "$resource_group" ]]; then
+            resource_group="${{ vars.AZURE_RESOURCE_GROUP }}"
+          fi
+          if [[ -z "$resource_group" ]]; then
+            echo "AZURE_RESOURCE_GROUP is required (input or repository variable)."
+            exit 1
+          fi
+
+          location="${{ inputs.location }}"
+          if [[ -z "$location" ]]; then
+            location="${{ vars.AZURE_LOCATION }}"
+          fi
+          if [[ -z "$location" ]]; then
+            location="eastus"
+          fi
+
+          params_file="${{ inputs.params_file }}"
+
+          echo "resource_group=$resource_group" >> "$GITHUB_OUTPUT"
+          echo "location=$location" >> "$GITHUB_OUTPUT"
+          echo "params_file=$params_file" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure resource group exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          az group create \
+            --name "${{ steps.vars.outputs.resource_group }}" \
+            --location "${{ steps.vars.outputs.location }}"
+
+      - name: Build Bicep template
+        run: az bicep build --file infra/main.bicep
+
+      - name: What-if infrastructure changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment group what-if \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --template-file infra/main.bicep \
+            --parameters "${{ steps.vars.outputs.params_file }}" \
+            --parameters geminiApiKey="${{ secrets.GEMINI_API_KEY }}"
+
+  apply:
+    if: ${{ inputs.apply }}
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: azure-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Apply infrastructure changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          az deployment group create \
+            --name "infra-${{ github.run_id }}" \
+            --resource-group "${{ needs.plan.outputs.resource_group }}" \
+            --template-file infra/main.bicep \
+            --parameters "${{ needs.plan.outputs.params_file }}" \
+            --parameters geminiApiKey="${{ secrets.GEMINI_API_KEY }}"

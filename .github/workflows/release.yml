@@ -349,3 +349,13 @@ jobs:
             echo "- version: \`${{ needs.detect.outputs.version }}\`"
             echo "- already_published: \`${{ steps.npm_status.outputs.already_published }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy_azure:
+    needs: [detect, publish_npm]
+    if: needs.detect.outputs.release_needed == 'true'
+    uses: ./.github/workflows/deploy-aca.yml
+    with:
+      version: ${{ needs.detect.outputs.version }}
+      tag: ${{ needs.detect.outputs.tag }}
+      image_repository: simple-dynamsoft-mcp
+    secrets: inherit
