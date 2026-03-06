@@ -3,15 +3,14 @@ const PROFILE_DEFAULTS = {
     provider: "lexical",
     fallback: "none"
   },
-  "semantic-local": {
-    provider: "local",
-    fallback: "none"
-  },
   "semantic-gemini": {
     provider: "gemini",
-    fallback: "none"
+    fallback: "lexical"
   }
 };
+
+const SUPPORTED_PROVIDERS = new Set(["auto", "gemini", "lexical"]);
+const SUPPORTED_FALLBACKS = new Set(["none", "gemini", "lexical"]);
 
 function normalizeEnvValue(value) {
   if (value === undefined || value === null) return "";
@@ -31,12 +30,25 @@ function resolveProfileConfig(env = process.env) {
 
   const profile = rawProfile || "lite";
   const defaults = PROFILE_DEFAULTS[profile];
+  const provider = explicitProvider || defaults.provider;
+  const fallback = explicitFallback || defaults.fallback;
+
+  if (!SUPPORTED_PROVIDERS.has(provider)) {
+    throw new Error(
+      `Invalid RAG_PROVIDER "${provider}". Expected one of: ${Array.from(SUPPORTED_PROVIDERS).join(", ")}.`
+    );
+  }
+  if (!SUPPORTED_FALLBACKS.has(fallback)) {
+    throw new Error(
+      `Invalid RAG_FALLBACK "${fallback}". Expected one of: ${Array.from(SUPPORTED_FALLBACKS).join(", ")}.`
+    );
+  }
 
   return {
     profile,
     defaults,
-    provider: explicitProvider || defaults.provider,
-    fallback: explicitFallback || defaults.fallback,
+    provider,
+    fallback,
     providerSource: explicitProvider ? "env" : "profile-default",
     fallbackSource: explicitFallback ? "env" : "profile-default"
   };

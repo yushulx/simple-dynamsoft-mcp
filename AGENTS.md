@@ -38,7 +38,6 @@ High-signal test entrypoints from `package.json`:
 - HTTP integration: `npm run test:http`
 - Package runtime integration: `npm run test:package`
 - Lazy hydration integration: `npm run test:lazy`
-- Local-provider integration: `npm run test:local`
 - Lexical-provider integration: `npm run test:lexical`
 - Gemini-provider integration: `npm run test:gemini`
 - Regression pack: `npm run test:regression`
@@ -81,7 +80,6 @@ From `.github/workflows/ci.yml`, core jobs are:
 - `test_lazy_hydration`
 - `test_package_runtime_windows`
 - `test_package_runtime_macos`
-- `test_local_provider`
 - `test_gemini_provider` (conditional on `GEMINI_API_KEY`)
 
 When modifying server behavior, at minimum run:

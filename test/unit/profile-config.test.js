@@ -20,16 +20,37 @@ test("resolveProfileConfig applies lite defaults", () => {
 
 test("resolveProfileConfig allows explicit provider and fallback overrides", () => {
   const resolved = resolveProfileConfig({
-    MCP_PROFILE: "semantic-local",
+    MCP_PROFILE: "semantic-gemini",
     RAG_PROVIDER: "gemini",
-    RAG_FALLBACK: "local"
+    RAG_FALLBACK: "lexical"
   });
 
-  assert.equal(resolved.profile, "semantic-local");
+  assert.equal(resolved.profile, "semantic-gemini");
   assert.equal(resolved.provider, "gemini");
-  assert.equal(resolved.fallback, "local");
+  assert.equal(resolved.fallback, "lexical");
   assert.equal(resolved.providerSource, "env");
   assert.equal(resolved.fallbackSource, "env");
+});
+
+test("resolveProfileConfig rejects removed semantic-local profile", () => {
+  assert.throws(
+    () => resolveProfileConfig({ MCP_PROFILE: "semantic-local" }),
+    /Invalid MCP_PROFILE/
+  );
+});
+
+test("resolveProfileConfig rejects unknown provider overrides", () => {
+  assert.throws(
+    () => resolveProfileConfig({ MCP_PROFILE: "semantic-gemini", RAG_PROVIDER: "local" }),
+    /Invalid RAG_PROVIDER/
+  );
+});
+
+test("resolveProfileConfig rejects unknown fallback overrides", () => {
+  assert.throws(
+    () => resolveProfileConfig({ MCP_PROFILE: "semantic-gemini", RAG_FALLBACK: "local" }),
+    /Invalid RAG_FALLBACK/
+  );
 });
 
 test("resolveProfileConfig rejects unknown profiles", () => {

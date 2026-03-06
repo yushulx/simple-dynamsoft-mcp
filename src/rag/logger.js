@@ -3,7 +3,6 @@ import { logEvent } from "../observability/logging.js";
 const ragLogState = {
   config: false,
   providerChain: false,
-  localEmbedderInit: false,
   providerReady: new Set(),
   providerFirstUse: new Set(),
   fallbackUse: new Set()
@@ -23,7 +22,7 @@ function logRagConfigOnce(ragConfig) {
   logRag(
     `config provider=${ragConfig.provider} fallback=${ragConfig.fallback} prewarm=${ragConfig.prewarm} rebuild=${ragConfig.rebuild} ` +
     `cache_dir=${ragConfig.cacheDir} prebuilt_auto_download=${ragConfig.prebuiltIndexAutoDownload} ` +
-    `prebuilt_url_override=${ragConfig.prebuiltIndexUrl ? "set" : "empty"} prebuilt_url_local=${ragConfig.prebuiltIndexUrlLocal ? "set" : "empty"} ` +
+    `prebuilt_url_override=${ragConfig.prebuiltIndexUrl ? "set" : "empty"} ` +
     `prebuilt_url_gemini=${ragConfig.prebuiltIndexUrlGemini ? "set" : "empty"} ` +
     `prebuilt_timeout_ms=${ragConfig.prebuiltIndexTimeoutMs} gemini_retry_max_attempts=${ragConfig.geminiRetryMaxAttempts} ` +
     `gemini_retry_base_delay_ms=${ragConfig.geminiRetryBaseDelayMs} gemini_retry_max_delay_ms=${ragConfig.geminiRetryMaxDelayMs} ` +

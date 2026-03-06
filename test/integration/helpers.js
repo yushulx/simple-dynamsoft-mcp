@@ -15,8 +15,6 @@ const projectRoot = resolve(__dirname, "..", "..");
 const serverEntry = join(projectRoot, "src", "index.js");
 const dataRoot = join(projectRoot, "data");
 
-const RUN_FUSE_PROVIDER_TESTS = process.env.RUN_FUSE_PROVIDER_TESTS !== "false";
-const RUN_LOCAL_PROVIDER_TESTS = process.env.RUN_LOCAL_PROVIDER_TESTS === "true";
 const RUN_GEMINI_PROVIDER_TESTS =
   process.env.RUN_GEMINI_PROVIDER_TESTS === "true" &&
   Boolean(process.env.GEMINI_API_KEY);
@@ -60,8 +58,6 @@ function resolveServerEnv({ provider, fallback = "none", extra = {} }) {
     RAG_REBUILD: "false",
     RAG_PREWARM: "false",
     RAG_PREWARM_BLOCK: "false",
-    RAG_LOCAL_MODEL: process.env.RAG_LOCAL_MODEL || "Xenova/all-MiniLM-L6-v2",
-    RAG_LOCAL_QUANTIZED: process.env.RAG_LOCAL_QUANTIZED || "true",
     RAG_CACHE_DIR: process.env.RAG_CACHE_DIR || join(projectRoot, ".cache", "rag-index"),
     RAG_MODEL_CACHE_DIR: process.env.RAG_MODEL_CACHE_DIR || join(projectRoot, ".cache", "rag-models")
   };
@@ -69,7 +65,7 @@ function resolveServerEnv({ provider, fallback = "none", extra = {} }) {
 }
 
 function requestTimeoutForProvider(provider) {
-  return provider === "local" || provider === "gemini" ? 300000 : 60000;
+  return provider === "gemini" ? 300000 : 60000;
 }
 
 function assertStructuredDataStartupMode(stderr, expectedMode = "") {
@@ -339,8 +335,6 @@ function cleanupDir(path) {
 }
 
 export {
-  RUN_FUSE_PROVIDER_TESTS,
-  RUN_LOCAL_PROVIDER_TESTS,
   RUN_GEMINI_PROVIDER_TESTS,
   cleanupDir,
   connectStreamableClientWithRetry,

@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   sleepMs,
@@ -10,16 +9,10 @@ import {
   executeWithGeminiRetry
 } from "./gemini-retry.js";
 
-function ensureDirectory(path) {
-  if (!existsSync(path)) {
-    mkdirSync(path, { recursive: true });
-  }
-}
-
 function resolveProviderChain(ragConfig) {
   let primary = ragConfig.provider;
   if (primary === "auto") {
-    primary = ragConfig.geminiApiKey ? "gemini" : "local";
+    primary = ragConfig.geminiApiKey ? "gemini" : "lexical";
   }
   const chain = [primary];
   if (ragConfig.fallback && ragConfig.fallback !== "none" && ragConfig.fallback !== primary) {
@@ -145,34 +138,7 @@ function createProviderOrchestrator({
 }) {
   let fuseSearch = utils.createFuseSearch(resourceIndex);
   const providerCache = new Map();
-  let localEmbedderPromise = null;
   let geminiEmbedderPromise = null;
-
-  async function getLocalEmbedder() {
-    if (localEmbedderPromise) return localEmbedderPromise;
-    localEmbedderPromise = (async () => {
-      const { pipeline, env } = await import("@xenova/transformers");
-      ensureDirectory(ragConfig.modelCacheDir);
-      if (!ragLogState.localEmbedderInit) {
-        ragLogState.localEmbedderInit = true;
-        logRag(
-          `init local embedder model=${ragConfig.localModel} quantized=${ragConfig.localQuantized} model_cache_dir=${ragConfig.modelCacheDir}`
-        );
-      }
-      env.cacheDir = ragConfig.modelCacheDir;
-      env.allowLocalModels = true;
-      const extractor = await pipeline("feature-extraction", ragConfig.localModel, {
-        quantized: ragConfig.localQuantized
-      });
-      return {
-        embed: async (text) => {
-          const output = await extractor(text, { pooling: "mean", normalize: true });
-          return Array.from(output.data);
-        }
-      };
-    })();
-    return localEmbedderPromise;
-  }
 
   async function getGeminiEmbedder() {
     if (!ragConfig.geminiApiKey) {
@@ -537,16 +503,6 @@ function createProviderOrchestrator({
         entryMatchesScope: utils.entryMatchesScope,
         attachScore: utils.attachScore
       }));
-    } else if (name === "local") {
-      providerPromise = (async () => {
-        const embedder = await getLocalEmbedder();
-        return createVectorProvider({
-          name: "local",
-          model: ragConfig.localModel,
-          embedder,
-          batchSize: 1
-        });
-      })();
     } else if (name === "gemini") {
       providerPromise = (async () => {
         const embedder = await getGeminiEmbedder();
