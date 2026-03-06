@@ -159,19 +159,10 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  build_prebuilt_rag:
+  build_hydrated_data:
     needs: [detect, verify_release]
     if: needs.detect.outputs.release_needed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      RAG_PREWARM: "true"
-      RAG_PREWARM_BLOCK: "true"
-      RAG_REBUILD: "true"
-      PREBUILT_GEMINI_CACHE_DIR: ${{ github.workspace }}/release-assets/prebuilt-rag/gemini/cache
-      PREBUILT_GEMINI_MODEL_CACHE_DIR: ${{ github.workspace }}/.cache/release-rag-models-gemini
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_EMBED_BATCH_SIZE: 16
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -189,76 +180,6 @@ jobs:
 
       - name: Bootstrap data
         run: npm run data:bootstrap
-
-      - name: Ensure Gemini API key is configured
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${GEMINI_API_KEY:-}" ]]; then
-            echo "GEMINI_API_KEY secret is required for Gemini prebuild."
-            exit 1
-          fi
-
-      - name: Prebuild gemini RAG index
-        env:
-          RAG_PROVIDER: gemini
-          RAG_FALLBACK: none
-          RAG_REBUILD: "true"
-          RAG_CACHE_DIR: ${{ env.PREBUILT_GEMINI_CACHE_DIR }}
-          RAG_MODEL_CACHE_DIR: ${{ env.PREBUILT_GEMINI_MODEL_CACHE_DIR }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          max_attempts=4
-          delay_seconds=45
-
-          for attempt in $(seq 1 "$max_attempts"); do
-            echo "[release] prebuild attempt ${attempt}/${max_attempts}"
-
-            log_file="$(mktemp)"
-            if npm run rag:prebuild 2>&1 | tee "$log_file"; then
-              rm -f "$log_file"
-              echo "[release] prebuild succeeded on attempt ${attempt}/${max_attempts}"
-              exit 0
-            fi
-
-            if grep -Eiq "RESOURCE_EXHAUSTED|quota exceeded|\b429\b|retry in [0-9]+(\.[0-9]+)?s" "$log_file"; then
-              rm -f "$log_file"
-              if [[ "$attempt" -lt "$max_attempts" ]]; then
-                echo "[release] retryable quota/rate-limit failure detected; sleeping ${delay_seconds}s before retry"
-                sleep "$delay_seconds"
-                delay_seconds=$((delay_seconds * 2))
-                continue
-              fi
-            else
-              rm -f "$log_file"
-              echo "[release] non-retryable prebuild failure; stopping"
-              exit 1
-            fi
-          done
-
-          echo "[release] prebuild failed after ${max_attempts} attempts"
-          exit 1
-
-      - name: Show prebuilt RAG output
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "[release] gemini prebuilt rag cache dir: $PREBUILT_GEMINI_CACHE_DIR"
-          if [[ -d "$PREBUILT_GEMINI_CACHE_DIR" ]]; then
-            find "$PREBUILT_GEMINI_CACHE_DIR" -maxdepth 2 -type f -print
-          else
-            echo "[release] gemini cache dir missing"
-          fi
-
-      - name: Upload prebuilt RAG artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: prebuilt-rag-index
-          path: release-assets/prebuilt-rag/**
-          if-no-files-found: error
-          retention-days: 14
 
       - name: Stage hydrated release data artifact
         shell: bash
@@ -279,7 +200,7 @@ jobs:
           retention-days: 14
 
   create_release:
-    needs: [detect, build_package, build_prebuilt_rag]
+    needs: [detect, build_package]
     if: needs.detect.outputs.release_needed == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -289,22 +210,6 @@ jobs:
           name: npm-pack
           path: release-assets/npm
 
-      - name: Download prebuilt RAG artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: prebuilt-rag-index
-          path: release-assets/prebuilt-rag
-
-      - name: Create release asset archives for prebuilt RAG indexes
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="${{ needs.detect.outputs.version }}"
-          tar -czf "release-assets/prebuilt-rag-index-gemini-${version}.tar.gz" -C release-assets/prebuilt-rag gemini
-          ls -lah release-assets
-          ls -lah release-assets/npm
-          echo "[release] prebuilt archive ready release-assets/prebuilt-rag-index-gemini-${version}.tar.gz"
-
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
@@ -313,7 +218,6 @@ jobs:
           generate_release_notes: true
           files: |
             release-assets/npm/*.tgz
-            release-assets/prebuilt-rag-index-gemini-${{ needs.detect.outputs.version }}.tar.gz
 
       - name: Release summary
         shell: bash
@@ -324,7 +228,6 @@ jobs:
             echo "- tag: \`${{ needs.detect.outputs.tag }}\`"
             echo "- version: \`${{ needs.detect.outputs.version }}\`"
             echo "- npm_artifacts: \`release-assets/npm/*.tgz\`"
-            echo "- prebuilt_rag_gemini: \`release-assets/prebuilt-rag-index-gemini-${{ needs.detect.outputs.version }}.tar.gz\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   publish_npm:
@@ -381,7 +284,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy_azure:
-    needs: [detect, publish_npm, build_prebuilt_rag]
+    needs: [detect, publish_npm, build_hydrated_data]
     if: needs.detect.outputs.release_needed == 'true'
     uses: ./.github/workflows/deploy-aca.yml
     with:
@@ -389,5 +292,4 @@ jobs:
       tag: ${{ needs.detect.outputs.tag }}
       image_repository: simple-dynamsoft-mcp
       data_artifact_name: hydrated-release-data
-      rag_artifact_name: prebuilt-rag-index
     secrets: inherit

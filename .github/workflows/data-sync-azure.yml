@@ -1,0 +1,195 @@
+name: Data Sync Azure
+
+on:
+  workflow_run:
+    workflows: ["Update Data Lock"]
+    types: [completed]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: data-sync-azure-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  data-sync-azure:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == github.event.repository.default_branch }}
+    runs-on: ubuntu-latest
+    environment: azure-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Verify triggering SHA and default branch source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_sha="${{ github.event.workflow_run.head_sha }}"
+          expected_branch="${{ github.event.repository.default_branch }}"
+          actual_sha="$(git rev-parse HEAD)"
+          actual_branch="${{ github.event.workflow_run.head_branch }}"
+
+          if [[ "$actual_sha" != "$expected_sha" ]]; then
+            echo "[data-sync-azure] checked out SHA '$actual_sha' did not match workflow_run SHA '$expected_sha'"
+            exit 1
+          fi
+          if [[ "$actual_branch" != "$expected_branch" ]]; then
+            echo "[data-sync-azure] workflow_run branch '$actual_branch' is not default branch '$expected_branch'"
+            exit 1
+          fi
+
+          # Deterministic write source: generate/upload state from the exact
+          # successful default-branch workflow_run SHA.
+          echo "[data-sync-azure] verified source sha=$actual_sha branch=$actual_branch"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve Azure shared state variables
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ vars.AZURE_CACHE_STORAGE_ACCOUNT }}"
+          share="${{ vars.AZURE_CACHE_FILE_SHARE }}"
+          state_path="${{ vars.AZURE_SHARED_STATE_PATH }}"
+
+          if [[ -z "$account" ]]; then
+            account="simpledynamsoftmcpsa"
+          fi
+          if [[ -z "$share" ]]; then
+            share="mcp-cache"
+          fi
+          if [[ -z "$state_path" ]]; then
+            state_path="state/current.json"
+          fi
+
+          echo "storage_account=$account" >> "$GITHUB_OUTPUT"
+          echo "share_name=$share" >> "$GITHUB_OUTPUT"
+          echo "state_path=$state_path" >> "$GITHUB_OUTPUT"
+
+      - name: Download existing shared state from Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.share_name }}"
+          state_path="${{ steps.vars.outputs.state_path }}"
+          local_root="$RUNNER_TEMP/azure-shared-state"
+          local_current="$local_root/state/current.json"
+
+          mkdir -p "$(dirname "$local_current")"
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+          exists="$(az storage file exists \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --path "$state_path" \
+            --query exists \
+            -o tsv)"
+
+          if [[ "$exists" == "true" ]]; then
+            az storage file download \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$state_path" \
+              --dest "$local_current" \
+              --only-show-errors \
+              --no-progress >/dev/null
+            echo "[data-sync-azure] downloaded existing state: $state_path"
+          else
+            echo "[data-sync-azure] no existing state found at $state_path; initializing empty state"
+          fi
+
+          echo "AZURE_SHARED_STATE_CURRENT=$local_current" >> "$GITHUB_ENV"
+          echo "AZURE_SHARED_STATE_ROOT=$local_root" >> "$GITHUB_ENV"
+
+      - name: Plan incremental sync and promote local state
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          embedding_model="${{ vars.DATA_SYNC_AZURE_EMBEDDING_MODEL }}"
+          index_version="${{ vars.DATA_SYNC_AZURE_INDEX_VERSION }}"
+          chunk_size="${{ vars.DATA_SYNC_AZURE_CHUNK_SIZE }}"
+          chunk_overlap="${{ vars.DATA_SYNC_AZURE_CHUNK_OVERLAP }}"
+          max_chunks_per_doc="${{ vars.DATA_SYNC_AZURE_MAX_CHUNKS_PER_DOC }}"
+          max_text_chars="${{ vars.DATA_SYNC_AZURE_MAX_TEXT_CHARS }}"
+
+          if [[ -z "$embedding_model" ]]; then embedding_model="models/gemini-embedding-001"; fi
+          if [[ -z "$index_version" ]]; then index_version="azure-shared-v1"; fi
+          if [[ -z "$chunk_size" ]]; then chunk_size="1200"; fi
+          if [[ -z "$chunk_overlap" ]]; then chunk_overlap="200"; fi
+          if [[ -z "$max_chunks_per_doc" ]]; then max_chunks_per_doc="6"; fi
+          if [[ -z "$max_text_chars" ]]; then max_text_chars="4000"; fi
+
+          node scripts/data-sync-azure.mjs \
+            --current-state "$AZURE_SHARED_STATE_CURRENT" \
+            --next-state "$AZURE_SHARED_STATE_ROOT/state/next-state.json" \
+            --plan-output "$AZURE_SHARED_STATE_ROOT/state/plan.json" \
+            --embedding-model "$embedding_model" \
+            --index-version "$index_version" \
+            --chunk-size "$chunk_size" \
+            --chunk-overlap "$chunk_overlap" \
+            --max-chunks-per-doc "$max_chunks_per_doc" \
+            --max-text-chars "$max_text_chars"
+
+      - name: Upload promoted shared state to Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.share_name }}"
+          state_path="${{ steps.vars.outputs.state_path }}"
+          local_current="$AZURE_SHARED_STATE_CURRENT"
+
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+          state_dir="$(dirname "$state_path")"
+          if [[ "$state_dir" != "." ]]; then
+            az storage directory create \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$state_dir" >/dev/null
+          fi
+
+          # Writer serialization is enforced by workflow-level concurrency, so
+          # each upload uses a deterministic source snapshot from the validated
+          # workflow_run default-branch SHA.
+          az storage file upload \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --path "$state_path" \
+            --source "$local_current" \
+            --overwrite true \
+            --only-show-errors \
+            --no-progress >/dev/null
+
+      - name: Workflow summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const fs=require("node:fs"); const p=process.env.AZURE_SHARED_STATE_ROOT+"/state/plan.json"; const plan=JSON.parse(fs.readFileSync(p,"utf8")); const s=plan.summary; console.log("## Data Sync Azure"); console.log("- has_changes: `"+s.hasChanges+"`"); console.log("- repos_changed: `"+s.changed+"`"); console.log("- repos_added: `"+s.added+"`"); console.log("- repos_removed: `"+s.removed+"`");' >> "$GITHUB_STEP_SUMMARY"

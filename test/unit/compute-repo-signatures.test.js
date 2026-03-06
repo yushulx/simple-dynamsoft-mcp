@@ -1,0 +1,98 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { buildReposState, parseArgs } from "../../scripts/compute-repo-signatures.mjs";
+
+test("parseArgs accepts signature options", () => {
+  const args = parseArgs([
+    "--index-version",
+    "azure-shared-v2",
+    "--chunk-size",
+    "1800",
+    "--chunk-overlap",
+    "250",
+    "--max-chunks-per-doc",
+    "30",
+    "--max-text-chars",
+    "12000"
+  ]);
+
+  assert.equal(args.indexVersion, "azure-shared-v2");
+  assert.equal(args.indexConfig.chunkSize, 1800);
+  assert.equal(args.indexConfig.chunkOverlap, 250);
+  assert.equal(args.indexConfig.maxChunksPerDoc, 30);
+  assert.equal(args.indexConfig.maxTextChars, 12000);
+});
+
+test("parseArgs rejects non-integer numeric options", () => {
+  assert.throws(() => parseArgs(["--chunk-size", "ten"]), /--chunk-size/);
+  assert.throws(() => parseArgs(["--chunk-overlap", "2.4"]), /--chunk-overlap/);
+  assert.throws(() => parseArgs(["--max-text-chars", "12abc"]), /--max-text-chars/);
+});
+
+test("parseArgs enforces lower bounds for numeric options", () => {
+  assert.throws(() => parseArgs(["--chunk-size", "-1"]), />= 0/);
+  assert.throws(() => parseArgs(["--chunk-overlap", "-1"]), />= 0/);
+  assert.throws(() => parseArgs(["--max-text-chars", "-1"]), />= 0/);
+  assert.throws(() => parseArgs(["--max-chunks-per-doc", "0"]), />= 1/);
+});
+
+test("parseArgs defaults match runtime gemini signature inputs", () => {
+  const args = parseArgs([], {});
+
+  assert.equal(args.embeddingModel, "models/gemini-embedding-001");
+  assert.equal(args.indexVersion, "azure-shared-v1");
+  assert.deepEqual(args.indexConfig, {
+    chunkSize: 1200,
+    chunkOverlap: 200,
+    maxChunksPerDoc: 6,
+    maxTextChars: 4000
+  });
+});
+
+test("buildReposState throws when two repos collide on normalized key", () => {
+  assert.throws(
+    () => {
+      buildReposState(
+        [
+          {
+            path: "documentation/capture-vision-docs-js",
+            commit: "1111111111111111111111111111111111111111"
+          },
+          {
+            path: "documentation/capture_vision_docs_js",
+            commit: "2222222222222222222222222222222222222222"
+          }
+        ],
+        {
+          embeddingModel: "text-embedding-3-large",
+          indexVersion: "azure-shared-v1",
+          schemaVersion: 1,
+          indexConfig: {}
+        }
+      );
+    },
+    /Repo key collision/
+  );
+});
+
+test("buildReposState uses flat rag cache shard paths", () => {
+  const repos = buildReposState(
+    [
+      {
+        path: "documentation/capture-vision-docs-js",
+        commit: "1111111111111111111111111111111111111111"
+      }
+    ],
+    {
+      embeddingModel: "text-embedding-3-large",
+      indexVersion: "azure-shared-v1",
+      schemaVersion: 1,
+      indexConfig: {}
+    }
+  );
+
+  const stateRepo = repos.documentation_capture_vision_docs_js;
+  assert.ok(stateRepo);
+  assert.match(stateRepo.shardPath, /^rag\/cache\/gemini-[a-f0-9]{64}\.json$/);
+});
