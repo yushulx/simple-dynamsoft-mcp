@@ -160,6 +160,9 @@ jobs:
               MCP_DATA_HYDRATION_MODE=eager \
               MCP_LOG_LEVEL=info \
               MCP_DATA_CACHE_DIR="${cache_root}/data" \
+              TMPDIR="${cache_root}/tmp" \
+              TMP="${cache_root}/tmp" \
+              TEMP="${cache_root}/tmp" \
               RAG_CACHE_DIR="${cache_root}/rag/cache" \
               RAG_MODEL_CACHE_DIR="${cache_root}/rag/models"
 
