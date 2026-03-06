@@ -206,7 +206,40 @@ jobs:
           RAG_REBUILD: "true"
           RAG_CACHE_DIR: ${{ env.PREBUILT_GEMINI_CACHE_DIR }}
           RAG_MODEL_CACHE_DIR: ${{ env.PREBUILT_GEMINI_MODEL_CACHE_DIR }}
-        run: npm run rag:prebuild
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          max_attempts=4
+          delay_seconds=45
+
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "[release] prebuild attempt ${attempt}/${max_attempts}"
+
+            log_file="$(mktemp)"
+            if npm run rag:prebuild 2>&1 | tee "$log_file"; then
+              rm -f "$log_file"
+              echo "[release] prebuild succeeded on attempt ${attempt}/${max_attempts}"
+              exit 0
+            fi
+
+            if grep -Eiq "RESOURCE_EXHAUSTED|quota exceeded|\b429\b|retry in [0-9]+(\.[0-9]+)?s" "$log_file"; then
+              rm -f "$log_file"
+              if [[ "$attempt" -lt "$max_attempts" ]]; then
+                echo "[release] retryable quota/rate-limit failure detected; sleeping ${delay_seconds}s before retry"
+                sleep "$delay_seconds"
+                delay_seconds=$((delay_seconds * 2))
+                continue
+              fi
+            else
+              rm -f "$log_file"
+              echo "[release] non-retryable prebuild failure; stopping"
+              exit 1
+            fi
+          done
+
+          echo "[release] prebuild failed after ${max_attempts} attempts"
+          exit 1
 
       - name: Show prebuilt RAG output
         shell: bash
