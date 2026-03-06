@@ -50,6 +50,7 @@ function normalizeGeminiModel(model) {
 }
 
 const profileConfig = resolveProfileConfig(process.env);
+const defaultPrewarm = profileConfig.provider === "gemini";
 
 const ragConfig = {
   profile: profileConfig.profile,
@@ -67,7 +68,7 @@ const ragConfig = {
   minScore: readFloatEnv("RAG_MIN_SCORE", 0.2),
   includeScore: readBoolEnv("RAG_INCLUDE_SCORE", false),
   rebuild: readBoolEnv("RAG_REBUILD", false),
-  prewarm: readBoolEnv("RAG_PREWARM", false),
+  prewarm: readBoolEnv("RAG_PREWARM", defaultPrewarm),
   prewarmBlock: readBoolEnv("RAG_PREWARM_BLOCK", false),
   prebuiltIndexAutoDownload: readBoolEnv("RAG_PREBUILT_INDEX_AUTO_DOWNLOAD", true),
   prebuiltIndexUrl: readEnvValue("RAG_PREBUILT_INDEX_URL", ""),

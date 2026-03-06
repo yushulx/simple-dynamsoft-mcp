@@ -69,6 +69,29 @@ const providerOrchestrator = createProviderOrchestrator({
   vectorCache
 });
 
+function classifyGeminiFailureReason(error) {
+  const status = Number(error?.status);
+  if (status === 401 || status === 403) return "invalid_auth";
+  if (status === 400 || status === 404) return "invalid_config";
+  const message = String(error?.message || "").toLowerCase();
+  if (message.includes("gemini_api_key") || message.includes("api key")) return "missing_api_key";
+  if (message.includes("embed model") || message.includes("model")) return "invalid_config";
+  return "runtime_error";
+}
+
+function logGeminiDegradedOnce({ reason, fallback, error, stage }) {
+  const key = `${stage}:${reason}:${fallback}`;
+  if (ragLogState.degradedNotices.has(key)) return;
+  ragLogState.degradedNotices.add(key);
+  logRag("provider_degraded", {
+    provider: "gemini",
+    fallback,
+    reason,
+    stage,
+    error: error?.message || String(error)
+  }, { level: "error" });
+}
+
 function refreshRagIndexes() {
   providerOrchestrator.refreshProviders();
   resetRagProviderLogState();
@@ -144,6 +167,13 @@ async function searchResources({ query, product, edition, platform, type, limit 
         fallback: ragConfig.fallback,
         error: error.message
       }, { level: "error" });
+      if (name === "gemini") {
+        const reason = classifyGeminiFailureReason(error);
+        const hasFallback = providers.includes("lexical") && providers[0] === "gemini";
+        if (hasFallback) {
+          logGeminiDegradedOnce({ reason, fallback: "lexical", error, stage: "search" });
+        }
+      }
     }
   }
 
@@ -183,6 +213,10 @@ async function prewarmRagIndex() {
       fallback: ragConfig.fallback
     });
   } catch (error) {
+    if (primary === "gemini" && providers.includes("lexical")) {
+      const reason = classifyGeminiFailureReason(error);
+      logGeminiDegradedOnce({ reason, fallback: "lexical", error, stage: "prewarm" });
+    }
     logRag("prewarm_failed", {
       provider: primary,
       error: error.message
