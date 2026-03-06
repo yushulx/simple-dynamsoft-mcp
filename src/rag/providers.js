@@ -9,6 +9,18 @@ import {
   executeWithGeminiRetry
 } from "./gemini-retry.js";
 
+const GEMINI_EMBEDDING_PAYLOAD_ERROR_CODE = "GEMINI_EMBEDDING_PAYLOAD_INVALID";
+
+function isValidEmbeddingValues(values) {
+  return Array.isArray(values) && values.length > 0;
+}
+
+function createGeminiEmbeddingPayloadError(message) {
+  const error = new Error(message);
+  error.code = GEMINI_EMBEDDING_PAYLOAD_ERROR_CODE;
+  return error;
+}
+
 function resolveProviderChain(ragConfig) {
   let primary = ragConfig.provider;
   if (primary === "auto") {
@@ -70,6 +82,10 @@ async function embedTextsWithProgress(
         rateLimitFailures = 0;
         await reportChunk(vectors, "batch", batch.length);
       } catch (error) {
+        if (error?.code === GEMINI_EMBEDDING_PAYLOAD_ERROR_CODE) {
+          throw error;
+        }
+
         if (isRateLimitError(error)) {
           rateLimitFailures += 1;
           const nextBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
@@ -223,8 +239,8 @@ function createProviderOrchestrator({
             }
           );
           const embedding = payload.embedding?.values || payload.embedding || payload.embeddings?.[0]?.values;
-          if (!embedding) {
-            throw new Error("Gemini embedding response missing embedding values.");
+          if (!isValidEmbeddingValues(embedding)) {
+            throw createGeminiEmbeddingPayloadError("Gemini embedding response missing embedding values.");
           }
           return embedding;
         },
@@ -245,7 +261,16 @@ function createProviderOrchestrator({
           if (!Array.isArray(embeddings)) {
             throw new Error("Gemini batch response missing embeddings.");
           }
-          return embeddings.map((item) => item.values || item.embedding?.values || item.embedding);
+
+          return embeddings.map((item, index) => {
+            const values = item?.values || item?.embedding?.values || item?.embedding;
+            if (!isValidEmbeddingValues(values)) {
+              throw createGeminiEmbeddingPayloadError(
+                `Gemini batch embedding response malformed at index=${index}.`
+              );
+            }
+            return values;
+          });
         },
         getMetrics: () => ({ ...metrics }),
         resetMetrics: () => {

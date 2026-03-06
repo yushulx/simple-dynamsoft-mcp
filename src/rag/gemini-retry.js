@@ -62,7 +62,7 @@ function computeBackoffDelayMs({
 }) {
   const retryAfter = Math.max(0, Number(retryAfterMs) || 0);
   if (retryAfter > 0) {
-    return Math.min(maxDelayMs, retryAfter);
+    return retryAfter;
   }
 
   const exponent = Math.max(0, Number(attempt) - 1);

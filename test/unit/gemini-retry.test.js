@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  computeBackoffDelayMs,
   GeminiHttpError,
   executeWithGeminiRetry,
   normalizeGeminiRetryConfig,
@@ -38,6 +39,26 @@ test("parseRetryAfterMs supports both seconds and http-date", () => {
   assert.equal(parseRetryAfterMs("", 1000), 0);
   const date = new Date(5000).toUTCString();
   assert.equal(parseRetryAfterMs(date, 1000), 4000);
+});
+
+test("computeBackoffDelayMs honors server retry-after without max-delay cap", () => {
+  const delayWithRetryAfter = computeBackoffDelayMs({
+    attempt: 1,
+    baseDelayMs: 100,
+    maxDelayMs: 250,
+    retryAfterMs: 2000,
+    random: () => 0.5
+  });
+  assert.equal(delayWithRetryAfter, 2000);
+
+  const delayWithoutRetryAfter = computeBackoffDelayMs({
+    attempt: 2,
+    baseDelayMs: 100,
+    maxDelayMs: 250,
+    retryAfterMs: 0,
+    random: () => 0.5
+  });
+  assert.equal(delayWithoutRetryAfter, 200);
 });
 
 test("executeWithGeminiRetry retries retryable errors and then succeeds", async () => {
