@@ -207,7 +207,7 @@ function createProviderOrchestrator({
 
         if (resumeFrom < texts.length) {
           logRag(
-            `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=${batchSize}`
+            `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=1`
           );
           try {
             const embeddingResult = await embedTextsWithProgress(
@@ -224,6 +224,10 @@ function createProviderOrchestrator({
                   persistCheckpoint(completed >= total);
                 }
               }
+            );
+            const finalBatchSize = embeddingResult?.stats?.finalBatchSize || 1;
+            logRag(
+              `building index complete provider=${name} embed_items=${texts.length} final_batch_size=${finalBatchSize}`
             );
           } catch (error) {
             persistCheckpoint(true);
