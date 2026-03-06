@@ -13,8 +13,6 @@ const legacyPrebuiltIndexUrl =
   `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-${pkg.version}.tar.gz`;
 
 const defaultPrebuiltIndexUrls = {
-  local:
-    `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-local-${pkg.version}.tar.gz`,
   gemini:
     `https://github.com/yushulx/simple-dynamsoft-mcp/releases/download/v${pkg.version}/prebuilt-rag-index-gemini-${pkg.version}.tar.gz`
 };
@@ -62,8 +60,6 @@ const ragConfig = {
   fallback: profileConfig.fallback,
   cacheDir: readEnvValue("RAG_CACHE_DIR", join(dataRoot, ".rag-cache")),
   modelCacheDir: readEnvValue("RAG_MODEL_CACHE_DIR", join(dataRoot, ".rag-cache", "models")),
-  localModel: readEnvValue("RAG_LOCAL_MODEL", "Xenova/all-MiniLM-L6-v2"),
-  localQuantized: readBoolEnv("RAG_LOCAL_QUANTIZED", true),
   chunkSize: readIntEnv("RAG_CHUNK_SIZE", 1200),
   chunkOverlap: readIntEnv("RAG_CHUNK_OVERLAP", 200),
   maxChunksPerDoc: readIntEnv("RAG_MAX_CHUNKS_PER_DOC", 6),
@@ -75,7 +71,6 @@ const ragConfig = {
   prewarmBlock: readBoolEnv("RAG_PREWARM_BLOCK", false),
   prebuiltIndexAutoDownload: readBoolEnv("RAG_PREBUILT_INDEX_AUTO_DOWNLOAD", true),
   prebuiltIndexUrl: readEnvValue("RAG_PREBUILT_INDEX_URL", ""),
-  prebuiltIndexUrlLocal: readEnvValue("RAG_PREBUILT_INDEX_URL_LOCAL", defaultPrebuiltIndexUrls.local),
   prebuiltIndexUrlGemini: readEnvValue("RAG_PREBUILT_INDEX_URL_GEMINI", defaultPrebuiltIndexUrls.gemini),
   prebuiltIndexTimeoutMs: readIntEnv("RAG_PREBUILT_INDEX_TIMEOUT_MS", 180000),
   geminiApiKey: readEnvValue("GEMINI_API_KEY", ""),

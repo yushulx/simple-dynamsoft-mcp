@@ -35,7 +35,7 @@ npx -y simple-dynamsoft-mcp@latest
 
 Notes:
 - No explicit environment variables are required for the default path.
-- Default profile is lightweight (`lite`) and avoids local embedding model downloads.
+- Default profile is lightweight (`lite`) and avoids semantic embedding downloads.
 - If local data is missing, the package can bootstrap pinned data from cache/download sources.
 
 ## Scenario 2: Ubuntu HTTP Deployment (Full Data + Gemini)

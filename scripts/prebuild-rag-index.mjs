@@ -13,7 +13,7 @@ function fileHash(path) {
 }
 
 function ensureEnvDefaults() {
-  process.env.RAG_PROVIDER = process.env.RAG_PROVIDER || "local";
+  process.env.RAG_PROVIDER = process.env.RAG_PROVIDER || "gemini";
   process.env.RAG_FALLBACK = process.env.RAG_FALLBACK || "none";
   process.env.RAG_PREWARM = process.env.RAG_PREWARM || "true";
   process.env.RAG_PREWARM_BLOCK = process.env.RAG_PREWARM_BLOCK || "true";
@@ -50,10 +50,10 @@ if (cacheFiles.length === 0) {
 
 let indexSignature = "";
 let indexCacheKey = "";
-const localCacheFile = cacheFiles.find((path) => /rag-local-.*\.json$/i.test(path));
-if (localCacheFile) {
+const geminiCacheFile = cacheFiles.find((path) => /rag-gemini-.*\.json$/i.test(path));
+if (geminiCacheFile) {
   try {
-    const parsed = JSON.parse(readFileSync(localCacheFile, "utf8"));
+    const parsed = JSON.parse(readFileSync(geminiCacheFile, "utf8"));
     indexSignature = String(parsed?.meta?.signature || "");
     indexCacheKey = String(parsed?.cacheKey || "");
   } catch {
@@ -65,7 +65,7 @@ const manifest = {
   packageVersion: pkg.version,
   generatedAt: new Date().toISOString(),
   ragProvider: ragConfig.provider,
-  ragModel: ragConfig.provider === "gemini" ? ragConfig.geminiModel : ragConfig.localModel,
+  ragModel: ragConfig.geminiModel,
   indexSignature,
   indexCacheKey,
   cacheDir: toPosixPath(cacheDir),

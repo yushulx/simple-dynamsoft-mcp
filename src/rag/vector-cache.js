@@ -154,9 +154,7 @@ function resolvePrebuiltIndexUrlCandidates(provider, ragConfig, legacyPrebuiltIn
   if (override) return [override];
 
   const candidates = [];
-  if (provider === "local") {
-    candidates.push(String(ragConfig.prebuiltIndexUrlLocal || "").trim());
-  } else if (provider === "gemini") {
+  if (provider === "gemini") {
     candidates.push(String(ragConfig.prebuiltIndexUrlGemini || "").trim());
   }
   candidates.push(legacyPrebuiltIndexUrl);
@@ -204,7 +202,7 @@ function createVectorCacheHelpers({ ragConfig, pkgVersion, legacyPrebuiltIndexUr
   const prebuiltDownloadAttempts = new Map();
 
   async function maybeDownloadPrebuiltVectorIndex({ provider, model, cacheKey, signature, cacheFile }) {
-    if (!["local", "gemini"].includes(provider)) {
+    if (provider !== "gemini") {
       return { downloaded: false, reason: "provider_not_supported" };
     }
     if (!ragConfig.prebuiltIndexAutoDownload) {
