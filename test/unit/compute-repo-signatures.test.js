@@ -32,7 +32,7 @@ test("parseArgs rejects non-integer numeric options", () => {
 });
 
 test("parseArgs enforces lower bounds for numeric options", () => {
-  assert.throws(() => parseArgs(["--index-version", "-1"]), />= 0/);
+  assert.throws(() => parseArgs(["--index-version", "0"]), />= 1/);
   assert.throws(() => parseArgs(["--chunk-size", "-1"]), />= 0/);
   assert.throws(() => parseArgs(["--chunk-overlap", "-1"]), />= 0/);
   assert.throws(() => parseArgs(["--max-text-chars", "-1"]), />= 0/);

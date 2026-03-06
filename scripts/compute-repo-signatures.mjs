@@ -62,7 +62,7 @@ function parseArgs(argv) {
       continue;
     }
     if (arg === "--index-version" && value) {
-      args.indexVersion = parseIntegerOption("--index-version", value, { min: 0 });
+      args.indexVersion = parseIntegerOption("--index-version", value, { min: 1 });
       i++;
       continue;
     }
