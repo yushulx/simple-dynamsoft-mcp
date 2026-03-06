@@ -207,7 +207,9 @@ jobs:
             --account-key "$key" \
             --source "$local_data" \
             --destination "$share" \
-            --destination-path "$version/data"
+            --destination-path "$version/data" \
+            --max-connections 64 \
+            --no-progress
 
       - name: Verify uploaded cache data readiness
         shell: bash
