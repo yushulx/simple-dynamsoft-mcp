@@ -21,11 +21,6 @@ on:
         required: false
         default: ""
         type: string
-      rag_artifact_name:
-        description: Optional artifact name containing prebuilt RAG indexes
-        required: false
-        default: ""
-        type: string
   workflow_dispatch:
     inputs:
       version:
@@ -43,11 +38,6 @@ on:
         type: string
       data_artifact_name:
         description: Optional artifact name containing hydrated data tree
-        required: false
-        default: ""
-        type: string
-      rag_artifact_name:
-        description: Optional artifact name containing prebuilt RAG indexes
         required: false
         default: ""
         type: string
@@ -144,13 +134,6 @@ jobs:
           name: ${{ inputs.data_artifact_name }}
           path: ${{ runner.temp }}/hydrated-data-artifact
 
-      - name: Download prebuilt RAG artifact
-        if: ${{ inputs.rag_artifact_name != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.rag_artifact_name }}
-          path: ${{ runner.temp }}/prebuilt-rag-artifact
-
       - name: Prepare data cache on runner
         id: prepare_data
         shell: bash
@@ -229,56 +212,6 @@ jobs:
             --only-show-errors \
             -o none
 
-      - name: Upload Gemini prebuilt RAG cache to Azure Files
-        if: ${{ inputs.rag_artifact_name != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          account="${{ steps.vars.outputs.storage_account }}"
-          share="${{ steps.vars.outputs.cache_share }}"
-          version="${{ steps.vars.outputs.version }}"
-          artifact_root="$RUNNER_TEMP/prebuilt-rag-artifact"
-          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
-
-          gemini_cache_dir=""
-          for candidate in \
-            "$artifact_root/gemini/cache" \
-            "$artifact_root/prebuilt-rag/gemini/cache" \
-            "$artifact_root/release-assets/prebuilt-rag/gemini/cache"; do
-            if [[ -d "$candidate" ]]; then
-              gemini_cache_dir="$candidate"
-              break
-            fi
-          done
-
-          if [[ -z "$gemini_cache_dir" ]]; then
-            echo "Could not find gemini prebuilt cache directory in artifact root: $artifact_root"
-            exit 1
-          fi
-
-          az storage directory create \
-            --account-name "$account" \
-            --account-key "$key" \
-            --share-name "$share" \
-            --name "$version/rag" >/dev/null
-
-          az storage directory create \
-            --account-name "$account" \
-            --account-key "$key" \
-            --share-name "$share" \
-            --name "$version/rag/cache" >/dev/null
-
-          az storage file upload-batch \
-            --account-name "$account" \
-            --account-key "$key" \
-            --source "$gemini_cache_dir" \
-            --destination "$share" \
-            --destination-path "$version/rag/cache" \
-            --max-connections 64 \
-            --only-show-errors \
-            -o none
-
       - name: Verify uploaded cache data readiness
         shell: bash
         run: |
@@ -321,43 +254,6 @@ jobs:
               exit 1
             fi
           done
-
-      - name: Verify uploaded Gemini prebuilt RAG cache
-        if: ${{ inputs.rag_artifact_name != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          account="${{ steps.vars.outputs.storage_account }}"
-          share="${{ steps.vars.outputs.cache_share }}"
-          version="${{ steps.vars.outputs.version }}"
-          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
-
-          rag_dir_exists="$(az storage directory exists \
-            --account-name "$account" \
-            --account-key "$key" \
-            --share-name "$share" \
-            --name "$version/rag/cache" \
-            --query exists \
-            -o tsv)"
-
-          if [[ "$rag_dir_exists" != "true" ]]; then
-            echo "Missing uploaded RAG cache directory at $version/rag/cache"
-            exit 1
-          fi
-
-          file_count="$(az storage file list \
-            --account-name "$account" \
-            --account-key "$key" \
-            --share-name "$share" \
-            --path "$version/rag/cache" \
-            --query "length(@)" \
-            -o tsv)"
-
-          if [[ "$file_count" == "0" ]]; then
-            echo "Uploaded RAG cache directory is empty at $version/rag/cache"
-            exit 1
-          fi
 
       - name: Configure ACA registry auth (managed identity)
         shell: bash
