@@ -115,3 +115,29 @@ test("createSharedState and loadSharedState normalize repo keys and paths", () =
   const loaded = loadSharedState(JSON.stringify(state));
   assert.equal(loaded.repos[expectedKey].path, "documentation/capture-vision-docs-js");
 });
+
+test("createSharedState throws when different repos normalize to same key", () => {
+  assert.throws(
+    () => {
+      createSharedState({
+        generatedAt: "2026-03-06T00:00:00.000Z",
+        indexVersion: "azure-shared-v1",
+        repos: {
+          "Documentation/Capture-Vision-Docs-JS": {
+            path: "documentation/capture-vision-docs-js",
+            commit: "1111111111111111111111111111111111111111",
+            signature: "sig-a",
+            shardPath: "shared/indexes/documentation/capture-vision-docs-js/sig-a.json"
+          },
+          "documentation_capture vision docs js": {
+            path: "documentation/capture_vision_docs_js",
+            commit: "2222222222222222222222222222222222222222",
+            signature: "sig-b",
+            shardPath: "shared/indexes/documentation/capture_vision_docs_js/sig-b.json"
+          }
+        }
+      });
+    },
+    /Repo key collision/
+  );
+});

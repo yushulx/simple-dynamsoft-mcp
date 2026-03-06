@@ -58,11 +58,22 @@ function normalizeRepoEntry(key, entry) {
 function normalizeReposMap(repos) {
   const input = repos && typeof repos === "object" ? repos : {};
   const normalized = {};
+  const sourceByKey = new Map();
 
   for (const [repoKey, entry] of Object.entries(input)) {
     const normalizedEntry = normalizeRepoEntry(repoKey, entry);
     const key = normalizeRepoKey(normalizedEntry.path || repoKey);
     if (!key) continue;
+
+    const existingEntry = normalized[key];
+    if (existingEntry && existingEntry.path !== normalizedEntry.path) {
+      const existingSource = sourceByKey.get(key) || existingEntry.path;
+      throw new Error(
+        `Repo key collision for '${key}': '${existingSource}' and '${repoKey}' normalize to different paths ('${existingEntry.path}' vs '${normalizedEntry.path}')`
+      );
+    }
+
+    sourceByKey.set(key, repoKey);
     normalized[key] = normalizedEntry;
   }
 

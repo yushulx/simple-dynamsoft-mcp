@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   SHARED_STATE_SCHEMA_VERSION,
@@ -14,12 +14,29 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
 
+function parseIntegerOption(flag, rawValue, { min = 0 } = {}) {
+  const valueText = String(rawValue ?? "").trim();
+  if (!/^-?\d+$/.test(valueText)) {
+    throw new Error(`Invalid ${flag}: expected an integer, received '${rawValue}'`);
+  }
+
+  const value = Number.parseInt(valueText, 10);
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(`Invalid ${flag}: expected a safe integer, received '${rawValue}'`);
+  }
+  if (value < min) {
+    throw new Error(`Invalid ${flag}: expected integer >= ${min}, received '${rawValue}'`);
+  }
+
+  return value;
+}
+
 function parseArgs(argv) {
   const args = {
     manifest: "data/metadata/data-manifest.json",
     output: "",
     embeddingModel: "text-embedding-3-large",
-    indexVersion: "azure-shared-v1",
+    indexVersion: 1,
     generatedAt: new Date().toISOString(),
     schemaVersion: SHARED_STATE_SCHEMA_VERSION,
     indexConfig: {}
@@ -45,7 +62,7 @@ function parseArgs(argv) {
       continue;
     }
     if (arg === "--index-version" && value) {
-      args.indexVersion = value;
+      args.indexVersion = parseIntegerOption("--index-version", value, { min: 0 });
       i++;
       continue;
     }
@@ -55,27 +72,27 @@ function parseArgs(argv) {
       continue;
     }
     if (arg === "--schema-version" && value) {
-      args.schemaVersion = Number.parseInt(value, 10);
+      args.schemaVersion = parseIntegerOption("--schema-version", value, { min: 1 });
       i++;
       continue;
     }
     if (arg === "--chunk-size" && value) {
-      args.indexConfig.chunkSize = Number.parseInt(value, 10);
+      args.indexConfig.chunkSize = parseIntegerOption("--chunk-size", value, { min: 0 });
       i++;
       continue;
     }
     if (arg === "--chunk-overlap" && value) {
-      args.indexConfig.chunkOverlap = Number.parseInt(value, 10);
+      args.indexConfig.chunkOverlap = parseIntegerOption("--chunk-overlap", value, { min: 0 });
       i++;
       continue;
     }
     if (arg === "--max-chunks-per-doc" && value) {
-      args.indexConfig.maxChunksPerDoc = Number.parseInt(value, 10);
+      args.indexConfig.maxChunksPerDoc = parseIntegerOption("--max-chunks-per-doc", value, { min: 1 });
       i++;
       continue;
     }
     if (arg === "--max-text-chars" && value) {
-      args.indexConfig.maxTextChars = Number.parseInt(value, 10);
+      args.indexConfig.maxTextChars = parseIntegerOption("--max-text-chars", value, { min: 0 });
       i++;
     }
   }
@@ -106,11 +123,20 @@ function buildShardPath(repoPath, signature) {
 
 function buildReposState(manifestRepos, options) {
   const repos = {};
+  const sourceByKey = new Map();
 
   for (const repo of manifestRepos) {
     const path = normalizeRepoPath(repo.path);
     const key = normalizeRepoKey(path);
     if (!key) continue;
+
+    const existingPath = sourceByKey.get(key);
+    if (existingPath && existingPath !== path) {
+      throw new Error(
+        `Repo key collision for '${key}': '${existingPath}' and '${path}' normalize to the same key`
+      );
+    }
+    sourceByKey.set(key, path);
 
     const signature = computeRepoSignature({
       repo,
@@ -154,4 +180,8 @@ function main() {
   process.stdout.write(output);
 }
 
-main();
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  main();
+}
+
+export { buildReposState, parseArgs, parseIntegerOption };
