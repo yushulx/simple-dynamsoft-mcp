@@ -27,7 +27,8 @@ logEvent("profile", "resolved", {
   provider: ragApi.ragConfig.provider,
   provider_source: ragApi.ragConfig.providerSource,
   fallback: ragApi.ragConfig.fallback,
-  fallback_source: ragApi.ragConfig.fallbackSource
+  fallback_source: ragApi.ragConfig.fallbackSource,
+  shared_state_path: ragApi.ragConfig.sharedStatePath ? "set" : "empty"
 });
 
 const createServer = () => createMcpServerInstance({

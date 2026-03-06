@@ -328,26 +328,32 @@ function createProviderOrchestrator({
           }
           logRag(`cache miss provider=${name} file=${cacheFile} reason=${cacheState.reason}`);
 
-          const downloadResult = await vectorCache.maybeDownloadPrebuiltVectorIndex({
+          const sharedLoadResult = await vectorCache.maybeLoadSharedVectorIndex({
             provider: name,
             model,
             cacheKey,
             signature,
             cacheFile
           });
-          if (downloadResult.downloaded) {
+          if (sharedLoadResult.loaded) {
             cacheState = vectorCache.loadVectorIndexCache(cacheFile, expectedCacheState);
             if (cacheState.hit) {
               const cached = cacheState.payload;
               logRag(
-                `cache hit provider=${name} file=${cacheFile} source=prebuilt_download items=${cached.items.length} vectors=${cached.vectors.length}`
+                `cache hit provider=${name} file=${cacheFile} source=shared_state items=${cached.items.length} vectors=${cached.vectors.length}`
               );
               return {
                 items: cached.items,
                 vectors: cached.vectors
               };
             }
-            logRag(`cache miss provider=${name} file=${cacheFile} source=prebuilt_download reason=${cacheState.reason}`);
+            logRag(`cache miss provider=${name} file=${cacheFile} source=shared_state reason=${cacheState.reason}`);
+          } else if (sharedLoadResult.fatal) {
+            const sharedError = sharedLoadResult.error || new Error(`shared shard load failed (${sharedLoadResult.reason})`);
+            logRag(
+              `shared shard load failed provider=${name} reason=${sharedLoadResult.reason} error=${sharedError.message}`
+            );
+            throw sharedError;
           }
         } else {
           logRag(`cache bypass provider=${name} file=${cacheFile} reason=rebuild_true`);

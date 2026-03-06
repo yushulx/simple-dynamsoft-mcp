@@ -1,8 +1,11 @@
-import { readFileSync, existsSync, writeFileSync, mkdirSync, readdirSync, copyFileSync, rmSync, statSync } from "node:fs";
-import { join, basename, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { tmpdir } from "node:os";
-import * as tar from "tar";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import {
+  computeRepoSignature,
+  loadSharedState,
+  normalizeRepoKey,
+  normalizeRepoPath
+} from "../data/shared-state.js";
 
 function ensureDirectory(path) {
   if (!existsSync(path)) {
@@ -102,206 +105,185 @@ function clearVectorIndexCheckpoint(checkpointFile) {
   }
 }
 
-function listFilesRecursive(rootDir) {
-  const files = [];
-  const stack = [rootDir];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    const entries = readdirSync(current, { withFileTypes: true });
-    for (const entry of entries) {
-      const fullPath = join(current, entry.name);
-      if (entry.isDirectory()) {
-        stack.push(fullPath);
-      } else if (entry.isFile()) {
-        files.push(fullPath);
-      }
-    }
-  }
-  return files;
-}
+function readManifestRepos(dataRoot) {
+  if (!dataRoot) return [];
+  const manifestPath = join(dataRoot, "metadata", "data-manifest.json");
+  if (!existsSync(manifestPath)) return [];
 
-function readSignaturePackageVersion(signatureRaw) {
-  if (!signatureRaw) return "";
   try {
-    const parsed = JSON.parse(signatureRaw);
-    return String(parsed?.packageVersion || "");
+    const parsed = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (!Array.isArray(parsed?.repos)) return [];
+    return parsed.repos
+      .map((repo) => ({
+        path: normalizeRepoPath(repo?.path),
+        commit: String(repo?.commit || "").trim()
+      }))
+      .filter((repo) => repo.path && repo.commit);
   } catch {
-    return "";
+    return [];
   }
 }
 
-function listDownloadedCacheCandidatesByProvider(extractRoot, expectedCacheFileName, cacheKey, provider) {
-  const allFiles = listFilesRecursive(extractRoot).filter((path) => path.toLowerCase().endsWith(".json")).sort();
-  const expectedPath = allFiles.find((path) => basename(path) === expectedCacheFileName);
-
-  const cachePrefix = cacheKey.slice(0, 12);
-  const prefixPath = allFiles.find((path) => {
-    const name = basename(path);
-    return name.startsWith(`rag-${provider}-`) && name.endsWith(`-${cachePrefix}.json`);
-  });
-
-  const providerFiles = allFiles.filter((path) => basename(path).startsWith(`rag-${provider}-`));
-  const unique = [];
-  for (const path of [expectedPath, prefixPath, ...providerFiles]) {
-    if (!path) continue;
-    if (!unique.includes(path)) unique.push(path);
+function resolveSharedShardFile(sharedStatePath, shardPath) {
+  const normalizedShardPath = normalizeRepoPath(shardPath);
+  if (!normalizedShardPath) {
+    throw new Error("shared shard path is empty");
   }
-  return unique;
-}
-
-function resolvePrebuiltIndexUrlCandidates(provider, ragConfig, legacyPrebuiltIndexUrl) {
-  const override = String(ragConfig.prebuiltIndexUrl || "").trim();
-  if (override) return [override];
-
-  const candidates = [];
-  if (provider === "gemini") {
-    candidates.push(String(ragConfig.prebuiltIndexUrlGemini || "").trim());
+  if (isAbsolute(normalizedShardPath)) {
+    return normalizedShardPath;
   }
-  candidates.push(legacyPrebuiltIndexUrl);
 
-  const deduped = [];
+  const stateDir = dirname(sharedStatePath);
+  const workspaceRoot = dirname(dirname(stateDir));
+  const candidates = [
+    resolve(stateDir, normalizedShardPath),
+    resolve(workspaceRoot, normalizedShardPath),
+    resolve(process.cwd(), normalizedShardPath)
+  ];
+
   for (const candidate of candidates) {
-    if (!candidate) continue;
-    if (!deduped.includes(candidate)) deduped.push(candidate);
-  }
-  return deduped;
-}
-
-async function downloadPrebuiltArchive(url, outputPath, timeoutMs) {
-  const source = String(url || "").trim();
-  if (!source) {
-    throw new Error("prebuilt URL is empty");
-  }
-
-  if (source.startsWith("file://")) {
-    copyFileSync(fileURLToPath(source), outputPath);
-    return { sourceType: "file", size: statSync(outputPath).size };
-  }
-
-  if (!/^https?:\/\//i.test(source)) {
-    copyFileSync(resolve(source), outputPath);
-    return { sourceType: "file", size: statSync(outputPath).size };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs));
-  try {
-    const response = await fetch(source, { signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    if (existsSync(candidate)) {
+      return candidate;
     }
-    const arrayBuffer = await response.arrayBuffer();
-    writeFileSync(outputPath, Buffer.from(arrayBuffer));
-    return { sourceType: "http", size: arrayBuffer.byteLength };
-  } finally {
-    clearTimeout(timer);
   }
+
+  return candidates[0];
 }
 
-function createVectorCacheHelpers({ ragConfig, pkgVersion, legacyPrebuiltIndexUrl, logRag }) {
-  const prebuiltDownloadAttempts = new Map();
+function parseSharedShardPayload(shardPath, raw) {
+  const parsed = JSON.parse(raw);
+  const candidate = parsed?.items && parsed?.vectors ? parsed : parsed?.payload;
 
-  async function maybeDownloadPrebuiltVectorIndex({ provider, model, cacheKey, signature, cacheFile }) {
+  if (!candidate || !Array.isArray(candidate.items) || !Array.isArray(candidate.vectors)) {
+    throw new Error(`shared shard ${shardPath} payload is missing items/vectors arrays`);
+  }
+  if (candidate.items.length !== candidate.vectors.length) {
+    throw new Error(
+      `shared shard ${shardPath} has mismatched items/vectors lengths (${candidate.items.length}/${candidate.vectors.length})`
+    );
+  }
+
+  return {
+    items: candidate.items,
+    vectors: candidate.vectors
+  };
+}
+
+function buildSharedIndexConfig(ragConfig) {
+  return {
+    chunkSize: ragConfig.chunkSize,
+    chunkOverlap: ragConfig.chunkOverlap,
+    maxChunksPerDoc: ragConfig.maxChunksPerDoc,
+    maxTextChars: ragConfig.maxTextChars
+  };
+}
+
+function createVectorCacheHelpers({ ragConfig, logRag }) {
+  async function maybeLoadSharedVectorIndex({ provider, model, cacheKey, signature, cacheFile }) {
     if (provider !== "gemini") {
-      return { downloaded: false, reason: "provider_not_supported" };
-    }
-    if (!ragConfig.prebuiltIndexAutoDownload) {
-      return { downloaded: false, reason: "auto_download_disabled" };
+      return { loaded: false, reason: "provider_not_supported" };
     }
 
-    const sourceUrls = resolvePrebuiltIndexUrlCandidates(provider, ragConfig, legacyPrebuiltIndexUrl);
-    if (sourceUrls.length === 0) {
-      return { downloaded: false, reason: "url_not_set" };
+    const sharedStatePath = String(ragConfig.sharedStatePath || "").trim();
+    if (!sharedStatePath) {
+      return { loaded: false, reason: "shared_state_not_configured" };
     }
 
-    const attemptKey = `${provider}:${cacheKey}:${sourceUrls.join("|")}`;
-    if (prebuiltDownloadAttempts.has(attemptKey)) {
-      return prebuiltDownloadAttempts.get(attemptKey);
+    if (!existsSync(sharedStatePath)) {
+      return { loaded: false, reason: "shared_state_unreadable" };
     }
 
-    const expectedCacheFileName = makeCacheFileName(provider, model, cacheKey);
-    const attempt = (async () => {
-      let lastReason = "not_attempted";
-      for (const sourceUrl of sourceUrls) {
-        const tempRoot = join(
-          tmpdir(),
-          `simple-dynamsoft-mcp-rag-prebuilt-${Date.now()}-${Math.random().toString(16).slice(2)}`
-        );
-        const archivePath = join(tempRoot, "prebuilt-rag-index.tar.gz");
-        const extractRoot = join(tempRoot, "extract");
+    let sharedState;
+    try {
+      sharedState = loadSharedState(readFileSync(sharedStatePath, "utf8"));
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      return {
+        loaded: false,
+        fatal: true,
+        reason: "shared_state_invalid",
+        error: normalizedError
+      };
+    }
 
-        ensureDirectory(extractRoot);
-        try {
-          logRag(
-            `prebuilt index download start provider=${provider} url=${sourceUrl} timeout_ms=${ragConfig.prebuiltIndexTimeoutMs}`
-          );
-          const downloaded = await downloadPrebuiltArchive(sourceUrl, archivePath, ragConfig.prebuiltIndexTimeoutMs);
-          logRag(
-            `prebuilt index downloaded provider=${provider} source=${downloaded.sourceType} size=${downloaded.size}B url=${sourceUrl}`
-          );
+    const manifestRepos = readManifestRepos(ragConfig.dataRoot);
+    if (manifestRepos.length === 0) {
+      return { loaded: false, reason: "manifest_missing_or_empty" };
+    }
 
-          await tar.x({
-            file: archivePath,
-            cwd: extractRoot,
-            strict: true
-          });
+    const repoIndexConfig = buildSharedIndexConfig(ragConfig);
+    const matchedShards = [];
+    for (const repo of manifestRepos) {
+      const repoKey = normalizeRepoKey(repo.path);
+      const sharedRepo = sharedState.repos[repoKey];
+      if (!sharedRepo) continue;
 
-          const candidateFiles = listDownloadedCacheCandidatesByProvider(
-            extractRoot,
-            expectedCacheFileName,
-            cacheKey,
-            provider
-          );
-          if (candidateFiles.length === 0) {
-            throw new Error(`cache_file_not_found expected=${expectedCacheFileName}`);
-          }
+      const expectedSignature = computeRepoSignature({
+        repo,
+        embeddingModel: model,
+        indexConfig: repoIndexConfig,
+        indexVersion: sharedState.indexVersion
+      });
 
-          for (const sourceCacheFile of candidateFiles) {
-            const candidateCache = loadVectorIndexCache(sourceCacheFile, {
-              provider,
-              model
-            });
-            if (!candidateCache.hit) {
-              continue;
-            }
+      if (sharedRepo.signature !== expectedSignature) continue;
+      matchedShards.push({
+        repoPath: repo.path,
+        shardPath: sharedRepo.shardPath,
+        signature: expectedSignature
+      });
+    }
 
-            const cachePackageVersion = readSignaturePackageVersion(candidateCache.payload?.meta?.signature);
-            if (!cachePackageVersion || cachePackageVersion !== pkgVersion) {
-              continue;
-            }
+    if (matchedShards.length === 0) {
+      return { loaded: false, reason: "no_matching_shared_shards" };
+    }
 
-            const migratedPayload = {
-              ...candidateCache.payload,
-              cacheKey,
-              meta: {
-                ...(candidateCache.payload.meta || {}),
-                provider,
-                model,
-                signature
-              }
-            };
-            saveVectorIndexCache(ragConfig.cacheDir, cacheFile, migratedPayload);
-            logRag(
-              `prebuilt index installed provider=${provider} cache_file=${cacheFile} source=${basename(sourceCacheFile)} mode=version_only_compat version=${cachePackageVersion}`
-            );
-            return { downloaded: true, reason: "installed_version_only_compat" };
-          }
+    const combinedItems = [];
+    const combinedVectors = [];
 
-          throw new Error(
-            `no_compatible_cache expected=${expectedCacheFileName} found=${candidateFiles.map((path) => basename(path)).join(",")}`
-          );
-        } catch (error) {
-          lastReason = `${sourceUrl} => ${error.message}`;
-          logRag(`prebuilt index unavailable provider=${provider} url=${sourceUrl} reason=${error.message}`);
-        } finally {
-          rmSync(tempRoot, { recursive: true, force: true });
+    try {
+      for (const shard of matchedShards) {
+        const shardFile = resolveSharedShardFile(sharedStatePath, shard.shardPath);
+        if (!existsSync(shardFile)) {
+          throw new Error(`shared shard missing repo=${shard.repoPath} path=${shard.shardPath}`);
         }
+        const parsed = parseSharedShardPayload(shard.shardPath, readFileSync(shardFile, "utf8"));
+        combinedItems.push(...parsed.items);
+        combinedVectors.push(...parsed.vectors);
       }
-      return { downloaded: false, reason: lastReason };
-    })();
+    } catch (error) {
+      const normalizedError = error instanceof Error ? error : new Error(String(error));
+      return {
+        loaded: false,
+        fatal: true,
+        reason: "shared_shard_error",
+        error: normalizedError
+      };
+    }
 
-    prebuiltDownloadAttempts.set(attemptKey, attempt);
-    return attempt;
+    const payload = {
+      cacheKey,
+      meta: {
+        provider,
+        model,
+        signature,
+        source: "shared_state",
+        sharedStatePath,
+        sharedStateIndexVersion: sharedState.indexVersion,
+        sharedShardCount: matchedShards.length
+      },
+      items: combinedItems,
+      vectors: combinedVectors
+    };
+    saveVectorIndexCache(ragConfig.cacheDir, cacheFile, payload);
+    logRag(
+      `shared shard index loaded provider=${provider} shards=${matchedShards.length} items=${combinedItems.length} vectors=${combinedVectors.length}`
+    );
+    return {
+      loaded: true,
+      reason: "loaded_shared_shards",
+      shardCount: matchedShards.length,
+      itemCount: combinedItems.length
+    };
   }
 
   return {
@@ -312,7 +294,11 @@ function createVectorCacheHelpers({ ragConfig, pkgVersion, legacyPrebuiltIndexUr
     loadVectorIndexCheckpoint,
     saveVectorIndexCheckpoint: (checkpointFile, payload) => saveVectorIndexCheckpoint(ragConfig.cacheDir, checkpointFile, payload),
     clearVectorIndexCheckpoint,
-    maybeDownloadPrebuiltVectorIndex
+    maybeLoadSharedVectorIndex,
+    maybeDownloadPrebuiltVectorIndex: async () => ({
+      downloaded: false,
+      reason: "runtime_prebuilt_download_disabled"
+    })
   };
 }
 

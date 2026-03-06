@@ -10,7 +10,7 @@ import {
 } from "../server/resource-index.js";
 import { latencyBucket } from "../observability/logging.js";
 import { createLexicalProvider } from "./lexical-provider.js";
-import { pkg, ragConfig, legacyPrebuiltIndexUrl } from "./config.js";
+import { pkg, ragConfig } from "./config.js";
 import {
   ragLogState,
   logRag,
@@ -49,8 +49,6 @@ const searchUtils = {
 
 const vectorCache = createVectorCacheHelpers({
   ragConfig,
-  pkgVersion: pkg.version,
-  legacyPrebuiltIndexUrl,
   logRag
 });
 

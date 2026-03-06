@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createProviderOrchestrator } from "../../src/rag/providers.js";
 
-function createHarness({ texts, batchSize, fetchImpl }) {
+function createHarness({ texts, batchSize, fetchImpl, vectorCacheOverrides = {}, ragConfigOverrides = {} }) {
   const resourceIndex = texts.map((text, index) => ({
     uri: `doc://${index + 1}`,
     content: text
@@ -13,7 +13,7 @@ function createHarness({ texts, batchSize, fetchImpl }) {
     pkgVersion: "1.0.0-test",
     ragConfig: {
       provider: "gemini",
-      fallback: "none",
+      fallback: "lexical",
       profile: "test",
       geminiApiKey: "test-key",
       geminiBaseUrl: "https://example.test",
@@ -26,7 +26,8 @@ function createHarness({ texts, batchSize, fetchImpl }) {
       cacheDir: "/tmp",
       rebuild: true,
       maxTextChars: 1000,
-      minScore: 0
+      minScore: 0,
+      ...ragConfigOverrides
     },
     ragLogState: { providerReady: new Set() },
     logRag: () => {},
@@ -59,9 +60,10 @@ function createHarness({ texts, batchSize, fetchImpl }) {
       clearVectorIndexCheckpoint: () => {},
       saveVectorIndexCheckpoint: () => {},
       saveVectorIndexCache: () => {},
-      maybeDownloadPrebuiltVectorIndex: async () => ({ downloaded: false }),
+      maybeLoadSharedVectorIndex: async () => ({ loaded: false, reason: "shared_state_not_configured" }),
       loadVectorIndexCache: () => ({ hit: false, reason: "missing" }),
-      loadVectorIndexCheckpoint: () => ({ hit: false, reason: "missing" })
+      loadVectorIndexCheckpoint: () => ({ hit: false, reason: "missing" }),
+      ...vectorCacheOverrides
     }
   });
 
@@ -75,6 +77,10 @@ function createHarness({ texts, batchSize, fetchImpl }) {
       } finally {
         global.fetch = restoreFetch;
       }
+    },
+    async searchWithLexical(query = "first") {
+      const provider = await orchestrator.loadSearchProvider("lexical");
+      return provider.search(query, {}, 5);
     }
   };
 }
@@ -117,4 +123,31 @@ test("gemini batch embed rejects malformed item payloads", async () => {
     harness.warmGeminiProvider(),
     /Gemini batch embedding response malformed at index=0/
   );
+});
+
+test("shared shard load fatal error still allows lexical fallback route", async () => {
+  const harness = createHarness({
+    texts: ["first"],
+    batchSize: 1,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ embedding: { values: [0.1, 0.2] } })
+    }),
+    ragConfigOverrides: {
+      rebuild: false
+    },
+    vectorCacheOverrides: {
+      maybeLoadSharedVectorIndex: async () => ({
+        loaded: false,
+        fatal: true,
+        reason: "shared_shard_missing",
+        error: new Error("missing shared shard")
+      })
+    }
+  });
+
+  await assert.rejects(harness.warmGeminiProvider(), /missing shared shard/);
+
+  const lexicalResults = await harness.searchWithLexical("first");
+  assert.ok(Array.isArray(lexicalResults));
 });
