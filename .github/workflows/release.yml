@@ -245,6 +245,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Stage hydrated release data artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          staged_root="release-assets/hydrated-data/data"
+          mkdir -p "$staged_root"
+          cp -R data/metadata "$staged_root/metadata"
+          cp -R data/documentation "$staged_root/documentation"
+          cp -R data/samples "$staged_root/samples"
+
+      - name: Upload hydrated release data artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hydrated-release-data
+          path: release-assets/hydrated-data/**
+          if-no-files-found: error
+          retention-days: 14
+
   create_release:
     needs: [detect, build_package, build_prebuilt_rag]
     if: needs.detect.outputs.release_needed == 'true'
@@ -352,11 +370,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy_azure:
-    needs: [detect, publish_npm]
+    needs: [detect, publish_npm, build_prebuilt_rag]
     if: needs.detect.outputs.release_needed == 'true'
     uses: ./.github/workflows/deploy-aca.yml
     with:
       version: ${{ needs.detect.outputs.version }}
       tag: ${{ needs.detect.outputs.tag }}
       image_repository: simple-dynamsoft-mcp
+      data_artifact_name: hydrated-release-data
     secrets: inherit
