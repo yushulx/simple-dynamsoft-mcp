@@ -1,0 +1,317 @@
+name: Deploy to Azure Container Apps
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Package version
+        required: true
+        type: string
+      tag:
+        description: Release tag
+        required: true
+        type: string
+      image_repository:
+        description: Image repository name inside registry
+        required: false
+        default: simple-dynamsoft-mcp
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Package version
+        required: true
+        type: string
+      tag:
+        description: Release tag
+        required: true
+        type: string
+      image_repository:
+        description: Image repository name inside registry
+        required: false
+        default: simple-dynamsoft-mcp
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: azure-production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve deployment variables
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ inputs.version }}"
+          tag="${{ inputs.tag }}"
+          image_repo="${{ inputs.image_repository }}"
+
+          rg="${{ vars.AZURE_RESOURCE_GROUP }}"
+          app="${{ vars.AZURE_CONTAINER_APP_NAME }}"
+          acr_name="${{ vars.AZURE_CONTAINER_REGISTRY }}"
+          acr_login="${{ vars.AZURE_CONTAINER_REGISTRY_LOGIN_SERVER }}"
+          storage_account="${{ vars.AZURE_CACHE_STORAGE_ACCOUNT }}"
+          cache_share="${{ vars.AZURE_CACHE_FILE_SHARE }}"
+
+          if [[ -z "$rg" || -z "$app" || -z "$acr_name" ]]; then
+            echo "AZURE_RESOURCE_GROUP, AZURE_CONTAINER_APP_NAME, and AZURE_CONTAINER_REGISTRY are required repository/environment variables."
+            exit 1
+          fi
+
+          if [[ -z "$acr_login" ]]; then
+            acr_login="${acr_name}.azurecr.io"
+          fi
+
+          if [[ -z "$storage_account" ]]; then
+            storage_account="simpledynamsoftmcpsa"
+          fi
+
+          if [[ -z "$cache_share" ]]; then
+            cache_share="mcp-cache"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "image_repo=$image_repo" >> "$GITHUB_OUTPUT"
+          echo "resource_group=$rg" >> "$GITHUB_OUTPUT"
+          echo "container_app=$app" >> "$GITHUB_OUTPUT"
+          echo "acr_name=$acr_name" >> "$GITHUB_OUTPUT"
+          echo "acr_login=$acr_login" >> "$GITHUB_OUTPUT"
+          echo "storage_account=$storage_account" >> "$GITHUB_OUTPUT"
+          echo "cache_share=$cache_share" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR login
+        run: az acr login --name "${{ steps.vars.outputs.acr_name }}"
+
+      - name: Build and push image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image_base="${{ steps.vars.outputs.acr_login }}/${{ steps.vars.outputs.image_repo }}"
+          version_tag="$image_base:${{ steps.vars.outputs.tag }}"
+          sha_tag="$image_base:sha-${GITHUB_SHA}"
+
+          docker build -t "$version_tag" -t "$sha_tag" .
+          docker push "$version_tag"
+          docker push "$sha_tag"
+
+          echo "image_ref=$version_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Configure ACA registry auth (managed identity)
+        shell: bash
+        run: |
+          set -euo pipefail
+          az containerapp registry set \
+            --name "${{ steps.vars.outputs.container_app }}" \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --server "${{ steps.vars.outputs.acr_login }}" \
+            --identity system
+
+      - name: Capture previous active revisions
+        id: pre_revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az containerapp revision list \
+            --name "${{ steps.vars.outputs.container_app }}" \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --query "[?properties.active].name" \
+            -o tsv > /tmp/old_revisions.txt || true
+
+          echo "old_revisions_file=/tmp/old_revisions.txt" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy warm-up revision (min=max=1)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ steps.vars.outputs.version }}"
+          cache_root="/mnt/mcp-cache/${version}"
+
+          az containerapp update \
+            --name "${{ steps.vars.outputs.container_app }}" \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --image "${{ steps.image.outputs.image_ref }}" \
+            --min-replicas 1 \
+            --max-replicas 1 \
+            --set-env-vars \
+              MCP_PROFILE=semantic-gemini \
+              RAG_PROVIDER=gemini \
+              RAG_FALLBACK=lexical \
+              MCP_DATA_AUTO_DOWNLOAD=true \
+              MCP_DATA_HYDRATION_MODE=eager \
+              MCP_LOG_LEVEL=info \
+              MCP_DATA_CACHE_DIR="${cache_root}/data" \
+              RAG_CACHE_DIR="${cache_root}/rag/cache" \
+              RAG_MODEL_CACHE_DIR="${cache_root}/rag/models"
+
+      - name: Wait for warm-up revision ready
+        id: warm
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app="${{ steps.vars.outputs.container_app }}"
+          rg="${{ steps.vars.outputs.resource_group }}"
+
+          warm_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestRevisionName -o tsv)"
+          echo "warm_revision=$warm_revision" >> "$GITHUB_OUTPUT"
+
+          for i in {1..40}; do
+            ready_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestReadyRevisionName -o tsv)"
+            if [[ "$ready_revision" == "$warm_revision" ]]; then
+              echo "Warm-up revision is ready: $warm_revision"
+              exit 0
+            fi
+            sleep 15
+          done
+
+          echo "Timed out waiting for warm-up revision to become ready."
+          exit 1
+
+      - name: Shift traffic to warm-up revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az containerapp ingress traffic set \
+            --name "${{ steps.vars.outputs.container_app }}" \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --revision-weight "${{ steps.warm.outputs.warm_revision }}=100"
+
+      - name: Set steady-state scale (min=0 max=1)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az containerapp update \
+            --name "${{ steps.vars.outputs.container_app }}" \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --image "${{ steps.image.outputs.image_ref }}" \
+            --min-replicas 0 \
+            --max-replicas 1
+
+      - name: Wait for steady-state revision ready
+        id: steady
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app="${{ steps.vars.outputs.container_app }}"
+          rg="${{ steps.vars.outputs.resource_group }}"
+
+          steady_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestRevisionName -o tsv)"
+          echo "steady_revision=$steady_revision" >> "$GITHUB_OUTPUT"
+
+          for i in {1..40}; do
+            ready_revision="$(az containerapp show --name "$app" --resource-group "$rg" --query properties.latestReadyRevisionName -o tsv)"
+            if [[ "$ready_revision" == "$steady_revision" ]]; then
+              echo "Steady-state revision is ready: $steady_revision"
+              exit 0
+            fi
+            sleep 15
+          done
+
+          echo "Timed out waiting for steady-state revision to become ready."
+          exit 1
+
+      - name: Route traffic to steady-state revision
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          az containerapp ingress traffic set \
+            --name "${{ steps.vars.outputs.container_app }}" \
+            --resource-group "${{ steps.vars.outputs.resource_group }}" \
+            --revision-weight "${{ steps.steady.outputs.steady_revision }}=100"
+
+      - name: Deactivate old revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app="${{ steps.vars.outputs.container_app }}"
+          rg="${{ steps.vars.outputs.resource_group }}"
+          current="${{ steps.steady.outputs.steady_revision }}"
+
+          while read -r revision; do
+            if [[ -n "$revision" && "$revision" != "$current" ]]; then
+              echo "Deactivating old revision: $revision"
+              az containerapp revision deactivate \
+                --name "$app" \
+                --resource-group "$rg" \
+                --revision "$revision" || true
+            fi
+          done < "${{ steps.pre_revisions.outputs.old_revisions_file }}"
+
+      - name: Clean up old cache versions in Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.cache_share }}"
+          current_version="${{ steps.vars.outputs.version }}"
+
+          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+
+          mapfile -t dirs < <(az storage directory list \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --query "[].name" \
+            -o tsv)
+
+          for dir in "${dirs[@]}"; do
+            if [[ -z "$dir" || "$dir" == "$current_version" ]]; then
+              continue
+            fi
+
+            echo "Cleaning old cache directory: $dir"
+            az storage file delete-batch \
+              --account-name "$account" \
+              --account-key "$key" \
+              --source "$share" \
+              --pattern "${dir}/*" || true
+
+            az storage directory delete \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$dir" \
+              --fail-not-exist || true
+          done
+
+      - name: Deployment summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          fqdn="$(az containerapp show --name "${{ steps.vars.outputs.container_app }}" --resource-group "${{ steps.vars.outputs.resource_group }}" --query properties.configuration.ingress.fqdn -o tsv)"
+
+          {
+            echo "## Azure Deploy Summary"
+            echo ""
+            echo "- version: \\`${{ steps.vars.outputs.version }}\\`"
+            echo "- image: \\`${{ steps.image.outputs.image_ref }}\\`"
+            echo "- warm_revision: \\`${{ steps.warm.outputs.warm_revision }}\\`"
+            echo "- steady_revision: \\`${{ steps.steady.outputs.steady_revision }}\\`"
+            echo "- endpoint: \\`https://${fqdn}/mcp\\`"
+          } >> "$GITHUB_STEP_SUMMARY"
