@@ -125,12 +125,17 @@ function readManifestRepos(dataRoot) {
 }
 
 function resolveSharedShardFile(sharedStatePath, shardPath) {
-  const normalizedShardPath = normalizeRepoPath(shardPath);
-  if (!normalizedShardPath) {
+  const rawShardPath = String(shardPath || "").trim();
+  if (!rawShardPath) {
     throw new Error("shared shard path is empty");
   }
-  if (isAbsolute(normalizedShardPath)) {
-    return normalizedShardPath;
+  if (isAbsolute(rawShardPath)) {
+    return rawShardPath;
+  }
+
+  const normalizedShardPath = normalizeRepoPath(rawShardPath);
+  if (!normalizedShardPath) {
+    throw new Error("shared shard path is empty");
   }
 
   const stateDir = dirname(sharedStatePath);

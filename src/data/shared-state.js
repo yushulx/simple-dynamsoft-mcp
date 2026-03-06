@@ -50,9 +50,26 @@ function normalizeRepoEntry(key, entry) {
     path: normalizedPath,
     commit: String(source.commit || "").trim(),
     signature: String(source.signature || "").trim(),
-    shardPath: normalizeRepoPath(source.shardPath),
+    shardPath: normalizeShardPath(source.shardPath),
     updatedAt: source.updatedAt ? String(source.updatedAt).trim() : undefined
   };
+}
+
+function normalizeShardPath(input) {
+  if (input === undefined || input === null) return "";
+  const raw = String(input).trim();
+  if (!raw) return "";
+
+  const slashNormalized = raw
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/\/+$/, "");
+
+  if (!slashNormalized) return "";
+  if (slashNormalized.startsWith("/") || /^[A-Za-z]:\//.test(slashNormalized)) {
+    return slashNormalized;
+  }
+  return normalizeRepoPath(slashNormalized);
 }
 
 function normalizeReposMap(repos) {

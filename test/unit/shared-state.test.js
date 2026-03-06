@@ -114,6 +114,23 @@ test("createSharedState and loadSharedState normalize repo keys and paths", () =
 
   const loaded = loadSharedState(JSON.stringify(state));
   assert.equal(loaded.repos[expectedKey].path, "documentation/capture-vision-docs-js");
+
+  const absoluteShardState = createSharedState({
+    generatedAt: "2026-03-06T00:00:00.000Z",
+    indexVersion: "azure-shared-v1",
+    repos: {
+      "documentation/capture-vision-docs-js": {
+        path: "documentation/capture-vision-docs-js",
+        commit: "0f0c2b405ee16f5a19ee4af0a8c4f36e6a457f6c",
+        signature: "abs123",
+        shardPath: "/mnt/mcp-cache/rag/cache/gemini-abs123.json"
+      }
+    }
+  });
+  assert.equal(
+    absoluteShardState.repos[expectedKey].shardPath,
+    "/mnt/mcp-cache/rag/cache/gemini-abs123.json"
+  );
 });
 
 test("createSharedState throws when different repos normalize to same key", () => {
