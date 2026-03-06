@@ -24,7 +24,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "npm run test:lite",
-    "test:unit": "node --test test/unit/profile-config.test.js test/unit/lexical-provider.test.js test/unit/hydration-mode.test.js test/unit/hydration-policy.test.js test/unit/repo-map.test.js test/unit/download-utils.test.js test/unit/logging.test.js test/unit/create-server.test.js test/unit/server-helpers.test.js",
+    "test:unit": "node --test test/unit/gemini-retry.test.js test/unit/profile-config.test.js test/unit/lexical-provider.test.js test/unit/hydration-mode.test.js test/unit/hydration-policy.test.js test/unit/repo-map.test.js test/unit/download-utils.test.js test/unit/logging.test.js test/unit/create-server.test.js test/unit/server-helpers.test.js",
     "test:lite": "npm run test:stdio && npm run test:http && npm run test:package",
     "test:lexical": "node --test test/integration/stdio.test.js test/integration/http.test.js",
     "test:gemini": "node scripts/run-gemini-tests.mjs",
@@ -64,7 +64,6 @@
     "mobile"
   ],
   "dependencies": {
-    "@google/genai": "^1.44.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "dotenv": "^16.4.5",
     "extract-zip": "^2.0.1",

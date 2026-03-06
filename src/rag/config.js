@@ -76,7 +76,12 @@ const ragConfig = {
   prebuiltIndexTimeoutMs: readIntEnv("RAG_PREBUILT_INDEX_TIMEOUT_MS", 180000),
   geminiApiKey: readEnvValue("GEMINI_API_KEY", ""),
   geminiModel: normalizeGeminiModel(readEnvValue("GEMINI_EMBED_MODEL", "models/gemini-embedding-001")),
-  geminiBatchSize: readIntEnv("GEMINI_EMBED_BATCH_SIZE", 16)
+  geminiBaseUrl: readEnvValue("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com"),
+  geminiBatchSize: readIntEnv("GEMINI_EMBED_BATCH_SIZE", 16),
+  geminiRetryMaxAttempts: readIntEnv("GEMINI_RETRY_MAX_ATTEMPTS", 5),
+  geminiRetryBaseDelayMs: readIntEnv("GEMINI_RETRY_BASE_DELAY_MS", 500),
+  geminiRetryMaxDelayMs: readIntEnv("GEMINI_RETRY_MAX_DELAY_MS", 10000),
+  geminiRequestThrottleMs: readIntEnv("GEMINI_REQUEST_THROTTLE_MS", 0)
 };
 
 export {

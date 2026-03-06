@@ -1,6 +1,13 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { GoogleGenAI } from "@google/genai";
+import {
+  sleepMs,
+  parseRetryAfterMs,
+  normalizeGeminiRetryConfig,
+  isRateLimitGeminiStatus,
+  GeminiHttpError,
+  executeWithGeminiRetry
+} from "./gemini-retry.js";
 
 function resolveProviderChain(ragConfig) {
   let primary = ragConfig.provider;
@@ -23,12 +30,17 @@ async function embedTextsWithProgress(
     total = texts.length,
     onChunk = null,
     providerName = "",
-    logRag
+    logRag,
+    isRateLimitError
   } = {}
 ) {
   const results = [];
-  const normalizedBatchSize = Math.max(1, Number(batchSize) || 1);
+  const normalizedBatchSize = Math.max(1, batchSize);
   let completed = offset;
+  let currentBatchSize = normalizedBatchSize;
+  let rateLimitFailures = 0;
+  let batchDowngrades = 0;
+  let singleFallbackBatches = 0;
 
   const reportChunk = async (vectors, mode, sourceBatchSize) => {
     if (!Array.isArray(vectors) || vectors.length === 0) return;
@@ -45,28 +57,55 @@ async function embedTextsWithProgress(
   };
 
   if (embedder.embedBatch && normalizedBatchSize > 1) {
-    for (let index = 0; index < texts.length; index += normalizedBatchSize) {
-      const chunk = texts.slice(index, index + normalizedBatchSize);
+    let index = 0;
+    while (index < texts.length) {
+      const batch = texts.slice(index, index + currentBatchSize);
       try {
-        const vectors = await embedder.embedBatch(chunk);
-        if (!Array.isArray(vectors) || vectors.length !== chunk.length) {
-          throw new Error(
-            `Gemini batch response size mismatch expected=${chunk.length} actual=${vectors?.length || 0}`
-          );
+        const vectors = await embedder.embedBatch(batch);
+        if (!Array.isArray(vectors) || vectors.length !== batch.length) {
+          throw new Error(`Gemini batch response size mismatch expected=${batch.length} actual=${vectors?.length || 0}`);
         }
         results.push(...vectors);
-        await reportChunk(vectors, "batch", chunk.length);
+        index += batch.length;
+        rateLimitFailures = 0;
+        await reportChunk(vectors, "batch", batch.length);
       } catch (error) {
+        if (isRateLimitError(error)) {
+          rateLimitFailures += 1;
+          const nextBatchSize = Math.max(1, Math.floor(currentBatchSize / 2));
+          if (nextBatchSize < currentBatchSize) {
+            batchDowngrades += 1;
+            logRag(
+              `gemini batch downgrade provider=${providerName || "unknown"} from=${currentBatchSize} to=${nextBatchSize} ` +
+              `rate_limit_failures=${rateLimitFailures}`
+            );
+            currentBatchSize = nextBatchSize;
+            continue;
+          }
+        }
+
+        singleFallbackBatches += 1;
         logRag(
-          `batch embedding fallback provider=${providerName || "unknown"} batch_size=${chunk.length} reason=${error.message}`
+          `batch embedding fallback provider=${providerName || "unknown"} batch_size=${batch.length} reason=${error.message}`
         );
-        for (const text of chunk) {
+        for (const text of batch) {
           const vector = await embedder.embed(text);
           results.push(vector);
           await reportChunk([vector], "single_fallback", 1);
         }
+        index += batch.length;
+        rateLimitFailures = 0;
       }
     }
+
+    return {
+      vectors: results,
+      stats: {
+        batchDowngrades,
+        singleFallbackBatches,
+        finalBatchSize: currentBatchSize
+      }
+    };
   } else {
     for (const text of texts) {
       const vector = await embedder.embed(text);
@@ -75,13 +114,11 @@ async function embedTextsWithProgress(
     }
   }
 
-  if (providerName) {
-    logRag(`embedding complete provider=${providerName} mode=single count=${results.length}`);
-  }
-
   return {
     vectors: results,
     stats: {
+      batchDowngrades,
+      singleFallbackBatches,
       finalBatchSize: 1
     }
   };
@@ -108,48 +145,123 @@ function createProviderOrchestrator({
       throw new Error("GEMINI_API_KEY is required for gemini embeddings.");
     }
     if (geminiEmbedderPromise) return geminiEmbedderPromise;
+    const retryConfig = normalizeGeminiRetryConfig({
+      maxAttempts: ragConfig.geminiRetryMaxAttempts,
+      baseDelayMs: ragConfig.geminiRetryBaseDelayMs,
+      maxDelayMs: ragConfig.geminiRetryMaxDelayMs,
+      requestThrottleMs: ragConfig.geminiRequestThrottleMs
+    });
+
     geminiEmbedderPromise = Promise.resolve((() => {
-      const client = new GoogleGenAI({ apiKey: ragConfig.geminiApiKey });
-      const extractEmbeddingValues = (payloadItem) => {
-        const values = payloadItem?.values || payloadItem?.embedding?.values;
-        if (!Array.isArray(values) || values.length === 0) {
-          throw new Error("Gemini embedding response missing embedding values.");
-        }
-        return values;
+      const metrics = {
+        requests: 0,
+        retries: 0,
+        retryDelayMs: 0,
+        throttleEvents: 0,
+        throttleDelayMs: 0,
+        rateLimitRetries: 0
       };
 
-      const embedBatch = async (texts) => {
-        const payload = await client.models.embedContent({
-          model: ragConfig.geminiModel,
-          contents: texts
-        });
-        const embeddings = Array.isArray(payload?.embeddings)
-          ? payload.embeddings
-          : payload?.embedding
-            ? [payload.embedding]
-            : [];
+      let nextAllowedAt = 0;
 
-        if (embeddings.length !== texts.length) {
-          throw new Error(
-            `Gemini batch response size mismatch expected=${texts.length} actual=${embeddings.length}`
+      const throttleRequest = async (operation) => {
+        if (retryConfig.requestThrottleMs <= 0) return;
+        const now = Date.now();
+        const waitMs = Math.max(0, nextAllowedAt - now);
+        if (waitMs > 0) {
+          metrics.throttleEvents += 1;
+          metrics.throttleDelayMs += waitMs;
+          logRag(`gemini throttle op=${operation} wait_ms=${waitMs}`);
+          await sleepMs(waitMs);
+        }
+        nextAllowedAt = Date.now() + retryConfig.requestThrottleMs;
+      };
+
+      const requestJson = async (operation, endpoint, body) => executeWithGeminiRetry({
+        operation,
+        retryConfig,
+        logger: (message) => logRag(message),
+        onRetry: ({ delayMs, rateLimited }) => {
+          metrics.retries += 1;
+          metrics.retryDelayMs += delayMs;
+          if (rateLimited) {
+            metrics.rateLimitRetries += 1;
+          }
+        },
+        requestFn: async () => {
+          await throttleRequest(operation);
+          metrics.requests += 1;
+          const response = await fetch(
+            `${ragConfig.geminiBaseUrl}/v1beta/${endpoint}?key=${ragConfig.geminiApiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body)
+            }
           );
+          if (!response.ok) {
+            const detail = await response.text();
+            throw new GeminiHttpError(`Gemini ${operation} failed (${response.status}): ${detail}`, {
+              status: response.status,
+              detail,
+              retryAfterMs: parseRetryAfterMs(response.headers.get("retry-after"))
+            });
+          }
+          return response.json();
         }
-
-        return embeddings.map((item) => extractEmbeddingValues(item));
-      };
+      });
 
       return {
         embed: async (text) => {
-          const vectors = await embedBatch([text]);
-          return vectors[0];
+          const payload = await requestJson(
+            "embedContent",
+            `${ragConfig.geminiModel}:embedContent`,
+            {
+              content: {
+                parts: [{ text }]
+              }
+            }
+          );
+          const embedding = payload.embedding?.values || payload.embedding || payload.embeddings?.[0]?.values;
+          if (!embedding) {
+            throw new Error("Gemini embedding response missing embedding values.");
+          }
+          return embedding;
         },
-        embedBatch
+        embedBatch: async (texts) => {
+          const payload = await requestJson(
+            "batchEmbedContents",
+            `${ragConfig.geminiModel}:batchEmbedContents`,
+            {
+              requests: texts.map((text) => ({
+                model: ragConfig.geminiModel,
+                content: {
+                  parts: [{ text }]
+                }
+              }))
+            }
+          );
+          const embeddings = payload.embeddings || payload.responses;
+          if (!Array.isArray(embeddings)) {
+            throw new Error("Gemini batch response missing embeddings.");
+          }
+          return embeddings.map((item) => item.values || item.embedding?.values || item.embedding);
+        },
+        getMetrics: () => ({ ...metrics }),
+        resetMetrics: () => {
+          metrics.requests = 0;
+          metrics.retries = 0;
+          metrics.retryDelayMs = 0;
+          metrics.throttleEvents = 0;
+          metrics.throttleDelayMs = 0;
+          metrics.rateLimitRetries = 0;
+        }
       };
     })());
     return geminiEmbedderPromise;
   }
 
-  async function createVectorProvider({ name, model, embedder }) {
+  async function createVectorProvider({ name, model, embedder, batchSize }) {
     const signature = utils.buildIndexSignature({
       pkgVersion,
       signatureData: getRagSignatureData(),
@@ -235,6 +347,10 @@ function createProviderOrchestrator({
           }
         }
 
+        if (name === "gemini" && embedder.resetMetrics) {
+          embedder.resetMetrics();
+        }
+
         const checkpointIntervalMs = 5000;
         let lastCheckpointAt = 0;
         const persistCheckpoint = (force = false) => {
@@ -254,32 +370,48 @@ function createProviderOrchestrator({
         };
 
         if (resumeFrom < texts.length) {
-          const plannedBatchSize = name === "gemini" ? Math.max(1, ragConfig.geminiBatchSize || 1) : 1;
           logRag(
-            `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=${plannedBatchSize}`
+            `building index provider=${name} embed_items=${texts.length} remaining=${texts.length - resumeFrom} batch_size=${batchSize}`
           );
           try {
             const embeddingResult = await embedTextsWithProgress(
               texts.slice(resumeFrom),
               embedder,
-              plannedBatchSize,
+              batchSize,
               {
                 offset: resumeFrom,
                 total: texts.length,
                 providerName: name,
                 logRag,
+                isRateLimitError: (error) => error?.rateLimited || isRateLimitGeminiStatus(Number(error?.status)),
                 onChunk: ({ vectors, completed, total }) => {
                   normalized.push(...vectors.map(utils.normalizeVector));
                   persistCheckpoint(completed >= total);
                 }
               }
             );
-            const finalBatchSize = embeddingResult?.stats?.finalBatchSize || 1;
-            logRag(
-              `building index complete provider=${name} embed_items=${texts.length} final_batch_size=${finalBatchSize}`
-            );
+
+            if (name === "gemini") {
+              const metrics = embedder.getMetrics ? embedder.getMetrics() : {};
+              logRag(
+                `gemini build metrics provider=${name} requests=${metrics.requests || 0} retries=${metrics.retries || 0} ` +
+                `retry_delay_ms=${metrics.retryDelayMs || 0} throttle_events=${metrics.throttleEvents || 0} ` +
+                `throttle_delay_ms=${metrics.throttleDelayMs || 0} rate_limit_retries=${metrics.rateLimitRetries || 0} ` +
+                `batch_downgrades=${embeddingResult.stats.batchDowngrades} single_fallback_batches=${embeddingResult.stats.singleFallbackBatches} ` +
+                `final_batch_size=${embeddingResult.stats.finalBatchSize}`
+              );
+            }
           } catch (error) {
             persistCheckpoint(true);
+            if (name === "gemini") {
+              const metrics = embedder.getMetrics ? embedder.getMetrics() : {};
+              logRag(
+                `gemini build failed provider=${name} requests=${metrics.requests || 0} retries=${metrics.retries || 0} ` +
+                `retry_delay_ms=${metrics.retryDelayMs || 0} throttle_events=${metrics.throttleEvents || 0} ` +
+                `throttle_delay_ms=${metrics.throttleDelayMs || 0} rate_limit_retries=${metrics.rateLimitRetries || 0} ` +
+                `checkpoint_completed=${normalized.length}/${texts.length} error=${error.message}`
+              );
+            }
             throw error;
           }
         } else {
@@ -377,7 +509,8 @@ function createProviderOrchestrator({
         return createVectorProvider({
           name: "gemini",
           model: ragConfig.geminiModel,
-          embedder
+          embedder,
+          batchSize: Math.max(1, ragConfig.geminiBatchSize)
         });
       })();
     } else {
