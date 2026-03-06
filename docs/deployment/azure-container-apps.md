@@ -52,8 +52,11 @@ Cache paths are release-version scoped only.
 For a release version `<version>`, the container uses:
 
 - `/mnt/mcp-cache/<version>/data`
+- `/mnt/mcp-cache/<version>/tmp`
 - `/mnt/mcp-cache/<version>/rag/cache`
 - `/mnt/mcp-cache/<version>/rag/models`
+
+Temporary directories (`TMPDIR`, `TMP`, `TEMP`) are pinned to `/mnt/mcp-cache/<version>/tmp` so hydration staging and final cache paths are on the same filesystem.
 
 Old versions are deleted only after traffic is moved off old revisions.
 
