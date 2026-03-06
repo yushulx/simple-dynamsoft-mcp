@@ -207,8 +207,7 @@ jobs:
             --account-key "$key" \
             --source "$local_data" \
             --destination "$share" \
-            --destination-path "$version/data" \
-            --overwrite true
+            --destination-path "$version/data"
 
       - name: Verify uploaded cache data readiness
         shell: bash
