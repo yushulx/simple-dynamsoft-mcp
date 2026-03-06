@@ -142,11 +142,19 @@ function buildShardPath(repoPath, signature) {
 
 function buildDesiredRepos(manifestRepos, options) {
   const repos = {};
+  const sourcePathByKey = new Map();
 
   for (const repo of manifestRepos) {
     const path = normalizeRepoPath(repo.path);
     const key = normalizeRepoKey(path);
     if (!key) continue;
+
+    const existingPath = sourcePathByKey.get(key);
+    if (existingPath && existingPath !== path) {
+      throw new Error(
+        `Repo key collision for '${key}': '${existingPath}' and '${path}' normalize to the same key`
+      );
+    }
 
     const signature = computeRepoSignature({
       repo,
@@ -162,6 +170,7 @@ function buildDesiredRepos(manifestRepos, options) {
       signature,
       shardPath: buildShardPath(path, signature)
     };
+    sourcePathByKey.set(key, path);
   }
 
   return repos;

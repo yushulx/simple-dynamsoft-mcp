@@ -9,9 +9,13 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: data-sync-azure-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   data-sync-azure:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_branch == github.event.repository.default_branch }}
     runs-on: ubuntu-latest
     environment: azure-production
     steps:
@@ -25,6 +29,29 @@ jobs:
         with:
           node-version: 24
           cache: npm
+
+      - name: Verify triggering SHA and default branch source
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_sha="${{ github.event.workflow_run.head_sha }}"
+          expected_branch="${{ github.event.repository.default_branch }}"
+          actual_sha="$(git rev-parse HEAD)"
+          actual_branch="${{ github.event.workflow_run.head_branch }}"
+
+          if [[ "$actual_sha" != "$expected_sha" ]]; then
+            echo "[data-sync-azure] checked out SHA '$actual_sha' did not match workflow_run SHA '$expected_sha'"
+            exit 1
+          fi
+          if [[ "$actual_branch" != "$expected_branch" ]]; then
+            echo "[data-sync-azure] workflow_run branch '$actual_branch' is not default branch '$expected_branch'"
+            exit 1
+          fi
+
+          # Deterministic write source: generate/upload state from the exact
+          # successful default-branch workflow_run SHA.
+          echo "[data-sync-azure] verified source sha=$actual_sha branch=$actual_branch"
 
       - name: Install dependencies
         run: npm ci
@@ -128,6 +155,9 @@ jobs:
               --name "$state_dir" >/dev/null
           fi
 
+          # Writer serialization is enforced by workflow-level concurrency, so
+          # each upload uses a deterministic source snapshot from the validated
+          # workflow_run default-branch SHA.
           az storage file upload \
             --account-name "$account" \
             --account-key "$key" \
