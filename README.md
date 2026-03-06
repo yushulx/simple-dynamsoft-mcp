@@ -14,130 +14,56 @@ Default transport is `stdio`. Native Streamable HTTP is also supported at `/mcp`
 
 https://github.com/user-attachments/assets/cc1c5f4b-1461-4462-897a-75abc20d62a6
 
-## Two Supported Usage Scenarios
+## Two Core Usage Modes
 
-This project is intentionally documented for two real-world usage paths:
+1. Remote MCP over HTTP (recommended)
+2. Local MCP via `npx`
 
-1. Local usage with `npx -y simple-dynamsoft-mcp@latest` and minimal config
-2. HTTP deployment on Ubuntu with full data + prebuilt indexes + Gemini embeddings
+### 1) Remote (Recommended)
 
-If you need deep operator/dev settings, see `AGENTS.md` and `.env.example`.
+Use this endpoint directly:
 
-## Scenario 1: Local Usage (Recommended Default)
+- `https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp`
 
-For most users, this is enough.
-
-Command:
+### 2) Local
 
 ```bash
 npx -y simple-dynamsoft-mcp@latest
 ```
 
-Notes:
-- No explicit environment variables are required for the default path.
-- Default profile is lightweight (`lite`) and avoids semantic embedding downloads.
-- If local data is missing, the package can bootstrap pinned data from cache/download sources.
+## Deployment Guides
 
-## Scenario 2: Ubuntu HTTP Deployment (Full Data + Gemini)
-
-Use this when you host the server remotely and expose MCP over HTTP.
-
-### 1) Prepare host
-
-```bash
-sudo apt update
-sudo apt install -y git curl
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-node -v
-npm -v
-```
-
-### 2) Clone and install
-
-```bash
-git clone --recurse-submodules https://github.com/yushulx/simple-dynamsoft-mcp.git
-cd simple-dynamsoft-mcp
-npm ci
-```
-
-If you did not clone with submodules:
-
-```bash
-npm run data:bootstrap
-npm run data:sync
-```
-
-### 3) Configure environment
-
-Create `.env` in repo root:
-
-```dotenv
-GEMINI_API_KEY=your_key_here
-MCP_LOG_LEVEL=info
-```
-
-Behavior with defaults:
-- if `GEMINI_API_KEY` is set: primary provider is Gemini with lexical fallback; data hydration defaults to eager
-- if `GEMINI_API_KEY` is not set: provider is lexical; data hydration defaults to lazy
-- data and prebuilt RAG cache always check existing cache files first before any download/build
-
-### 4) Start HTTP server
-
-```bash
-node src/index.js --transport=http --host=0.0.0.0 --port=3333
-```
-
-Endpoint:
-- `http://<server-ip>:3333/mcp`
-
-### 5) Optional: systemd service
-
-Example `/etc/systemd/system/simple-dynamsoft-mcp.service`:
-
-```ini
-[Unit]
-Description=Simple Dynamsoft MCP Server
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/simple-dynamsoft-mcp
-ExecStart=/usr/bin/node /opt/simple-dynamsoft-mcp/src/index.js --transport=http --host=0.0.0.0 --port=3333
-EnvironmentFile=/opt/simple-dynamsoft-mcp/.env
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable simple-dynamsoft-mcp
-sudo systemctl start simple-dynamsoft-mcp
-sudo systemctl status simple-dynamsoft-mcp
-```
-
-## Azure Container Apps (v1)
-
-For Azure deployment with ACR + ACA + Azure Files cache, see:
-
-- `docs/deployment/azure-container-apps.md`
-
-v1 uses the default ACA HTTPS domain (`*.azurecontainerapps.io`) with custom domain/certificate deferred.
+- Azure Container Apps runbook: `docs/deployment/azure-container-apps.md`
+- Self-hosting (Ubuntu/any server): `docs/deployment/self-hosting.md`
 
 ## MCP Client Configuration
 
-Use one of the following client configs.
+Use one of the following client configs. Remote is recommended.
 
 ### OpenCode
+
+<details>
+<summary>OpenCode Config</summary>
+
+Remote (recommended):
 
 Location:
 - macOS: `~/.config/opencode/opencode.json`
 - Windows: `%USERPROFILE%\.config\opencode\opencode.json`
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "dynamsoft": {
+      "type": "remote",
+      "url": "https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp"
+    }
+  }
+}
+```
+
+Local:
 
 ```json
 {
@@ -151,11 +77,30 @@ Location:
 }
 ```
 
+</details>
+
 ### Claude Desktop
+
+<details>
+<summary>Claude Desktop Config</summary>
 
 Location:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+Remote (recommended):
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "url": "https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp"
+    }
+  }
+}
+```
+
+Local:
 
 ```json
 {
@@ -168,11 +113,32 @@ Location:
 }
 ```
 
+</details>
+
 ### VS Code with GitHub Copilot
+
+<details>
+<summary>VS Code MCP Config</summary>
 
 Global location:
 - macOS: `~/Library/Application Support/Code/User/mcp.json`
 - Windows: `%APPDATA%\Code\User\mcp.json`
+
+Workspace alternative: `.vscode/mcp.json`
+
+Remote (recommended):
+
+```json
+{
+  "servers": {
+    "dynamsoft": {
+      "url": "https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp"
+    }
+  }
+}
+```
+
+Local:
 
 ```json
 {
@@ -185,14 +151,31 @@ Global location:
 }
 ```
 
-Workspace alternative: `.vscode/mcp.json`
+</details>
 
 ### Cursor
+
+<details>
+<summary>Cursor MCP Config</summary>
 
 Location:
 - macOS: `~/.cursor/mcp.json`
 - Windows: `%USERPROFILE%\.cursor\mcp.json`
 
+Remote (recommended):
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "url": "https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp"
+    }
+  }
+}
+```
+
+Local:
+
 ```json
 {
   "mcpServers": {
@@ -204,12 +187,31 @@ Location:
 }
 ```
 
+</details>
+
 ### Windsurf
+
+<details>
+<summary>Windsurf MCP Config</summary>
 
 Location:
 - macOS: `~/.codeium/windsurf/mcp_config.json`
 - Windows: `%USERPROFILE%\.codeium\windsurf\mcp_config.json`
 
+Remote (recommended):
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "url": "https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp"
+    }
+  }
+}
+```
+
+Local:
+
 ```json
 {
   "mcpServers": {
@@ -220,6 +222,73 @@ Location:
   }
 }
 ```
+
+</details>
+
+### Cline
+
+<details>
+<summary>Cline MCP Config</summary>
+
+Location:
+- VS Code settings JSON for Cline MCP integration
+
+Remote (recommended):
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "url": "https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp"
+    }
+  }
+}
+```
+
+Local:
+
+```json
+{
+  "mcpServers": {
+    "dynamsoft": {
+      "command": "npx",
+      "args": ["-y", "simple-dynamsoft-mcp@latest"]
+    }
+  }
+}
+```
+
+</details>
+
+### Continue
+
+<details>
+<summary>Continue MCP Config</summary>
+
+Location:
+- `~/.continue/config.yaml` (or workspace Continue config)
+
+Remote (recommended):
+
+```yaml
+mcpServers:
+  dynamsoft:
+    transport: streamable-http
+    url: https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp
+```
+
+Local:
+
+```yaml
+mcpServers:
+  dynamsoft:
+    command: npx
+    args:
+      - -y
+      - simple-dynamsoft-mcp@latest
+```
+ 
+</details>
 
 ## Available Tools
 
@@ -242,14 +311,6 @@ For AI agents that support skills (Claude Code, OpenCode, Codex), install [dynam
 - **MCP Server** provides runtime tools: version resolution, doc search, sample browsing, and retrieval of full sample project files
 
 Both work independently, but together the skills guide agents to use MCP tools at the right moments.
-
-## Quick Troubleshooting
-
-- If startup says data is incomplete, run `npm run data:bootstrap` and `npm run data:sync` in clone-based deployments.
-- For HTTP deployments, check service logs first:
-  - `journalctl -u simple-dynamsoft-mcp -f`
-- For Gemini mode, confirm `GEMINI_API_KEY` is present in service environment.
-- Structured startup logs include `[data]`, `[transport]`, and `[rag]` event lines.
 
 ## Advanced Configuration And Operator Docs
 
