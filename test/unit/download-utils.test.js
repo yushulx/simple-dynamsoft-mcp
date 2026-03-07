@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, win32 } from "node:path";
 import { tmpdir } from "node:os";
 import {
   withRetry,
   shouldRetryDownloadError,
   buildHydrationFailureMessage,
-  replaceDirectoryWithRollback
+  replaceDirectoryWithRollback,
+  buildBackupPath
 } from "../../src/data/download-utils.js";
 
 test("withRetry retries retryable failures and succeeds", async () => {
@@ -76,4 +77,17 @@ test("buildHydrationFailureMessage returns actionable guidance", () => {
   assert.match(message, /Lazy hydration failed/);
   assert.match(message, /MCP_DATA_HYDRATION_MODE=eager/);
   assert.match(message, /product=dbr edition=web type=doc/);
+});
+
+test("buildBackupPath handles Windows absolute target paths", () => {
+  const targetPath = "C:\\Users\\zly20\\AppData\\Local\\simple-dynamsoft-mcp\\data\\documentation\\web-twain-docs";
+  const backupPath = buildBackupPath(targetPath, {
+    pathApi: win32,
+    now: () => 1772844864041
+  });
+
+  assert.equal(
+    backupPath,
+    "C:\\Users\\zly20\\AppData\\Local\\simple-dynamsoft-mcp\\data\\documentation\\web-twain-docs.bak-1772844864041"
+  );
 });

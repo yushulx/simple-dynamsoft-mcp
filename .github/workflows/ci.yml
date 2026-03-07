@@ -81,6 +81,24 @@ jobs:
       - name: Test (lazy hydration packaged runtime)
         run: npm run test:lazy
 
+  test_lazy_hydration_windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test (lazy hydration packaged runtime)
+        run: npm run test:lazy
+
   test_package_runtime_windows:
     runs-on: windows-latest
     steps:
