@@ -80,7 +80,7 @@ test("buildHydrationFailureMessage returns actionable guidance", () => {
 });
 
 test("buildBackupPath handles Windows absolute target paths", () => {
-  const targetPath = "C:\\Users\\zly20\\AppData\\Local\\simple-dynamsoft-mcp\\data\\documentation\\web-twain-docs";
+  const targetPath = "C:\\temp\\simple-dynamsoft-mcp\\data\\documentation\\web-twain-docs";
   const backupPath = buildBackupPath(targetPath, {
     pathApi: win32,
     now: () => 1772844864041
@@ -88,6 +88,6 @@ test("buildBackupPath handles Windows absolute target paths", () => {
 
   assert.equal(
     backupPath,
-    "C:\\Users\\zly20\\AppData\\Local\\simple-dynamsoft-mcp\\data\\documentation\\web-twain-docs.bak-1772844864041"
+    "C:\\temp\\simple-dynamsoft-mcp\\data\\documentation\\web-twain-docs.bak-1772844864041"
   );
 });
