@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { existsSync, renameSync, rmSync } from "node:fs";
 
 function sleepMs(delayMs) {
@@ -54,9 +54,16 @@ async function withRetry(operation, {
   throw lastError || new Error("Retry operation failed");
 }
 
+function buildBackupPath(targetPath, { pathApi, now } = {}) {
+  const activePathApi = pathApi || { basename, dirname, join };
+  const nowValue = typeof now === "function" ? now : Date.now;
+  const parent = activePathApi.dirname(targetPath);
+  const repoName = activePathApi.basename(targetPath) || "repo";
+  return activePathApi.join(parent, `${repoName}.bak-${nowValue()}`);
+}
+
 function replaceDirectoryWithRollback(targetPath, stagedPath) {
-  const parent = dirname(targetPath);
-  const backupPath = join(parent, `${targetPath.split("/").pop() || "repo"}.bak-${Date.now()}`);
+  const backupPath = buildBackupPath(targetPath);
   let movedExisting = false;
   try {
     if (existsSync(targetPath)) {
@@ -94,6 +101,7 @@ function buildHydrationFailureMessage({ reason, scopeSummary }) {
 export {
   shouldRetryDownloadError,
   withRetry,
+  buildBackupPath,
   replaceDirectoryWithRollback,
   buildHydrationFailureMessage
 };
