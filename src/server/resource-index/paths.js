@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DOC_DIRS, SAMPLE_DIRS } from "./config.js";
 import { getResolvedDataRoot } from "../../data/root.js";
@@ -13,6 +13,9 @@ const samplesRoot = join(dataRoot, "samples");
 const docsRoot = join(dataRoot, "documentation");
 
 const registryPath = join(metadataRoot, "dynamsoft_sdks.json");
+const dataManifestPath = join(metadataRoot, "data-manifest.json");
+
+const manifestCommitLookupCache = new Map();
 
 const SAMPLE_ROOTS = {
   dbrWeb: join(samplesRoot, SAMPLE_DIRS.dbrWeb),
@@ -60,28 +63,92 @@ function getExistingPath(...candidates) {
   return null;
 }
 
-function readSubmoduleHead(repoPath) {
-  try {
-    const gitMarker = join(repoPath, ".git");
-    if (!existsSync(gitMarker)) return "";
-    let gitDir = gitMarker;
-    const markerStats = statSync(gitMarker);
-    if (!markerStats.isDirectory()) {
-      const markerText = readFileSync(gitMarker, "utf8").trim();
-      if (!markerText.toLowerCase().startsWith("gitdir:")) return "";
-      const relGitDir = markerText.slice("gitdir:".length).trim();
-      gitDir = resolve(repoPath, relGitDir);
-    }
-    const headPath = join(gitDir, "HEAD");
-    if (!existsSync(headPath)) return "";
-    const headText = readFileSync(headPath, "utf8").trim();
-    if (!headText.startsWith("ref:")) return headText;
-    const refPath = join(gitDir, headText.slice("ref:".length).trim());
-    if (!existsSync(refPath)) return "";
-    return readFileSync(refPath, "utf8").trim();
-  } catch {
-    return "";
+function normalizeManifestRepoPath(pathValue) {
+  return String(pathValue || "")
+    .replace(/\\/g, "/")
+    .replace(/^\.\//, "")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+}
+
+function getManifestRepoPath(repoPath, dataRootPath = dataRoot) {
+  const resolvedDataRoot = resolve(dataRootPath);
+  const resolvedRepoPath = resolve(repoPath);
+  const manifestRepoPath = normalizeManifestRepoPath(
+    relative(resolvedDataRoot, resolvedRepoPath)
+  );
+
+  if (!manifestRepoPath || manifestRepoPath === ".") {
+    throw new Error(`Unable to resolve manifest repo path for ${repoPath}`);
   }
+
+  if (manifestRepoPath.startsWith("..")) {
+    throw new Error(
+      `Repo path ${repoPath} is outside data root ${resolvedDataRoot}`
+    );
+  }
+
+  return manifestRepoPath;
+}
+
+function buildManifestCommitLookup(manifestPath = dataManifestPath) {
+  const resolvedManifestPath = resolve(manifestPath);
+  const cachedLookup = manifestCommitLookupCache.get(resolvedManifestPath);
+  if (cachedLookup) {
+    return cachedLookup;
+  }
+
+  if (!existsSync(resolvedManifestPath)) {
+    throw new Error(`Missing data manifest at ${resolvedManifestPath}`);
+  }
+
+  let manifest = null;
+  try {
+    manifest = JSON.parse(readFileSync(resolvedManifestPath, "utf8"));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Failed to parse data manifest at ${resolvedManifestPath}: ${reason}`
+    );
+  }
+
+  if (!manifest || !Array.isArray(manifest.repos)) {
+    throw new Error(
+      `Invalid data manifest at ${resolvedManifestPath}: missing repos array`
+    );
+  }
+
+  const lookup = new Map();
+  for (const repo of manifest.repos) {
+    const repoPath = normalizeManifestRepoPath(repo?.path);
+    const commit = String(repo?.commit || "").trim();
+    if (!repoPath || !commit) {
+      throw new Error(
+        `Invalid data manifest entry at ${resolvedManifestPath}: path and commit are required`
+      );
+    }
+    lookup.set(repoPath, commit);
+  }
+
+  manifestCommitLookupCache.set(resolvedManifestPath, lookup);
+  return lookup;
+}
+
+function readManifestRepoCommit(repoPath, options = {}) {
+  const dataRootPath = options.dataRootPath || dataRoot;
+  const manifestPath = options.manifestPath || dataManifestPath;
+  const commitLookup =
+    options.commitLookup || buildManifestCommitLookup(manifestPath);
+  const manifestRepoPath = getManifestRepoPath(repoPath, dataRootPath);
+  const commit = commitLookup.get(manifestRepoPath);
+
+  if (!commit) {
+    throw new Error(
+      `Missing commit for ${manifestRepoPath} in data manifest ${resolve(manifestPath)}`
+    );
+  }
+
+  return commit;
 }
 
 export {
@@ -91,8 +158,10 @@ export {
   samplesRoot,
   docsRoot,
   registryPath,
+  dataManifestPath,
   SAMPLE_ROOTS,
   DOC_ROOTS,
   getExistingPath,
-  readSubmoduleHead
+  buildManifestCommitLookup,
+  readManifestRepoCommit
 };
