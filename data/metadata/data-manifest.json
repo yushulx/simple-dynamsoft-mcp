@@ -28,8 +28,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-server",
-      "commit": "80a3d89c3b8ee53e4640a87fe36cf6d96714929e",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/80a3d89c3b8ee53e4640a87fe36cf6d96714929e"
+      "commit": "5479d530342edc40d1602addebbb8cd60ed781ce",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/5479d530342edc40d1602addebbb8cd60ed781ce"
     },
     {
       "name": "data/documentation/capture-vision-docs",
@@ -78,8 +78,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "document-viewer-docs",
-      "commit": "26ea218ada436b1bbae04a224ebe2d42a08fef5b",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/26ea218ada436b1bbae04a224ebe2d42a08fef5b"
+      "commit": "4a49e918d174f4efac927981b81c81024d9ba3dc",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/4a49e918d174f4efac927981b81c81024d9ba3dc"
     },
     {
       "name": "data/documentation/web-twain-docs",
@@ -88,8 +88,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "275eefb2a97512e91cfca139ac58f8a8b6317f8a",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/275eefb2a97512e91cfca139ac58f8a8b6317f8a"
+      "commit": "a38d73c583b8379c0d80337e92f291f6c1ab10a8",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/a38d73c583b8379c0d80337e92f291f6c1ab10a8"
     },
     {
       "name": "data/samples/dynamic-web-twain",
