@@ -40,6 +40,11 @@ async function runHttpScenario(provider, { fallback = "none", extraEnv = {} } = 
       /\[transport\].*event=server_start.*mode=http/,
       "Expected structured transport startup logs from native HTTP server output"
     );
+    assert.match(
+      `${logs.stdout}\n${logs.stderr}`,
+      /\[startup\].*event=stage.*stage=http_listener_ready/,
+      "Expected startup stage timing logs from native HTTP server output"
+    );
   } finally {
     if (transport) {
       await transport.close();

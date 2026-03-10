@@ -280,6 +280,7 @@ function buildVersionPolicyText() {
 
 const resourceIndex = [];
 const resourceIndexByUri = new Map();
+let resourceIndexReady = false;
 
 function addResourceToIndex(entry) {
   resourceIndex.push(entry);
@@ -368,10 +369,16 @@ function refreshResourceIndex() {
   for (const entry of resourceIndex) {
     resourceIndexByUri.set(entry.uri, entry);
   }
+  resourceIndexReady = true;
   return { resourceCount: resourceIndex.length };
 }
 
-refreshResourceIndex();
+function ensureResourceIndexReady() {
+  if (!resourceIndexReady) {
+    return refreshResourceIndex();
+  }
+  return { resourceCount: resourceIndex.length };
+}
 
 function editionMatches(normalizedEdition, entryEdition) {
   if (!normalizedEdition) return true;
@@ -397,6 +404,8 @@ function platformMatches(normalizedPlatform, entry) {
 }
 
 function getSampleEntries({ product, edition, platform }) {
+  ensureResourceIndexReady();
+
   const normalizedProduct = normalizeProduct(product);
   const normalizedPlatform = normalizePlatform(platform);
   const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
@@ -425,6 +434,7 @@ function formatScopeLabel(entry) {
 }
 
 function getPinnedResources() {
+  ensureResourceIndexReady();
   return resourceIndex.filter((entry) => entry.pinned);
 }
 
@@ -464,6 +474,8 @@ function buildResourceLookupCandidates(uri) {
 }
 
 async function readResourceContent(uri) {
+  ensureResourceIndexReady();
+
   let resource = null;
   for (const candidate of buildResourceLookupCandidates(uri)) {
     resource = resourceIndexByUri.get(candidate);
@@ -481,6 +493,8 @@ async function readResourceContent(uri) {
 }
 
 function getRagSignatureData() {
+  ensureResourceIndexReady();
+
   return {
     resourceCount: resourceIndex.length,
     dcvCoreDocCount: dcvCoreDocs.length,
@@ -585,6 +599,7 @@ export {
   buildIndexData,
   buildResourceIndex,
   refreshResourceIndex,
+  ensureResourceIndexReady,
   editionMatches,
   platformMatches,
   getDisplayEdition,
