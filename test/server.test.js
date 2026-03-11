@@ -150,6 +150,8 @@ await test('get_index returns product data', async () => {
     assert(parsed.products.dwt, 'Should include DWT');
     assert(parsed.products.ddv, 'Should include DDV');
     assert(parsed.productSelection?.dcvSupersetSummary, 'Should include DCV superset summary');
+    assert(parsed.productSelection.dcvSupersetSummary.includes('(DCV)'), 'DCV superset summary should include DCV abbreviation');
+    assert(parsed.productSelection.dcvSupersetSummary.includes('(DBR)'), 'DCV superset summary should include DBR abbreviation');
 
     const heavyFields = ['docTitles', 'samples', 'sampleCategories', 'docs', 'articles'];
 

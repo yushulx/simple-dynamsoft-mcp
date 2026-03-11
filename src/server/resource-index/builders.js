@@ -47,20 +47,20 @@ function buildProductSelectionGuidanceText() {
   return [
     "# Product Selection Guidance",
     "",
-    "## Dynamsoft Barcode Reader vs Dynamsoft Capture Vision",
+    "## Dynamsoft Barcode Reader (DBR) vs Dynamsoft Capture Vision (DCV)",
     "",
-    "Dynamsoft Capture Vision is a superset architecture that aggregates Dynamsoft Barcode Reader, Dynamsoft Label Recognizer, Dynamsoft Document Normalizer, Dynamsoft Code Parser, and Dynamsoft Camera Enhancer.",
+    "Dynamsoft Capture Vision (DCV) is a superset architecture that aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE).",
     "",
-    "Use Dynamsoft Barcode Reader when you only need barcode reading and do not need Dynamsoft Capture Vision workflows.",
+    "Use Dynamsoft Barcode Reader (DBR) when you only need barcode reading and do not need Dynamsoft Capture Vision (DCV) workflows.",
     "",
-    "Use Dynamsoft Capture Vision when your scenario includes:",
+    "Use Dynamsoft Capture Vision (DCV) when your scenario includes:",
     "- VIN scanning",
     "- MRZ/passport/ID scanning",
     "- Driver license parsing",
     "- Document detection/normalization/auto-capture/cropping",
     "- Multi-task image processing and parsing workflows",
     "",
-    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision samples and docs."
+    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision (DCV) samples and docs."
   ].join("\n");
 }
 
@@ -168,7 +168,7 @@ function buildIndexData({
 
   return {
     productSelection: {
-      dcvSupersetSummary: "Dynamsoft Capture Vision aggregates Dynamsoft Barcode Reader, Dynamsoft Label Recognizer, Dynamsoft Document Normalizer, Dynamsoft Code Parser, and Dynamsoft Camera Enhancer into one pipeline.",
+      dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline.",
       useDbrWhen: [
         "Barcode-only workflows where DCV-specific workflows are not required."
       ],
