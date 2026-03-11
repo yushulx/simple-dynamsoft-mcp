@@ -134,13 +134,13 @@ function buildIndexData({
   getDcvServerPlatforms,
   discoverDcvMobileSamples,
   discoverDcvServerSamples,
-  discoverWebSamples,
+  countWebSamples,
   getDbrWebFrameworkPlatforms,
   getDbrMobilePlatforms,
   getDbrServerPlatforms,
   discoverMobileSamples,
   discoverDbrServerSamples,
-  discoverDwtSamples,
+  countDwtSamples,
   discoverDdvSamples,
   getDdvWebFrameworkPlatforms
 }) {
@@ -158,11 +158,11 @@ function buildIndexData({
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
   const dcvMobilePlatforms = getDcvMobilePlatforms();
   const dcvServerPlatforms = getDcvServerPlatforms();
-  const dbrWebSamples = discoverWebSamples();
+  const dbrWebSampleCount = countWebSamples();
   const dbrWebFrameworks = getDbrWebFrameworkPlatforms();
   const dbrMobilePlatforms = getDbrMobilePlatforms();
   const dbrServerPlatforms = getDbrServerPlatforms();
-  const dwtSampleCategories = discoverDwtSamples();
+  const dwtSampleCount = countDwtSamples();
   const ddvSamples = discoverDdvSamples();
   const ddvWebFrameworks = getDdvWebFrameworkPlatforms();
 
@@ -223,7 +223,7 @@ function buildIndexData({
             version: dbrWebVersion,
             platforms: ["js", ...dbrWebFrameworks],
             docCount: dbrWebDocs.length,
-            sampleCount: countSamples(dbrWebSamples)
+            sampleCount: dbrWebSampleCount
           },
           server: {
             version: dbrServerVersion,
@@ -240,7 +240,7 @@ function buildIndexData({
             version: dwtVersion,
             platforms: ["js"],
             docCount: dwtDocs.articles.length,
-            sampleCount: countSamples(dwtSampleCategories)
+            sampleCount: dwtSampleCount
           }
         }
       },
