@@ -149,6 +149,28 @@ await test('get_index returns product data', async () => {
     assert(parsed.products.dbr, 'Should include DBR');
     assert(parsed.products.dwt, 'Should include DWT');
     assert(parsed.products.ddv, 'Should include DDV');
+    assert(parsed.productSelection?.dcvSupersetSummary, 'Should include DCV superset summary');
+
+    const heavyFields = ['docTitles', 'samples', 'sampleCategories'];
+
+    for (const [productName, product] of Object.entries(parsed.products)) {
+        assert(Number.isFinite(product.latestMajor), `${productName} should include finite numeric latestMajor`);
+        assert(product.editions && typeof product.editions === 'object', `${productName} should include editions object`);
+        for (const [editionName, edition] of Object.entries(product.editions)) {
+            assert(typeof edition.version === 'string', `${productName}.${editionName} should include string version`);
+            assert(Array.isArray(edition.platforms), `${productName}.${editionName} should include platforms`);
+            assert(Number.isFinite(edition.docCount), `${productName}.${editionName} should include finite docCount`);
+            assert(Number.isFinite(edition.sampleCount), `${productName}.${editionName} should include finite sampleCount`);
+
+            const compactKeys = ['version', 'platforms', 'docCount', 'sampleCount'];
+            const unexpectedKeys = Object.keys(edition).filter((key) => !compactKeys.includes(key));
+            assert(unexpectedKeys.length === 0, `${productName}.${editionName} should only include compact keys`);
+
+            for (const field of heavyFields) {
+                assert(!(field in edition), `${productName}.${editionName} should not include ${field}`);
+            }
+        }
+    }
 });
 
 await test('search returns resource links for DWT', async () => {

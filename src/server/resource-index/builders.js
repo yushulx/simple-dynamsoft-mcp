@@ -2,12 +2,24 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { DDV_PREFERRED_ENTRY_FILES } from "./config.js";
 
-function mapDocTitlesWithOptionalPlatform(articles, includePlatform = false) {
-  return articles.map((article) => ({
-    title: article.title,
-    category: article.breadcrumb || "",
-    ...(includePlatform && article.platform ? { platform: article.platform } : {})
-  }));
+function countSamples(sampleData) {
+  if (Array.isArray(sampleData)) {
+    return sampleData.length;
+  }
+
+  if (sampleData && typeof sampleData === "object") {
+    return Object.values(sampleData).reduce((total, value) => {
+      return total + countSamples(value);
+    }, 0);
+  }
+
+  return 0;
+}
+
+function countDiscoveredSamplesByPlatforms(platforms, discoverSamplesForPlatform) {
+  return platforms.reduce((total, platform) => {
+    return total + countSamples(discoverSamplesForPlatform(platform));
+  }, 0);
 }
 
 function getDcvScenarioTags(sampleName) {
@@ -35,20 +47,20 @@ function buildProductSelectionGuidanceText() {
   return [
     "# Product Selection Guidance",
     "",
-    "## DBR vs DCV",
+    "## Dynamsoft Barcode Reader (DBR) vs Dynamsoft Capture Vision (DCV)",
     "",
-    "Dynamsoft Capture Vision (DCV) is a superset architecture that aggregates DBR, DLR, DDN, DCP, and DCE.",
+    "Dynamsoft Capture Vision (DCV) is a superset architecture that aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE).",
     "",
-    "Use DBR when you only need barcode reading and do not need DCV workflows.",
+    "Use Dynamsoft Barcode Reader (DBR) when you only need barcode reading and do not need Dynamsoft Capture Vision (DCV) workflows.",
     "",
-    "Use DCV when your scenario includes:",
+    "Use Dynamsoft Capture Vision (DCV) when your scenario includes:",
     "- VIN scanning",
     "- MRZ/passport/ID scanning",
     "- Driver license parsing",
     "- Document detection/normalization/auto-capture/cropping",
     "- Multi-task image processing and parsing workflows",
     "",
-    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer DCV samples/docs."
+    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision (DCV) samples and docs."
   ].join("\n");
 }
 
@@ -146,16 +158,17 @@ function buildIndexData({
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
   const dcvMobilePlatforms = getDcvMobilePlatforms();
   const dcvServerPlatforms = getDcvServerPlatforms();
-  const dbrWebSamples = discoverWebSamples();
+  const dbrWebSampleCount = countSamples(discoverWebSamples());
   const dbrWebFrameworks = getDbrWebFrameworkPlatforms();
   const dbrMobilePlatforms = getDbrMobilePlatforms();
   const dbrServerPlatforms = getDbrServerPlatforms();
+  const dwtSampleCount = countSamples(discoverDwtSamples());
   const ddvSamples = discoverDdvSamples();
   const ddvWebFrameworks = getDdvWebFrameworkPlatforms();
 
   return {
     productSelection: {
-      dcvSupersetSummary: "DCV aggregates DBR, DLR, DDN, DCP, and DCE into one pipeline.",
+      dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline.",
       useDbrWhen: [
         "Barcode-only workflows where DCV-specific workflows are not required."
       ],
@@ -175,32 +188,25 @@ function buildIndexData({
             version: dcvCoreVersion,
             platforms: ["core"],
             docCount: dcvCoreDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dcvCoreDocs)
+            sampleCount: 0
           },
           web: {
             version: dcvWebVersion,
             platforms: ["js", ...dcvWebFrameworks],
-            samples: dcvWebSamples,
             docCount: dcvWebDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dcvWebDocs)
+            sampleCount: countSamples(dcvWebSamples)
           },
           mobile: {
             version: dcvMobileVersion,
             platforms: dcvMobilePlatforms,
-            samples: Object.fromEntries(
-              dcvMobilePlatforms.map((platform) => [platform, discoverDcvMobileSamples(platform)])
-            ),
             docCount: dcvMobileDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dcvMobileDocs, true)
+            sampleCount: countDiscoveredSamplesByPlatforms(dcvMobilePlatforms, discoverDcvMobileSamples)
           },
           server: {
             version: dcvServerVersion,
             platforms: dcvServerPlatforms,
-            samples: Object.fromEntries(
-              dcvServerPlatforms.map((platform) => [platform, discoverDcvServerSamples(platform)])
-            ),
             docCount: dcvServerDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dcvServerDocs, true)
+            sampleCount: countDiscoveredSamplesByPlatforms(dcvServerPlatforms, discoverDcvServerSamples)
           }
         }
       },
@@ -210,27 +216,20 @@ function buildIndexData({
           mobile: {
             version: dbrMobileVersion,
             platforms: dbrMobilePlatforms,
-            samples: Object.fromEntries(
-              dbrMobilePlatforms.map((platform) => [platform, discoverMobileSamples(platform)])
-            ),
             docCount: dbrMobileDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dbrMobileDocs, true)
+            sampleCount: countDiscoveredSamplesByPlatforms(dbrMobilePlatforms, discoverMobileSamples)
           },
           web: {
             version: dbrWebVersion,
             platforms: ["js", ...dbrWebFrameworks],
-            samples: dbrWebSamples,
             docCount: dbrWebDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dbrWebDocs)
+            sampleCount: dbrWebSampleCount
           },
           server: {
             version: dbrServerVersion,
             platforms: dbrServerPlatforms,
-            samples: Object.fromEntries(
-              dbrServerPlatforms.map((platform) => [platform, discoverDbrServerSamples(platform)])
-            ),
             docCount: dbrServerDocs.length,
-            docTitles: mapDocTitlesWithOptionalPlatform(dbrServerDocs, true)
+            sampleCount: countDiscoveredSamplesByPlatforms(dbrServerPlatforms, discoverDbrServerSamples)
           }
         }
       },
@@ -240,12 +239,8 @@ function buildIndexData({
           web: {
             version: dwtVersion,
             platforms: ["js"],
-            sampleCategories: discoverDwtSamples(),
             docCount: dwtDocs.articles.length,
-            docTitles: dwtDocs.articles.map((article) => ({
-              title: article.title,
-              category: article.breadcrumb || ""
-            }))
+            sampleCount: dwtSampleCount
           }
         }
       },
@@ -255,12 +250,8 @@ function buildIndexData({
           web: {
             version: ddvVersion,
             platforms: ["js", ...ddvWebFrameworks],
-            samples: ddvSamples,
             docCount: ddvDocs.articles.length,
-            docTitles: ddvDocs.articles.map((article) => ({
-              title: article.title,
-              category: article.breadcrumb || ""
-            }))
+            sampleCount: countSamples(ddvSamples)
           }
         }
       }
