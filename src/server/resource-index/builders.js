@@ -16,6 +16,12 @@ function countSamples(sampleData) {
   return 0;
 }
 
+function countDiscoveredSamplesByPlatforms(platforms, discoverSamplesForPlatform) {
+  return platforms.reduce((total, platform) => {
+    return total + countSamples(discoverSamplesForPlatform(platform));
+  }, 0);
+}
+
 function getDcvScenarioTags(sampleName) {
   const normalized = String(sampleName || "").toLowerCase();
   const tags = [];
@@ -41,20 +47,20 @@ function buildProductSelectionGuidanceText() {
   return [
     "# Product Selection Guidance",
     "",
-    "## DBR vs DCV",
+    "## Dynamsoft Barcode Reader vs Dynamsoft Capture Vision",
     "",
-    "Dynamsoft Capture Vision (DCV) is a superset architecture that aggregates DBR, DLR, DDN, DCP, and DCE.",
+    "Dynamsoft Capture Vision is a superset architecture that aggregates Dynamsoft Barcode Reader, Dynamsoft Label Recognizer, Dynamsoft Document Normalizer, Dynamsoft Code Parser, and Dynamsoft Camera Enhancer.",
     "",
-    "Use DBR when you only need barcode reading and do not need DCV workflows.",
+    "Use Dynamsoft Barcode Reader when you only need barcode reading and do not need Dynamsoft Capture Vision workflows.",
     "",
-    "Use DCV when your scenario includes:",
+    "Use Dynamsoft Capture Vision when your scenario includes:",
     "- VIN scanning",
     "- MRZ/passport/ID scanning",
     "- Driver license parsing",
     "- Document detection/normalization/auto-capture/cropping",
     "- Multi-task image processing and parsing workflows",
     "",
-    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer DCV samples/docs."
+    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision samples and docs."
   ].join("\n");
 }
 
@@ -152,22 +158,10 @@ function buildIndexData({
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
   const dcvMobilePlatforms = getDcvMobilePlatforms();
   const dcvServerPlatforms = getDcvServerPlatforms();
-  const dcvMobileSamples = Object.fromEntries(
-    dcvMobilePlatforms.map((platform) => [platform, discoverDcvMobileSamples(platform)])
-  );
-  const dcvServerSamples = Object.fromEntries(
-    dcvServerPlatforms.map((platform) => [platform, discoverDcvServerSamples(platform)])
-  );
   const dbrWebSamples = discoverWebSamples();
   const dbrWebFrameworks = getDbrWebFrameworkPlatforms();
   const dbrMobilePlatforms = getDbrMobilePlatforms();
   const dbrServerPlatforms = getDbrServerPlatforms();
-  const dbrMobileSamples = Object.fromEntries(
-    dbrMobilePlatforms.map((platform) => [platform, discoverMobileSamples(platform)])
-  );
-  const dbrServerSamples = Object.fromEntries(
-    dbrServerPlatforms.map((platform) => [platform, discoverDbrServerSamples(platform)])
-  );
   const dwtSampleCategories = discoverDwtSamples();
   const ddvSamples = discoverDdvSamples();
   const ddvWebFrameworks = getDdvWebFrameworkPlatforms();
@@ -206,13 +200,13 @@ function buildIndexData({
             version: dcvMobileVersion,
             platforms: dcvMobilePlatforms,
             docCount: dcvMobileDocs.length,
-            sampleCount: countSamples(dcvMobileSamples)
+            sampleCount: countDiscoveredSamplesByPlatforms(dcvMobilePlatforms, discoverDcvMobileSamples)
           },
           server: {
             version: dcvServerVersion,
             platforms: dcvServerPlatforms,
             docCount: dcvServerDocs.length,
-            sampleCount: countSamples(dcvServerSamples)
+            sampleCount: countDiscoveredSamplesByPlatforms(dcvServerPlatforms, discoverDcvServerSamples)
           }
         }
       },
@@ -223,7 +217,7 @@ function buildIndexData({
             version: dbrMobileVersion,
             platforms: dbrMobilePlatforms,
             docCount: dbrMobileDocs.length,
-            sampleCount: countSamples(dbrMobileSamples)
+            sampleCount: countDiscoveredSamplesByPlatforms(dbrMobilePlatforms, discoverMobileSamples)
           },
           web: {
             version: dbrWebVersion,
@@ -235,7 +229,7 @@ function buildIndexData({
             version: dbrServerVersion,
             platforms: dbrServerPlatforms,
             docCount: dbrServerDocs.length,
-            sampleCount: countSamples(dbrServerSamples)
+            sampleCount: countDiscoveredSamplesByPlatforms(dbrServerPlatforms, discoverDbrServerSamples)
           }
         }
       },
