@@ -536,8 +536,8 @@ jobs:
             fi
 
             local exit_code="$?"
-            if [[ "$exit_code" -eq 124 ]]; then
-              echo "::warning::Cleanup timed out after 180s: ${label}"
+            if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 || "$exit_code" -eq 143 ]]; then
+              echo "::warning::Cleanup timed out after up to 210s (180s + 30s grace): ${label}"
             else
               echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}"
             fi
