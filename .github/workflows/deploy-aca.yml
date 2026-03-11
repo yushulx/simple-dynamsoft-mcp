@@ -531,7 +531,7 @@ jobs:
             local label="$1"
             shift
 
-            if timeout 180 "$@"; then
+            if timeout -k 30s 180s "$@"; then
               return 0
             fi
 
@@ -542,7 +542,7 @@ jobs:
               echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}"
             fi
 
-            return 1
+            return 0
           }
 
           for dir in "${versioned_dirs[@]}"; do
