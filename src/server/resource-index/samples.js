@@ -291,32 +291,6 @@ function discoverWebSamples() {
   return categories;
 }
 
-function countWebSamples() {
-  let sampleCount = 0;
-  const webPath = getDbrWebSamplesRoot();
-  if (!webPath || !existsSync(webPath)) return sampleCount;
-
-  for (const entry of readdirSync(webPath, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith(".html")) {
-      sampleCount += 1;
-    }
-  }
-
-  for (const subdir of ["frameworks", "scenarios"]) {
-    const subdirPath = join(webPath, subdir);
-    if (!existsSync(subdirPath)) continue;
-    for (const entry of readdirSync(subdirPath, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        sampleCount += 1;
-      } else if (entry.isFile() && entry.name.endsWith(".html")) {
-        sampleCount += 1;
-      }
-    }
-  }
-
-  return sampleCount;
-}
-
 function getWebSamplePath(category, sampleName) {
   const webPath = getDbrWebSamplesRoot();
   if (!webPath || !existsSync(webPath)) return null;
@@ -366,28 +340,6 @@ function discoverDwtSamples() {
   }
 
   return categories;
-}
-
-function countDwtSamples() {
-  let sampleCount = 0;
-  if (!existsSync(SAMPLE_ROOTS.dwt)) return sampleCount;
-
-  function countHtmlFiles(dir) {
-    for (const item of readdirSync(dir, { withFileTypes: true })) {
-      if (item.isFile() && item.name.endsWith(".html")) {
-        sampleCount += 1;
-      } else if (item.isDirectory() && !item.name.startsWith(".")) {
-        countHtmlFiles(join(dir, item.name));
-      }
-    }
-  }
-
-  for (const entry of readdirSync(SAMPLE_ROOTS.dwt, { withFileTypes: true })) {
-    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-    countHtmlFiles(join(SAMPLE_ROOTS.dwt, entry.name));
-  }
-
-  return sampleCount;
 }
 
 function discoverDdvSamples() {
@@ -749,10 +701,8 @@ export {
   discoverDcvServerSamples,
   discoverDcvWebSamples,
   discoverWebSamples,
-  countWebSamples,
   getWebSamplePath,
   discoverDwtSamples,
-  countDwtSamples,
   discoverDdvSamples,
   mapDdvSampleToFramework,
   getDbrWebFrameworkPlatforms,

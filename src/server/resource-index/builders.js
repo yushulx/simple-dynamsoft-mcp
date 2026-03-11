@@ -134,13 +134,13 @@ function buildIndexData({
   getDcvServerPlatforms,
   discoverDcvMobileSamples,
   discoverDcvServerSamples,
-  countWebSamples,
+  discoverWebSamples,
   getDbrWebFrameworkPlatforms,
   getDbrMobilePlatforms,
   getDbrServerPlatforms,
   discoverMobileSamples,
   discoverDbrServerSamples,
-  countDwtSamples,
+  discoverDwtSamples,
   discoverDdvSamples,
   getDdvWebFrameworkPlatforms
 }) {
@@ -158,11 +158,11 @@ function buildIndexData({
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
   const dcvMobilePlatforms = getDcvMobilePlatforms();
   const dcvServerPlatforms = getDcvServerPlatforms();
-  const dbrWebSampleCount = countWebSamples();
+  const dbrWebSampleCount = countSamples(discoverWebSamples());
   const dbrWebFrameworks = getDbrWebFrameworkPlatforms();
   const dbrMobilePlatforms = getDbrMobilePlatforms();
   const dbrServerPlatforms = getDbrServerPlatforms();
-  const dwtSampleCount = countDwtSamples();
+  const dwtSampleCount = countSamples(discoverDwtSamples());
   const ddvSamples = discoverDdvSamples();
   const ddvWebFrameworks = getDdvWebFrameworkPlatforms();
 
