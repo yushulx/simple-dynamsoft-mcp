@@ -527,6 +527,24 @@ jobs:
             return 1
           }
 
+          run_cleanup_command() {
+            local label="$1"
+            shift
+
+            if timeout -k 30s 180s "$@"; then
+              return 0
+            fi
+
+            local exit_code="$?"
+            if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 || "$exit_code" -eq 143 ]]; then
+              echo "::warning::Cleanup timed out after up to 210s (180s + 30s grace): ${label}"
+            else
+              echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}"
+            fi
+
+            return 0
+          }
+
           for dir in "${versioned_dirs[@]}"; do
             if should_keep "$dir"; then
               echo "Keeping cache directory: $dir"
@@ -534,18 +552,20 @@ jobs:
             fi
 
             echo "Cleaning old cache directory: $dir"
-            az storage file delete-batch \
+            run_cleanup_command "az storage file delete-batch for ${dir}" \
+              az storage file delete-batch \
               --account-name "$account" \
               --account-key "$key" \
               --source "$share" \
-              --pattern "${dir}/*" || true
+              --pattern "${dir}/*"
 
-            az storage directory delete \
+            run_cleanup_command "az storage directory delete for ${dir}" \
+              az storage directory delete \
               --account-name "$account" \
               --account-key "$key" \
               --share-name "$share" \
               --name "$dir" \
-              --fail-not-exist || true
+              --fail-not-exist
           done
 
       - name: Deployment summary
