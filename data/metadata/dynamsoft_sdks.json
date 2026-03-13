@@ -489,6 +489,28 @@
         }
       }
     },
+    "mds": {
+      "name": "Dynamsoft Mobile Document Scanner JavaScript Edition",
+      "description": "Web SDK for scanning documents, capturing document images, and enhancing them to professional quality. Built as an open-source wrapper on top of Dynamsoft Capture Vision JavaScript.",
+      "version": "1.4.2",
+      "default_platform": "web",
+      "snippet_path": "mobile-document-scanner-javascript",
+      "platforms": {
+        "web": {
+          "languages": [
+            "JavaScript",
+            "TypeScript"
+          ],
+          "docs": {
+            "user-guide": "https://www.dynamsoft.com/mobile-document-scanner/docs/web/guide/index.html",
+            "api-reference": "https://www.dynamsoft.com/mobile-document-scanner/docs/web/api/index.html"
+          },
+          "samples": {
+            "repo": "https://github.com/Dynamsoft/document-scanner-javascript"
+          }
+        }
+      }
+    },
     "ddv": {
       "name": "Dynamsoft Document Viewer",
       "description": "Browser-based JavaScript SDK for viewing, editing, and annotating documents (PDFs and images).",

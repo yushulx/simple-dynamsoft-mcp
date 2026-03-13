@@ -100,6 +100,16 @@ const REPO_MAP = {
     samples: {
       any: ["samples/dynamsoft-document-viewer"]
     }
+  },
+  mds: {
+    docs: {
+      web: ["documentation/mobile-document-scanner-docs-js"],
+      any: ["documentation/mobile-document-scanner-docs-js"]
+    },
+    samples: {
+      web: ["samples/mobile-document-scanner-javascript"],
+      any: ["samples/mobile-document-scanner-javascript"]
+    }
   }
 };
 

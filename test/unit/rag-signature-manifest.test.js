@@ -3,7 +3,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { readManifestRepoCommit } from "../../src/server/resource-index/paths.js";
+import {
+  DOC_ROOTS,
+  SAMPLE_ROOTS,
+  readManifestRepoCommit
+} from "../../src/server/resource-index/paths.js";
+import { getRagSignatureData } from "../../src/server/resource-index.js";
 
 function createDataFixture(t, manifestRepos = []) {
   const root = mkdtempSync(join(tmpdir(), "rag-signature-manifest-"));
@@ -72,5 +77,19 @@ test("readManifestRepoCommit throws when manifest lacks repo commit", (t) => {
   assert.throws(
     () => readManifestRepoCommit(missingRepoPath, { dataRootPath: root, manifestPath }),
     /Missing commit/
+  );
+});
+
+test("getRagSignatureData includes manifest-backed MDS roots", () => {
+  const signature = getRagSignatureData();
+
+  assert.ok(signature.mdsDocCount > 0);
+  assert.equal(
+    signature.dataSources.mdsSamplesHead,
+    readManifestRepoCommit(SAMPLE_ROOTS.mds)
+  );
+  assert.equal(
+    signature.dataSources.mdsDocsHead,
+    readManifestRepoCommit(DOC_ROOTS.mds)
   );
 });

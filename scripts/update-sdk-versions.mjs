@@ -218,6 +218,11 @@ const sdkVersionSources = [
     strategies: ["product-version-yml", "release-note-indexes"]
   },
   {
+    sdkId: "mds",
+    docsPath: "data/documentation/mobile-document-scanner-docs-js",
+    strategies: ["product-version-yml", "release-note-indexes"]
+  },
+  {
     sdkId: "dcv-web",
     docsPath: "data/documentation/capture-vision-docs-js",
     strategies: ["release-note-indexes"]

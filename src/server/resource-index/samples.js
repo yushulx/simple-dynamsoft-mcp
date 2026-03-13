@@ -18,12 +18,14 @@ let cachedWebFrameworkPlatforms = null;
 let cachedDbrWebFrameworkPlatforms = null;
 let cachedDdvWebFrameworkPlatforms = null;
 let cachedDcvWebFrameworkPlatforms = null;
+let cachedMdsWebFrameworkPlatforms = null;
 
 function resetSampleDiscoveryCaches() {
   cachedWebFrameworkPlatforms = null;
   cachedDbrWebFrameworkPlatforms = null;
   cachedDdvWebFrameworkPlatforms = null;
   cachedDcvWebFrameworkPlatforms = null;
+  cachedMdsWebFrameworkPlatforms = null;
 }
 
 function getCodeFileExtensions() {
@@ -342,6 +344,75 @@ function discoverDwtSamples() {
   return categories;
 }
 
+function getMdsSamplesRoot() {
+  return getExistingPath(join(SAMPLE_ROOTS.mds, "samples"), SAMPLE_ROOTS.mds);
+}
+
+function normalizeMdsFrameworkPlatform(name) {
+  const normalized = normalizePlatform(name);
+  if (normalized !== name) return normalized;
+
+  const compact = String(name || "").trim().toLowerCase();
+  if (compact.startsWith("react")) return "react";
+  if (compact.startsWith("vue")) return "vue";
+  if (compact.startsWith("angular")) return "angular";
+  return "web";
+}
+
+function listMdsSampleDescriptors() {
+  const descriptors = [];
+  const samplesRoot = getMdsSamplesRoot();
+  if (!samplesRoot || !existsSync(samplesRoot)) return descriptors;
+
+  for (const entry of readdirSync(samplesRoot, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
+
+    if (entry.isFile() && entry.name.endsWith(".html")) {
+      const sampleName = entry.name.replace(".html", "");
+      if (sampleName === "index") continue;
+      descriptors.push({ sampleName, platform: "web" });
+      continue;
+    }
+
+    if (!entry.isDirectory()) continue;
+    if (["frameworks", "scenarios"].includes(entry.name)) {
+      const categoryRoot = join(samplesRoot, entry.name);
+      for (const categoryEntry of readdirSync(categoryRoot, { withFileTypes: true })) {
+        if (categoryEntry.name.startsWith(".")) continue;
+
+        if (categoryEntry.isDirectory()) {
+          descriptors.push({
+            sampleName: categoryEntry.name,
+            platform: entry.name === "frameworks"
+              ? normalizeMdsFrameworkPlatform(categoryEntry.name)
+              : "web"
+          });
+        }
+
+        if (categoryEntry.isFile() && categoryEntry.name.endsWith(".html")) {
+          const sampleName = categoryEntry.name.replace(".html", "");
+          descriptors.push({ sampleName, platform: "web" });
+        }
+      }
+      continue;
+    }
+
+    descriptors.push({ sampleName: entry.name, platform: "web" });
+  }
+
+  return descriptors;
+}
+
+function discoverMdsSamples() {
+  const sampleSet = new Set(listMdsSampleDescriptors().map(({ sampleName }) => sampleName));
+  return Array.from(sampleSet).sort();
+}
+
+function getMdsSamplePlatform(sampleName) {
+  const descriptor = listMdsSampleDescriptors().find((entry) => entry.sampleName === sampleName);
+  return descriptor?.platform || "web";
+}
+
 function discoverDdvSamples() {
   const sampleSet = new Set();
   if (!existsSync(SAMPLE_ROOTS.ddv)) return [];
@@ -388,12 +459,23 @@ function getDdvWebFrameworkPlatforms() {
   return cachedDdvWebFrameworkPlatforms;
 }
 
+function getMdsWebFrameworkPlatforms() {
+  if (cachedMdsWebFrameworkPlatforms) return cachedMdsWebFrameworkPlatforms;
+  const frameworks = new Set();
+  for (const { platform } of listMdsSampleDescriptors()) {
+    if (platform && platform !== "web") frameworks.add(platform);
+  }
+  cachedMdsWebFrameworkPlatforms = Array.from(frameworks).sort();
+  return cachedMdsWebFrameworkPlatforms;
+}
+
 function getWebFrameworkPlatforms() {
   if (cachedWebFrameworkPlatforms) return cachedWebFrameworkPlatforms;
   const frameworks = new Set([
     ...getDbrWebFrameworkPlatforms(),
     ...getDdvWebFrameworkPlatforms(),
-    ...getDcvWebFrameworkPlatforms()
+    ...getDcvWebFrameworkPlatforms(),
+    ...getMdsWebFrameworkPlatforms()
   ]);
   cachedWebFrameworkPlatforms = frameworks;
   return cachedWebFrameworkPlatforms;
@@ -485,6 +567,27 @@ function getDwtSamplePath(category, sampleName) {
   }
 
   return findFile(categoryPath);
+}
+
+function getMdsSamplePath(sampleName) {
+  const samplesRoot = getMdsSamplesRoot();
+  if (!samplesRoot || !existsSync(samplesRoot)) return null;
+
+  const directDir = join(samplesRoot, sampleName);
+  if (existsSync(directDir) && statSync(directDir).isDirectory()) return directDir;
+
+  const directHtml = join(samplesRoot, `${sampleName}.html`);
+  if (existsSync(directHtml)) return directHtml;
+
+  for (const category of ["frameworks", "scenarios"]) {
+    const categoryDir = join(samplesRoot, category, sampleName);
+    if (existsSync(categoryDir) && statSync(categoryDir).isDirectory()) return categoryDir;
+
+    const categoryHtml = join(samplesRoot, category, `${sampleName}.html`);
+    if (existsSync(categoryHtml)) return categoryHtml;
+  }
+
+  return null;
 }
 
 function getDdvSamplePath(sampleName) {
@@ -703,11 +806,14 @@ export {
   discoverWebSamples,
   getWebSamplePath,
   discoverDwtSamples,
+  discoverMdsSamples,
   discoverDdvSamples,
+  getMdsSamplePlatform,
   mapDdvSampleToFramework,
   getDbrWebFrameworkPlatforms,
   getDcvWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms,
+  getMdsWebFrameworkPlatforms,
   getWebFrameworkPlatforms,
   findCodeFilesInSample,
   getDbrMobilePlatforms,
@@ -721,6 +827,7 @@ export {
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   readCodeFile,
   getMainCodeFile,

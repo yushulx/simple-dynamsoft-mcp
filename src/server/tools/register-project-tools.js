@@ -23,6 +23,7 @@ export function registerProjectTools({
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   getSampleSuggestions
 }) {
@@ -43,7 +44,7 @@ export function registerProjectTools({
         "- If the user just wants a quick code snippet, use get_quickstart instead.",
         "",
         "PARAMETERS:",
-        "- product (required): dcv, dbr, dwt, or ddv.",
+        "- product: dcv, dbr, dwt, ddv, or mds. Required unless resource_uri is provided.",
         "- edition: mobile, web, or server.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- version: Version constraint. Latest major is used by default.",
@@ -53,12 +54,12 @@ export function registerProjectTools({
         "",
         "RETURNS: A text block containing all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No zip file is created.",
         "",
-        "EXAMPLE: get_sample_files with resource_uri='sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' returns all source files for the Android barcode scanning sample.",
+        "EXAMPLE: get_sample_files with resource_uri='sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' returns all source files for the Android barcode scanning sample. MDS sample URIs return higher-level web document-scanning projects built on top of DCV JS.",
         "",
         "RELATED TOOLS: list_samples (discover sample IDs), search (find samples by keyword), get_quickstart (quick single-file snippet)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().trim().min(1, "Product is required when resource_uri is omitted.").optional().describe("Product: dcv, dbr, dwt, ddv, or mds"),
         edition: z.string().optional().describe("Edition: mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview"),
         version: z.string().optional().describe("Version constraint"),
@@ -78,26 +79,8 @@ export function registerProjectTools({
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
 
-      await ensureScopeHydrated({
-        product: normalizedProduct,
-        edition: normalizedEdition,
-        platform: normalizedPlatform,
-        type: "sample"
-      });
-
-      const policy = ensureLatestMajor({
-        product: normalizedProduct,
-        version,
-        query: sample_id,
-        edition: normalizedEdition,
-        platform: normalizedPlatform
-      });
-
-      if (!policy.ok) {
-        return { isError: true, content: [{ type: "text", text: policy.message }] };
-      }
-
       let sampleInfo = null;
+      let uriScope = null;
       if (resource_uri) {
         const parsed = parseResourceUri(resource_uri);
         if (!parsed) {
@@ -118,6 +101,12 @@ export function registerProjectTools({
             }]
           };
         }
+        uriScope = {
+          product: parsed.product || "",
+          edition: parsed.edition || "",
+          platform: parsed.platform || "",
+          version: parsed.version || version || ""
+        };
         sampleInfo = parseSampleUri(resource_uri);
         if (!sampleInfo) {
           return {
@@ -128,6 +117,31 @@ export function registerProjectTools({
             }]
           };
         }
+      }
+
+      const effectiveProduct = sampleInfo?.product || uriScope?.product || normalizedProduct;
+      const effectiveEdition = sampleInfo?.edition || uriScope?.edition || normalizedEdition;
+      const effectivePlatform = sampleInfo?.platform || uriScope?.platform || normalizedPlatform;
+      const effectiveVersion = sampleInfo?.version || uriScope?.version || version;
+      const effectiveQuery = sampleInfo?.sampleName || sample_id;
+
+      await ensureScopeHydrated({
+        product: effectiveProduct,
+        edition: effectiveEdition,
+        platform: effectivePlatform,
+        type: "sample"
+      });
+
+      const policy = ensureLatestMajor({
+        product: effectiveProduct,
+        version: effectiveVersion,
+        query: effectiveQuery,
+        edition: effectiveEdition,
+        platform: effectivePlatform
+      });
+
+      if (!policy.ok) {
+        return { isError: true, content: [{ type: "text", text: policy.message }] };
       }
 
       let samplePath = null;
@@ -151,6 +165,8 @@ export function registerProjectTools({
           samplePath = getDcvWebSamplePath(sampleInfo.sampleName);
         } else if (sampleInfo.product === "dwt") {
           samplePath = getDwtSamplePath(sampleInfo.category, sampleInfo.sampleName);
+        } else if (sampleInfo.product === "mds") {
+          samplePath = getMdsSamplePath(sampleInfo.sampleName);
         } else if (sampleInfo.product === "ddv") {
           samplePath = getDdvSamplePath(sampleInfo.sampleName);
         }
@@ -205,6 +221,8 @@ export function registerProjectTools({
             }
           }
           samplePath = foundCategory ? getDwtSamplePath(foundCategory, sampleName) : null;
+        } else if (normalizedProduct === "mds") {
+          samplePath = getMdsSamplePath(sampleName);
         } else if (normalizedProduct === "ddv") {
           samplePath = getDdvSamplePath(sampleName);
         }
@@ -215,9 +233,9 @@ export function registerProjectTools({
       if (!samplePath || !existsSync(samplePath)) {
         const suggestions = await getSampleSuggestions({
           query: sampleQuery,
-          product: normalizedProduct,
-          edition: normalizedEdition,
-          platform: normalizedPlatform,
+          product: effectiveProduct,
+          edition: effectiveEdition,
+          platform: effectivePlatform,
           limit: 5
         });
 

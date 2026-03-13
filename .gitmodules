@@ -122,3 +122,11 @@
 	path = data/documentation/capture-vision-docs-mobile
 	url = https://github.com/dynamsoft-docs/capture-vision-docs-mobile.git
 	branch = main
+[submodule "data/samples/mobile-document-scanner-javascript"]
+	path = data/samples/mobile-document-scanner-javascript
+	url = https://github.com/Dynamsoft/document-scanner-javascript.git
+	branch = main
+[submodule "data/documentation/mobile-document-scanner-docs-js"]
+	path = data/documentation/mobile-document-scanner-docs-js
+	url = https://github.com/dynamsoft-docs/mobile-document-scanner-docs-js.git
+	branch = main

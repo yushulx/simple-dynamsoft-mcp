@@ -82,6 +82,16 @@
       "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/4a49e918d174f4efac927981b81c81024d9ba3dc"
     },
     {
+      "name": "data/documentation/mobile-document-scanner-docs-js",
+      "path": "documentation/mobile-document-scanner-docs-js",
+      "url": "https://github.com/dynamsoft-docs/mobile-document-scanner-docs-js.git",
+      "branch": "main",
+      "owner": "dynamsoft-docs",
+      "repo": "mobile-document-scanner-docs-js",
+      "commit": "71b9993d7f287218f184de1ddaf2a833dd78721f",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/71b9993d7f287218f184de1ddaf2a833dd78721f"
+    },
+    {
       "name": "data/documentation/web-twain-docs",
       "path": "documentation/web-twain-docs",
       "url": "https://github.com/dynamsoft-docs/web-twain-docs.git",
@@ -310,6 +320,16 @@
       "repo": "document-viewer-samples",
       "commit": "84fbb0ce71aa4d327aeeb39dab57cab92c43cd9d",
       "archiveUrl": "https://codeload.github.com/Dynamsoft/document-viewer-samples/zip/84fbb0ce71aa4d327aeeb39dab57cab92c43cd9d"
+    },
+    {
+      "name": "data/samples/mobile-document-scanner-javascript",
+      "path": "samples/mobile-document-scanner-javascript",
+      "url": "https://github.com/Dynamsoft/document-scanner-javascript.git",
+      "branch": "main",
+      "owner": "Dynamsoft",
+      "repo": "document-scanner-javascript",
+      "commit": "af8d65b104ffef6f846b64fc2598baaa2a6ff6ea",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/document-scanner-javascript/zip/af8d65b104ffef6f846b64fc2598baaa2a6ff6ea"
     }
   ]
 }

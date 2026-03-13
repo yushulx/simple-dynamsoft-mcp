@@ -14,8 +14,10 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     LATEST_VERSIONS,
     LATEST_MAJOR,
     discoverDwtSamples,
+    discoverMdsSamples,
     discoverDcvMobileSamples,
     discoverDcvWebSamples,
+    getMdsSamplePlatform,
     findCodeFilesInSample,
     getMobileSamplePath,
     getDbrServerSamplePath,
@@ -23,6 +25,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getDcvServerSamplePath,
     getDcvWebSamplePath,
     getDwtSamplePath,
+    getMdsSamplePath,
     getDdvSamplePath,
     readCodeFile,
     getMainCodeFile,
@@ -62,7 +65,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
 const server = new McpServer({
   name: "simple-dynamsoft-mcp",
   version: pkgVersion,
-  description: "MCP server for latest major versions of Dynamsoft SDKs: Capture Vision, Barcode Reader, Dynamic Web TWAIN, and Document Viewer. Includes guidance for choosing DBR vs DCV by scenario."
+  description: "MCP server for latest major versions of Dynamsoft SDKs: Capture Vision, Barcode Reader, Dynamic Web TWAIN, Mobile Document Scanner, and Document Viewer. Includes first-class MDS guidance plus DBR-vs-DCV scenario selection help."
 });
 
 registerIndexTools({
@@ -115,6 +118,8 @@ registerQuickstartTools({
   normalizeApiLevel,
   discoverDcvMobileSamples,
   discoverDcvWebSamples,
+  discoverMdsSamples,
+  getMdsSamplePlatform,
   findCodeFilesInSample,
   getMobileSamplePath,
   getDbrServerSamplePath,
@@ -122,6 +127,7 @@ registerQuickstartTools({
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   readCodeFile,
   getMainCodeFile,
@@ -149,6 +155,7 @@ registerProjectTools({
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   getSampleSuggestions
 });

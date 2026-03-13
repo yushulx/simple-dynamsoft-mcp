@@ -149,7 +149,17 @@ await test('get_index returns product data', async () => {
     assert(parsed.products.dbr, 'Should include DBR');
     assert(parsed.products.dwt, 'Should include DWT');
     assert(parsed.products.ddv, 'Should include DDV');
+    assert(parsed.products.mds, 'Should include MDS');
+    assert(parsed.products.mds.editions.web, 'Should include MDS web edition');
+    assert(typeof parsed.products.mds.editions.web.version === 'string', 'MDS web edition should include string version');
+    assert(Number.isFinite(parsed.products.mds.editions.web.docCount), 'MDS web edition should include finite docCount');
+    assert(parsed.products.mds.editions.web.platforms.includes('angular'), 'MDS web edition should include angular platform');
+    assert(parsed.products.mds.editions.web.platforms.includes('react'), 'MDS web edition should include react platform');
+    assert(parsed.products.mds.editions.web.platforms.includes('vue'), 'MDS web edition should include vue platform');
     assert(parsed.productSelection?.dcvSupersetSummary, 'Should include DCV superset summary');
+    assert(parsed.productSelection?.useMdsWhen, 'Should include MDS selection guidance');
+    assert(parsed.productSelection.useMdsWhen.some((item) => item.includes('higher-level')), 'MDS guidance should position it as higher-level');
+    assert(parsed.productSelection.useMdsWhen.some((item) => item.includes('DCV JS')), 'MDS guidance should mention DCV JS');
 
     const heavyFields = ['docTitles', 'samples', 'sampleCategories'];
 
@@ -230,6 +240,49 @@ await test('list_samples returns sample URIs and JSON payload', async () => {
     const parsed = JSON.parse(jsonText);
     assert(Array.isArray(parsed.samples), 'JSON should include samples array');
     assert(parsed.samples.length > 0, 'Should return at least one sample');
+});
+
+await test('list_samples returns MDS web samples', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    const jsonIndex = text.indexOf('JSON:');
+    assert(jsonIndex !== -1, 'Should include JSON section');
+    const parsed = JSON.parse(text.slice(jsonIndex + 5).trim());
+    assert(parsed.samples.length > 0, 'Should return MDS web samples');
+    assert(parsed.returned === parsed.samples.length, 'Returned count should match JSON sample list');
+    assert(parsed.samples.every((sample) => sample.product === 'mds'), 'All samples should be MDS samples');
+    assert(parsed.samples.every((sample) => sample.edition === 'web'), 'All samples should be web edition samples');
+    assert(parsed.samples.every((sample) => sample.sample_id !== 'index'), 'Should not return the MDS router page as a sample');
+});
+
+await test('list_samples preserves MDS framework platforms', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'web', platform: 'react' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    const jsonIndex = text.indexOf('JSON:');
+    assert(jsonIndex !== -1, 'Should include JSON section');
+    const parsed = JSON.parse(text.slice(jsonIndex + 5).trim());
+    assert(parsed.samples.length > 0, 'Should return MDS react samples');
+    assert(parsed.samples.every((sample) => sample.platform === 'react'), 'All samples should preserve react platform');
 });
 
 await test('list_samples returns DBR nodejs server samples', async () => {
@@ -419,6 +472,40 @@ await test('resolve_version returns latest for DDV', async () => {
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('DDV Version Resolution'), 'Should include DDV resolution');
+});
+
+await test('resolve_version returns latest for MDS', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mds' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('MDS Version Resolution'), 'Should include MDS resolution');
+    assert(/Resolved version: \d+\.\d+\.\d+/.test(text), 'Should resolve to a concrete MDS web version');
+});
+
+await test('resolve_version rejects unsupported MDS scopes', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mds', edition: 'mobile' }
+        }
+    });
+
+    assert(response.result && response.result.isError, 'Should reject unsupported MDS scopes');
+    const text = response.result.content[0].text;
+    assert(text.includes('MDS'), 'Should mention MDS in the error');
+    assert(text.includes('web'), 'Should explain that only web scope is supported');
 });
 
 await test('resolve_version returns latest for DCV', async () => {

@@ -21,6 +21,7 @@ const SAMPLE_DIRS = {
   dcvNodejs: "dynamsoft-capture-vision-nodejs",
   dcvSpm: "dynamsoft-capture-vision-spm",
   dwt: "dynamic-web-twain",
+  mds: "mobile-document-scanner-javascript",
   ddv: "dynamsoft-document-viewer"
 };
 
@@ -33,6 +34,7 @@ const DOC_DIRS = {
   dcvServer: "capture-vision-docs-server",
   dcvCore: "capture-vision-docs",
   dwt: "web-twain-docs",
+  mds: "mobile-document-scanner-docs-js",
   ddv: "document-viewer-docs"
 };
 
@@ -75,6 +77,11 @@ const DOCS_CONFIG = {
   dwt: {
     urlBase: "https://www.dynamsoft.com/web-twain/docs/",
     includeDirNames: ["_articles"]
+  },
+  mds: {
+    urlBase: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
+    excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
+    excludeFiles: ["README.md", "search.md", "error.md"]
   },
   ddv: {
     urlBase: "https://www.dynamsoft.com/document-viewer/docs/",

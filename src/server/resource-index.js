@@ -35,11 +35,14 @@ import {
   discoverWebSamples,
   getWebSamplePath,
   discoverDwtSamples,
+  discoverMdsSamples,
   discoverDdvSamples,
+  getMdsSamplePlatform,
   mapDdvSampleToFramework,
   getDbrWebFrameworkPlatforms,
   getDcvWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms,
+  getMdsWebFrameworkPlatforms,
   getWebFrameworkPlatforms,
   findCodeFilesInSample,
   getDbrMobilePlatforms,
@@ -53,6 +56,7 @@ import {
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   readCodeFile,
   getMainCodeFile,
@@ -140,6 +144,7 @@ let dcvWebDocs = [];
 let dcvMobileDocs = [];
 let dcvServerDocs = [];
 let dwtDocs = { articles: [] };
+let mdsDocs = { articles: [] };
 let ddvDocs = { articles: [] };
 
 function loadDocumentationSets() {
@@ -226,6 +231,13 @@ function loadDocumentationSets() {
     includeDirNames: DOCS_CONFIG.dwt.includeDirNames
   });
 
+  mdsDocs = loadMarkdownDocs({
+    rootDir: DOC_ROOTS.mds,
+    urlBase: DOCS_CONFIG.mds.urlBase,
+    excludeDirs: DOCS_CONFIG.mds.excludeDirs,
+    excludeFiles: DOCS_CONFIG.mds.excludeFiles
+  });
+
   ddvDocs = loadMarkdownDocs({
     rootDir: DOC_ROOTS.ddv,
     urlBase: DOCS_CONFIG.ddv.urlBase,
@@ -256,6 +268,9 @@ const LATEST_VERSIONS = {
   dwt: {
     web: registry.sdks.dwt.version
   },
+  mds: {
+    web: registry.sdks.mds.version
+  },
   ddv: {
     web: registry.sdks.ddv.version
   }
@@ -265,6 +280,7 @@ const LATEST_MAJOR = {
   dbr: parseMajorVersion(registry.sdks["dbr-mobile"].version),
   dcv: parseMajorVersion(dcvMobileSdk.version),
   dwt: parseMajorVersion(registry.sdks.dwt.version),
+  mds: parseMajorVersion(registry.sdks.mds.version),
   ddv: parseMajorVersion(registry.sdks.ddv.version)
 };
 
@@ -298,6 +314,7 @@ function buildIndexData() {
     dbrMobileDocs,
     dbrServerDocs,
     dwtDocs,
+    mdsDocs,
     ddvDocs,
     discoverDcvWebSamples,
     getDcvWebFrameworkPlatforms,
@@ -312,7 +329,9 @@ function buildIndexData() {
     discoverMobileSamples,
     discoverDbrServerSamples,
     discoverDwtSamples,
+    discoverMdsSamples,
     discoverDdvSamples,
+    getMdsWebFrameworkPlatforms,
     getDdvWebFrameworkPlatforms
   });
 }
@@ -332,6 +351,7 @@ function buildResourceIndex() {
     dbrMobileDocs,
     dbrServerDocs,
     dwtDocs,
+    mdsDocs,
     ddvDocs,
     discoverDcvMobileSamples,
     getDcvMobilePlatforms,
@@ -354,6 +374,9 @@ function buildResourceIndex() {
     getWebSamplePath,
     discoverDwtSamples,
     getDwtSamplePath,
+    discoverMdsSamples,
+    getMdsSamplePlatform,
+    getMdsSamplePath,
     discoverDdvSamples,
     getDdvSamplePath,
     findCodeFilesInSample
@@ -505,6 +528,7 @@ function getRagSignatureData() {
     dbrMobileDocCount: dbrMobileDocs.length,
     dbrServerDocCount: dbrServerDocs.length,
     dwtDocCount: dwtDocs.articles.length,
+    mdsDocCount: mdsDocs.articles.length,
     ddvDocCount: ddvDocs.articles.length,
     versions: LATEST_VERSIONS,
     dataSources: {
@@ -530,6 +554,7 @@ function getRagSignatureData() {
       dcvNodejsSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvNodejs),
       dcvSpmSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvSpm),
       dwtSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dwt),
+      mdsSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mds),
       ddvSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.ddv),
       dbrWebDocsHead: readManifestRepoCommit(DOC_ROOTS.dbrWeb),
       dbrMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.dbrMobile),
@@ -539,6 +564,7 @@ function getRagSignatureData() {
       dcvMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvMobile),
       dcvServerDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvServer),
       dwtDocsHead: readManifestRepoCommit(DOC_ROOTS.dwt),
+      mdsDocsHead: readManifestRepoCommit(DOC_ROOTS.mds),
       ddvDocsHead: readManifestRepoCommit(DOC_ROOTS.ddv),
       registrySha256
     }
@@ -563,11 +589,14 @@ export {
   discoverWebSamples,
   getWebSamplePath,
   discoverDwtSamples,
+  discoverMdsSamples,
   discoverDdvSamples,
+  getMdsSamplePlatform,
   mapDdvSampleToFramework,
   getDbrWebFrameworkPlatforms,
   getDcvWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms,
+  getMdsWebFrameworkPlatforms,
   getWebFrameworkPlatforms,
   findCodeFilesInSample,
   getDbrServerSamplePath,
@@ -581,6 +610,7 @@ export {
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   readCodeFile,
   getMainCodeFile,

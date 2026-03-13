@@ -13,6 +13,8 @@ export function registerQuickstartTools({
   normalizeApiLevel,
   discoverDcvMobileSamples,
   discoverDcvWebSamples,
+  discoverMdsSamples,
+  getMdsSamplePlatform,
   findCodeFilesInSample,
   getMobileSamplePath,
   getDbrServerSamplePath,
@@ -20,6 +22,7 @@ export function registerQuickstartTools({
   getDcvServerSamplePath,
   getDcvWebSamplePath,
   getDwtSamplePath,
+  getMdsSamplePath,
   getDdvSamplePath,
   readCodeFile,
   getMainCodeFile,
@@ -43,20 +46,20 @@ export function registerQuickstartTools({
         "- If the user only needs version info, use resolve_version.",
         "",
         "PARAMETERS:",
-        "- product (required): dcv, dbr, dwt, or ddv.",
+        "- product (required): dcv, dbr, dwt, ddv, or mds.",
         "- edition: core, mobile, web, or server. Inferred from platform if omitted.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- language: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular. Helps select the best sample variant.",
         "- version: Version constraint. Latest major is used by default.",
         "- api_level: 'high-level' or 'low-level' (mobile only). Controls API abstraction level in generated code.",
-        "- scenario: MRZ, VIN, document scan, driver license, camera, image, single, multiple, etc. DCV supports MRZ/VIN/document-normalization/driver-license workflows.",
+        "- scenario: MRZ, VIN, document scan, driver license, camera, image, single, multiple, etc. DCV supports MRZ/VIN/document-normalization/driver-license workflows, while MDS is the higher-level web document-scanning wrapper on top of DCV JS.",
         "",
         "RETURNS: A formatted text block with SDK version, trial license key, install commands, and sample code. Ready to copy-paste.",
         "",
         "RELATED TOOLS: search (find specific docs or samples), get_sample_files (get full multi-file project), resolve_version (version numbers only)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, ddv, or mds"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular"),
@@ -75,6 +78,61 @@ export function registerQuickstartTools({
       const normalizedProduct = normalizeProduct(product);
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+
+      function readBestSampleContent(samplePath) {
+        if (!samplePath || !existsSync(samplePath)) return { text: "", fence: "text" };
+        const sampleStat = statSync(samplePath);
+        if (sampleStat.isFile()) {
+          return {
+            text: readCodeFile(samplePath),
+            fence: extname(samplePath).replace(".", "") || "text"
+          };
+        }
+        const readmePath = join(samplePath, "README.md");
+        if (existsSync(readmePath)) return { text: readCodeFile(readmePath), fence: "markdown" };
+
+        const codeFiles = findCodeFilesInSample(samplePath);
+        if (codeFiles.length > 0) {
+          const preferredNames = ["index.html", "index.js", "index.ts", "main.ts", "main.tsx", "App.tsx", "App.vue", "README.md"];
+          const preferred = codeFiles.find((file) => preferredNames.includes(file.filename)) || codeFiles[0];
+          return {
+            text: readCodeFile(preferred.path),
+            fence: preferred.extension ? preferred.extension.replace(".", "") : "text"
+          };
+        }
+
+        return { text: "Sample found, but no code files detected.", fence: "text" };
+      }
+
+      function readMobileSampleContent(platform, samplePath) {
+        if (!samplePath || !existsSync(samplePath)) return { text: "", fence: "text" };
+        const sampleStat = statSync(samplePath);
+        if (sampleStat.isFile()) {
+          return {
+            text: readCodeFile(samplePath),
+            fence: extname(samplePath).replace(".", "") || "text"
+          };
+        }
+
+        const mainFile = getMainCodeFile(platform, samplePath);
+        if (mainFile) {
+          return {
+            text: readCodeFile(mainFile.path),
+            fence: mainFile.filename.split(".").pop() || "text"
+          };
+        }
+
+        return readBestSampleContent(samplePath);
+      }
+
+      function formatInstallLines(installation) {
+        if (!installation || typeof installation !== "object") return [];
+        const lines = [];
+        for (const value of Object.values(installation)) {
+          if (typeof value === "string" && value.trim()) lines.push(value);
+        }
+        return lines;
+      }
 
       await ensureScopeHydrated({
         product: normalizedProduct,
@@ -136,40 +194,6 @@ export function registerQuickstartTools({
           return sampleNames[0] || "";
         }
 
-        function readBestSampleContent(samplePath) {
-          if (!samplePath || !existsSync(samplePath)) return { text: "", fence: "text" };
-          const sampleStat = statSync(samplePath);
-          if (sampleStat.isFile()) {
-            return {
-              text: readCodeFile(samplePath),
-              fence: extname(samplePath).replace(".", "") || "text"
-            };
-          }
-          const readmePath = join(samplePath, "README.md");
-          if (existsSync(readmePath)) return { text: readCodeFile(readmePath), fence: "markdown" };
-
-          const codeFiles = findCodeFilesInSample(samplePath);
-          if (codeFiles.length > 0) {
-            const preferredNames = ["index.html", "index.js", "index.ts", "main.dart", "App.tsx", "MainActivity.kt", "MainActivity.java"];
-            const preferred = codeFiles.find((file) => preferredNames.includes(file.filename)) || codeFiles[0];
-            return {
-              text: readCodeFile(preferred.path),
-              fence: preferred.extension ? preferred.extension.replace(".", "") : "text"
-            };
-          }
-
-          return { text: "Sample found, but no code files detected.", fence: "text" };
-        }
-
-        function formatInstallLines(installation) {
-          if (!installation || typeof installation !== "object") return [];
-          const lines = [];
-          for (const value of Object.values(installation)) {
-            if (typeof value === "string" && value.trim()) lines.push(value);
-          }
-          return lines;
-        }
-
         if (effectiveEdition === "server") {
           const sdkEntry = registry.sdks["dcv-server"];
           const targetPlatform = normalizePlatform(normalizedPlatform || sdkEntry.default_platform || "python");
@@ -180,7 +204,7 @@ export function registerQuickstartTools({
             return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
           }
 
-          const { text: sampleContent, fence } = readBestSampleContent(samplePath);
+          const { text: sampleContent, fence } = readMobileSampleContent(targetPlatform, samplePath);
           const installLines = formatInstallLines(sdkEntry.platforms?.[targetPlatform]?.installation);
 
           return {
@@ -216,7 +240,7 @@ export function registerQuickstartTools({
           if (!samplePath || !existsSync(samplePath)) {
             return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
           }
-          const { text: sampleContent, fence } = readBestSampleContent(samplePath);
+          const { text: sampleContent, fence } = readMobileSampleContent(targetPlatform, samplePath);
           const installLines = formatInstallLines(sdkEntry.platforms?.web?.installation);
 
           return {
@@ -255,7 +279,7 @@ export function registerQuickstartTools({
             return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName || "N/A"}.` }] };
           }
 
-          const { text: sampleContent, fence } = readBestSampleContent(samplePath);
+          const { text: sampleContent, fence } = readMobileSampleContent(targetPlatform, samplePath);
           const installLines = formatInstallLines(sdkEntry.platforms?.[targetPlatform]?.installation);
 
           return {
@@ -299,6 +323,63 @@ export function registerQuickstartTools({
             }]
           };
         }
+      }
+
+      if (normalizedProduct === "mds") {
+        if (normalizedEdition && normalizedEdition !== "web") {
+          return {
+            isError: true,
+            content: [{ type: "text", text: `MDS quickstart only supports the web edition in this MCP server. Unsupported edition: "${normalizedEdition}".` }]
+          };
+        }
+        const sdkEntry = registry.sdks.mds;
+        const hint = `${scenario || ""} ${language || ""} ${normalizedPlatform || ""}`.toLowerCase();
+        const frameworkCandidates = discoverMdsSamples().filter((sampleName) => {
+          const samplePlatform = getMdsSamplePlatform(sampleName);
+          return samplePlatform !== "web";
+        });
+
+        let sampleName = "hello-world";
+        if (hint.includes("react")) sampleName = frameworkCandidates.find((name) => getMdsSamplePlatform(name) === "react") || "hello-world";
+        else if (hint.includes("vue")) sampleName = frameworkCandidates.find((name) => getMdsSamplePlatform(name) === "vue") || "hello-world";
+        else if (hint.includes("angular")) sampleName = frameworkCandidates.find((name) => getMdsSamplePlatform(name) === "angular") || "hello-world";
+        else if (hint.includes("pdf")) sampleName = "scanning-to-pdf";
+        else if (hint.includes("image") || hint.includes("file")) sampleName = "image-file-scanning";
+        else if (hint.includes("multi")) sampleName = "multi-page-scanning";
+
+        const samplePath = getMdsSamplePath(sampleName);
+        if (!samplePath || !existsSync(samplePath)) {
+          return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
+        }
+
+        const { text: sampleContent, fence } = readBestSampleContent(samplePath);
+        const installLines = formatInstallLines(sdkEntry.platforms?.web?.installation);
+
+        return {
+          content: [{
+            type: "text",
+            text: [
+              "# Quick Start: Dynamsoft Mobile Document Scanner",
+              "",
+              `**SDK Version:** ${sdkEntry.version}`,
+              `**Trial License:** \`${registry.trial_license}\``,
+              "",
+              "MDS is the higher-level document-scanning wrapper built on top of DCV JS.",
+              "",
+              installLines.length ? "## Install" : "",
+              installLines.length ? "```bash" : "",
+              ...installLines,
+              installLines.length ? "```" : "",
+              installLines.length ? "" : "",
+              `## ${sampleName}`,
+              "```" + fence,
+              sampleContent,
+              "```",
+              "",
+              `Docs: ${sdkEntry.platforms?.web?.docs?.["user-guide"] || "N/A"}`
+            ].filter(Boolean).join("\n")
+          }]
+        };
       }
 
       if (normalizedProduct === "dbr" && normalizedEdition === "server") {

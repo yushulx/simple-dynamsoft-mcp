@@ -70,6 +70,16 @@ function parseSampleUri(uri) {
     };
   }
 
+  if (parsed.product === "mds") {
+    return {
+      product: "mds",
+      edition: parsed.edition,
+      platform: parsed.platform,
+      version: parsed.version,
+      sampleName: parsed.parts[4]
+    };
+  }
+
   if (parsed.product === "dcv" && (parsed.edition === "mobile" || parsed.edition === "server" || parsed.edition === "web")) {
     return {
       product: "dcv",

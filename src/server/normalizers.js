@@ -44,7 +44,11 @@ const sdkAliases = {
   "web twain": "dwt",
   "webtwain": "dwt",
   "dynamic web twain": "dwt",
-  "twain": "dwt"
+  "twain": "dwt",
+  // MDS
+  "mds": "mds",
+  "mobile document scanner": "mds",
+  "dynamsoft mobile document scanner": "mds"
 };
 
 const platformAliases = {
@@ -245,13 +249,16 @@ function normalizeProduct(product) {
       "mrz scanner",
       "vin scanner",
       "driver license scanner",
-      "document scanner",
+      "document normalizer",
       "document normalization"
     ].includes(normalized)
   ) {
     return "dcv";
   }
-  if (["ddv", "document viewer", "document-viewer", "dynamsoft document viewer", "doc viewer", "pdf viewer"].includes(normalized)) {
+  if (["mds", "mobile document scanner", "dynamsoft mobile document scanner"].includes(normalized)) {
+    return "mds";
+  }
+  if (["ddv", "document viewer", "document-viewer", "dynamsoft document viewer", "doc viewer", "pdf viewer", "edit viewer"].includes(normalized)) {
     return "ddv";
   }
   if (["dbr", "barcode reader", "barcode-reader", "dynamsoft barcode reader"].includes(normalized)) {
@@ -300,6 +307,11 @@ function isWebPlatform(platform) {
 function inferProductFromQuery(query) {
   if (!query) return "";
   const normalized = query.toLowerCase();
+  if (
+    normalized.includes("dynamsoft mobile document scanner") ||
+    normalized.includes("mobile document scanner") ||
+    /(^|\W)mds(\W|$)/.test(normalized)
+  ) return "mds";
   const isDwtQuery = dwtFeatureTerms.some((term) => normalized.includes(term));
   if (isDwtQuery) return "dwt";
   const isDcvQuery = dcvFeatureTerms.some((term) => normalized.includes(term));

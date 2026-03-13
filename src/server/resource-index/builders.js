@@ -60,7 +60,15 @@ function buildProductSelectionGuidanceText() {
     "- Document detection/normalization/auto-capture/cropping",
     "- Multi-task image processing and parsing workflows",
     "",
-    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision (DCV) samples and docs."
+    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision (DCV) samples and docs.",
+    "",
+    "## Dynamsoft Mobile Document Scanner (MDS)",
+    "",
+    "Dynamsoft Mobile Document Scanner (MDS) is a first-class product in this MCP server, positioned as a higher-level web document-scanning wrapper built on top of Dynamsoft Capture Vision JavaScript (DCV JS).",
+    "",
+    "Use Dynamsoft Mobile Document Scanner (MDS) when you want a faster path to browser-based document capture flows and framework-ready document-scanning samples.",
+    "",
+    "Use Dynamsoft Capture Vision (DCV) directly when you need lower-level capture-vision control, multi-task pipelines, or non-MDS DCV workflows."
   ].join("\n");
 }
 
@@ -127,6 +135,7 @@ function buildIndexData({
   dbrMobileDocs,
   dbrServerDocs,
   dwtDocs,
+  mdsDocs,
   ddvDocs,
   discoverDcvWebSamples,
   getDcvWebFrameworkPlatforms,
@@ -141,7 +150,9 @@ function buildIndexData({
   discoverMobileSamples,
   discoverDbrServerSamples,
   discoverDwtSamples,
+  discoverMdsSamples,
   discoverDdvSamples,
+  getMdsWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms
 }) {
   const dcvCoreVersion = LATEST_VERSIONS.dcv.core;
@@ -152,6 +163,7 @@ function buildIndexData({
   const dbrWebVersion = LATEST_VERSIONS.dbr.web;
   const dbrServerVersion = LATEST_VERSIONS.dbr.server;
   const dwtVersion = LATEST_VERSIONS.dwt.web;
+  const mdsVersion = LATEST_VERSIONS.mds.web;
   const ddvVersion = LATEST_VERSIONS.ddv.web;
 
   const dcvWebSamples = discoverDcvWebSamples();
@@ -163,6 +175,8 @@ function buildIndexData({
   const dbrMobilePlatforms = getDbrMobilePlatforms();
   const dbrServerPlatforms = getDbrServerPlatforms();
   const dwtSampleCount = countSamples(discoverDwtSamples());
+  const mdsSampleCount = discoverMdsSamples().length;
+  const mdsWebFrameworks = getMdsWebFrameworkPlatforms();
   const ddvSamples = discoverDdvSamples();
   const ddvWebFrameworks = getDdvWebFrameworkPlatforms();
 
@@ -178,6 +192,11 @@ function buildIndexData({
         "Driver license parsing",
         "Document normalization/auto-capture/cropping",
         "Multi-task capture vision workflows"
+      ],
+      useMdsWhen: [
+        "higher-level web document-scanning flows built on top of DCV JS.",
+        "Framework-ready browser samples for document capture and scanning.",
+        "You want MDS convenience first, and DCV JS underneath when that abstraction fits."
       ]
     },
     products: {
@@ -244,6 +263,17 @@ function buildIndexData({
           }
         }
       },
+      mds: {
+        latestMajor: LATEST_MAJOR.mds,
+        editions: {
+          web: {
+            version: mdsVersion,
+            platforms: ["js", ...mdsWebFrameworks],
+            docCount: mdsDocs.articles.length,
+            sampleCount: mdsSampleCount
+          }
+        }
+      },
       ddv: {
         latestMajor: LATEST_MAJOR.ddv,
         editions: {
@@ -273,6 +303,7 @@ function buildResourceIndex({
   dbrMobileDocs,
   dbrServerDocs,
   dwtDocs,
+  mdsDocs,
   ddvDocs,
   discoverDcvMobileSamples,
   getDcvMobilePlatforms,
@@ -295,6 +326,9 @@ function buildResourceIndex({
   getWebSamplePath,
   discoverDwtSamples,
   getDwtSamplePath,
+  discoverMdsSamples,
+  getMdsSamplePlatform,
+  getMdsSamplePath,
   discoverDdvSamples,
   getDdvSamplePath,
   findCodeFilesInSample
@@ -334,9 +368,9 @@ function buildResourceIndex({
     uri: "doc://product-selection",
     type: "policy",
     title: "Product Selection Guidance",
-    summary: "When to use DCV vs DBR (and when DWT/DDV are better fits).",
+    summary: "When to use DCV vs DBR, and where MDS fits as a higher-level document-scanning wrapper.",
     mimeType: "text/markdown",
-    tags: ["guidance", "product-selection", "dcv", "dbr", "dwt", "ddv"],
+    tags: ["guidance", "product-selection", "dcv", "dbr", "dwt", "ddv", "mds"],
     pinned: true,
     loadContent: async () => ({
       text: buildProductSelectionGuidanceText(),
@@ -352,6 +386,7 @@ function buildResourceIndex({
   const dbrWebVersion = LATEST_VERSIONS.dbr.web;
   const dbrServerVersion = LATEST_VERSIONS.dbr.server;
   const dwtVersion = LATEST_VERSIONS.dwt.web;
+  const mdsVersion = LATEST_VERSIONS.mds.web;
   const ddvVersion = LATEST_VERSIONS.ddv.web;
 
   addMarkdownDocResources({
@@ -669,6 +704,63 @@ function buildResourceIndex({
     defaultPlatform: "web",
     defaultSummary: "Dynamic Web TWAIN documentation",
     baseTags: ["doc", "dwt"]
+  });
+
+  for (const sampleName of discoverMdsSamples()) {
+    const platform = getMdsSamplePlatform(sampleName);
+    addResourceToIndex({
+      id: `mds-${sampleName}`,
+      uri: `sample://mds/web/${platform}/${mdsVersion}/${sampleName}`,
+      type: "sample",
+      product: "mds",
+      edition: "web",
+      platform,
+      version: mdsVersion,
+      majorVersion: LATEST_MAJOR.mds,
+      title: `MDS sample: ${sampleName}`,
+      summary: `Dynamsoft Mobile Document Scanner sample ${sampleName}.`,
+      mimeType: "text/plain",
+      tags: ["sample", "mds", "mobile-document-scanner", "web", sampleName, ...(platform !== "web" ? [platform] : [])],
+      loadContent: async () => {
+        const samplePath = getMdsSamplePath(sampleName);
+        if (!samplePath || !existsSync(samplePath)) return { text: "Sample not found", mimeType: "text/plain" };
+
+        const stat = statSync(samplePath);
+        if (stat.isDirectory()) {
+          const readmePath = join(samplePath, "README.md");
+          if (existsSync(readmePath)) return { text: readCodeFile(readmePath), mimeType: "text/markdown" };
+
+          const codeFiles = findCodeFilesInSample(samplePath);
+          if (codeFiles.length === 0) {
+            const entries = readdirSync(samplePath, { withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => entry.name);
+            return {
+              text: entries.length ? entries.join("\n") : "Sample found, but no code files detected.",
+              mimeType: "text/plain"
+            };
+          }
+
+          const preferred = codeFiles.find((file) => file.filename === "index.html") || codeFiles[0];
+          return { text: readCodeFile(preferred.path), mimeType: getMimeTypeForExtension(preferred.extension) };
+        }
+
+        const ext = extname(samplePath).replace(".", "");
+        return { text: readCodeFile(samplePath), mimeType: getMimeTypeForExtension(ext) };
+      }
+    });
+  }
+
+  addMarkdownDocResources({
+    addResourceToIndex,
+    docs: mdsDocs.articles,
+    idPrefix: "mds-doc",
+    uriPrefix: "doc://mds/web",
+    product: "mds",
+    edition: "web",
+    version: mdsVersion,
+    majorVersion: LATEST_MAJOR.mds,
+    defaultPlatform: "web",
+    defaultSummary: "Dynamsoft Mobile Document Scanner documentation",
+    baseTags: ["doc", "mds", "mobile-document-scanner"]
   });
 
   for (const sampleName of discoverDdvSamples()) {

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { tmpdir } from "node:os";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpServerInstance } from "../../src/server/create-server.js";
 
@@ -84,19 +87,19 @@ test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurren
     },
     list_samples: {
       minLines: 10,
-      requiredPhrases: ["sample", "product", "edition", "platform", "search", "get_sample_files"]
+      requiredPhrases: ["sample", "product", "edition", "platform", "search", "get_sample_files", "mds"]
     },
     resolve_version: {
       minLines: 10,
-      requiredPhrases: ["version", "product", "dcv", "dbr", "dwt", "ddv"]
+      requiredPhrases: ["version", "product", "dcv", "dbr", "dwt", "ddv", "mds"]
     },
     get_quickstart: {
       minLines: 10,
-      requiredPhrases: ["quickstart", "product", "edition", "platform", "scenario", "search"]
+      requiredPhrases: ["quickstart", "product", "edition", "platform", "scenario", "search", "mds"]
     },
     get_sample_files: {
       minLines: 10,
-      requiredPhrases: ["sample_id", "resource_uri", "list_samples", "search", "inline"]
+      requiredPhrases: ["sample_id", "resource_uri", "list_samples", "search", "inline", "mds"]
     }
   };
   const requiredSections = ["WHEN TO USE:", "PARAMETERS:", "RETURNS:", "RELATED TOOLS:"];
@@ -220,6 +223,22 @@ test("createMcpServerInstance does not advertise subscribe capability", () => {
   );
 });
 
+test("createMcpServerInstance description mentions MDS as a first-class product", () => {
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null
+    },
+    ragApi: {}
+  });
+
+  assert.match(server.server._serverInfo.description, /Mobile Document Scanner/);
+  assert.match(server.server._serverInfo.description, /first-class|Capture Vision, Barcode Reader, Dynamic Web TWAIN, Mobile Document Scanner, and Document Viewer/i);
+});
+
 test("resource read dispatches through template handler and returns content", { concurrency: false }, async (t) => {
   const readResource = {
     uri: "doc://dwt/web/web/18.x/getting-started",
@@ -329,5 +348,501 @@ test("resource read for pinned resource bypasses version policy", { concurrency:
 
     assert.deepEqual(result, { contents: [pinnedContent] });
     assert.equal(policyCalled, false, "version policy should not be invoked for pinned resources");
+  });
+});
+
+test("get_quickstart supports MDS via create-server wiring", { concurrency: false }, async (t) => {
+  const registered = withRegisteredToolsSpy(t);
+  const tempDir = mkdtempSync(join(tmpdir(), "mds-quickstart-"));
+  const samplePath = join(tempDir, "hello-world.html");
+  writeFileSync(samplePath, "<html>MDS sample</html>");
+  t.after(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      registry: {
+        trial_license: "DLS2eyJoYW...",
+        sdks: {
+          mds: {
+            version: "1.4.2",
+            platforms: {
+              web: {
+                installation: {
+                  npm: "npm install mobile-document-scanner"
+                },
+                docs: {
+                  "user-guide": "https://www.dynamsoft.com/mobile-document-scanner/docs/web/guide/index.html"
+                }
+              }
+            }
+          }
+        }
+      },
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null,
+      refreshResourceIndex: () => {},
+      normalizePlatform: (value) => value || "",
+      normalizeApiLevel: (value) => value || "high-level",
+      normalizeSampleName: (value) => value || "",
+      normalizeProduct: (value) => value || "",
+      normalizeEdition: (edition) => edition || "web",
+      resourceIndex: [],
+      getSampleIdFromUri: () => "",
+      getSampleEntries: () => [],
+      buildIndexData: () => ({}),
+      getDisplayEdition: (value) => value,
+      getDisplayPlatform: (value) => value,
+      formatScopeLabel: () => "mds/web/web",
+      LATEST_MAJOR: { mds: 1 },
+      LATEST_VERSIONS: { mds: { web: "1.4.2" } },
+      discoverDwtSamples: () => ({}),
+      discoverDcvMobileSamples: () => [],
+      discoverDcvWebSamples: () => [],
+      discoverMdsSamples: () => ["hello-world"],
+      getMdsSamplePlatform: () => "web",
+      findCodeFilesInSample: () => [],
+      getMobileSamplePath: () => "",
+      getDbrServerSamplePath: () => "",
+      getDcvMobileSamplePath: () => "",
+      getDcvServerSamplePath: () => "",
+      getDcvWebSamplePath: () => "",
+      getDwtSamplePath: () => "",
+      getMdsSamplePath: () => samplePath,
+      getDdvSamplePath: () => "",
+      readCodeFile: (filePath) => filePath === samplePath ? "<html>MDS sample</html>" : "",
+      getMainCodeFile: () => null,
+      getWebSamplePath: () => "",
+      parseSampleUri: () => null
+    },
+    ragApi: {
+      searchResources: async () => [],
+      getSampleSuggestions: async () => [],
+      refreshRagIndexes: () => {}
+    }
+  });
+
+  const toolDef = registered.get("get_quickstart");
+  assert.ok(toolDef, "get_quickstart must be registered");
+
+  const result = await toolDef.handler({ product: "mds" });
+  const text = result.content[0].text;
+
+  assert.match(text, /Quick Start: Dynamsoft Mobile Document Scanner/);
+  assert.match(text, /SDK Version:\*\* 1\.4\.2/);
+  assert.match(text, /hello-world/);
+});
+
+test("get_quickstart rejects unsupported MDS scopes", { concurrency: false }, async (t) => {
+  const registered = withRegisteredToolsSpy(t);
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      registry: {
+        trial_license: "DLS2eyJoYW...",
+        sdks: {
+          mds: {
+            version: "1.4.2",
+            platforms: { web: { installation: {}, docs: { "user-guide": "https://example.com/mds" } } }
+          }
+        }
+      },
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null,
+      refreshResourceIndex: () => {},
+      normalizePlatform: (value) => value || "",
+      normalizeApiLevel: (value) => value || "high-level",
+      normalizeSampleName: (value) => value || "",
+      normalizeProduct: (value) => value || "",
+      normalizeEdition: (edition) => edition || "",
+      resourceIndex: [],
+      getSampleIdFromUri: () => "",
+      getSampleEntries: () => [],
+      buildIndexData: () => ({}),
+      getDisplayEdition: (value) => value,
+      getDisplayPlatform: (value) => value,
+      formatScopeLabel: () => "mds/web/web",
+      LATEST_MAJOR: { mds: 1 },
+      LATEST_VERSIONS: { mds: { web: "1.4.2" } },
+      discoverDwtSamples: () => ({}),
+      discoverDcvMobileSamples: () => [],
+      discoverDcvWebSamples: () => [],
+      discoverMdsSamples: () => ["hello-world"],
+      getMdsSamplePlatform: () => "web",
+      findCodeFilesInSample: () => [],
+      getMobileSamplePath: () => "",
+      getDbrServerSamplePath: () => "",
+      getDcvMobileSamplePath: () => "",
+      getDcvServerSamplePath: () => "",
+      getDcvWebSamplePath: () => "",
+      getDwtSamplePath: () => "",
+      getMdsSamplePath: () => "",
+      getDdvSamplePath: () => "",
+      readCodeFile: () => "",
+      getMainCodeFile: () => null,
+      getWebSamplePath: () => "",
+      parseSampleUri: () => null
+    },
+    ragApi: {
+      searchResources: async () => [],
+      getSampleSuggestions: async () => [],
+      refreshRagIndexes: () => {}
+    }
+  });
+
+  const toolDef = registered.get("get_quickstart");
+  assert.ok(toolDef, "get_quickstart must be registered");
+
+  const result = await toolDef.handler({ product: "mds", edition: "mobile" });
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /MDS/i);
+  assert.match(result.content[0].text, /web/i);
+});
+
+test("get_quickstart keeps mobile-preferred entry file selection for DCV mobile", { concurrency: false }, async (t) => {
+  const registered = withRegisteredToolsSpy(t);
+  const tempDir = mkdtempSync(join(tmpdir(), "dcv-mobile-quickstart-"));
+  const samplePath = join(tempDir, "ScanDocument");
+  const mainFilePath = join(samplePath, "MainActivity.kt");
+  const htmlFilePath = join(samplePath, "index.html");
+  mkdirSync(samplePath, { recursive: true });
+  writeFileSync(mainFilePath, "fun main() = println(\"android\")");
+  writeFileSync(htmlFilePath, "<html>web fallback</html>");
+  t.after(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      registry: {
+        trial_license: "DLS2eyJoYW...",
+        sdks: {
+          "dcv-mobile": {
+            version: "3.0.0",
+            default_platform: "android",
+            platforms: {
+              android: {
+                installation: { gradle: "implementation 'com.example:dcv-mobile:3.0.0'" },
+                docs: { "user-guide": "https://example.com/dcv-mobile" }
+              }
+            }
+          }
+        }
+      },
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null,
+      refreshResourceIndex: () => {},
+      normalizePlatform: (value) => value || "",
+      normalizeApiLevel: (value) => value || "high-level",
+      normalizeSampleName: (value) => value || "",
+      normalizeProduct: (value) => value || "",
+      normalizeEdition: (edition) => edition || "mobile",
+      resourceIndex: [],
+      getSampleIdFromUri: () => "",
+      getSampleEntries: () => [],
+      buildIndexData: () => ({}),
+      getDisplayEdition: (value) => value,
+      getDisplayPlatform: (value) => value,
+      formatScopeLabel: () => "dcv/mobile/android",
+      LATEST_MAJOR: { dcv: 3 },
+      LATEST_VERSIONS: { dcv: { mobile: "3.0.0" } },
+      discoverDwtSamples: () => ({}),
+      discoverDcvMobileSamples: () => ["ScanDocument"],
+      discoverDcvWebSamples: () => [],
+      discoverMdsSamples: () => [],
+      getMdsSamplePlatform: () => "web",
+      findCodeFilesInSample: () => [
+        { path: htmlFilePath, filename: "index.html", extension: ".html" },
+        { path: mainFilePath, filename: "MainActivity.kt", extension: ".kt" }
+      ],
+      getMobileSamplePath: () => "",
+      getDbrServerSamplePath: () => "",
+      getDcvMobileSamplePath: () => samplePath,
+      getDcvServerSamplePath: () => "",
+      getDcvWebSamplePath: () => "",
+      getDwtSamplePath: () => "",
+      getMdsSamplePath: () => "",
+      getDdvSamplePath: () => "",
+      readCodeFile: (filePath) => {
+        if (filePath === mainFilePath) return "fun main() = println(\"android\")";
+        if (filePath === htmlFilePath) return "<html>web fallback</html>";
+        return "";
+      },
+      getMainCodeFile: (platform, inputSamplePath) => {
+        assert.equal(platform, "android");
+        assert.equal(inputSamplePath, samplePath);
+        return { path: mainFilePath, filename: "MainActivity.kt" };
+      },
+      getWebSamplePath: () => "",
+      parseSampleUri: () => null
+    },
+    ragApi: {
+      searchResources: async () => [],
+      getSampleSuggestions: async () => [],
+      refreshRagIndexes: () => {}
+    }
+  });
+
+  const toolDef = registered.get("get_quickstart");
+  assert.ok(toolDef, "get_quickstart must be registered");
+
+  const result = await toolDef.handler({ product: "dcv", edition: "mobile", platform: "android" });
+  const text = result.content[0].text;
+  assert.match(text, /```kt/);
+  assert.match(text, /fun main\(\)/);
+  assert.doesNotMatch(text, /web fallback/);
+});
+
+test("get_sample_files supports MDS via create-server wiring", { concurrency: false }, async (t) => {
+  const registered = withRegisteredToolsSpy(t);
+  const tempDir = mkdtempSync(join(tmpdir(), "mds-sample-files-"));
+  const samplePath = join(tempDir, "hello-world.html");
+  writeFileSync(samplePath, "<html>MDS sample</html>");
+  t.after(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      registry: { sdks: {} },
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null,
+      refreshResourceIndex: () => {},
+      normalizePlatform: (value) => value || "",
+      normalizeApiLevel: (value) => value || "high-level",
+      normalizeSampleName: (value) => value || "",
+      normalizeProduct: (value) => value || "",
+      normalizeEdition: (edition) => edition || "web",
+      resourceIndex: [],
+      getSampleIdFromUri: () => "",
+      getSampleEntries: () => [],
+      buildIndexData: () => ({}),
+      getDisplayEdition: (value) => value,
+      getDisplayPlatform: (value) => value,
+      formatScopeLabel: () => "mds/web/web",
+      LATEST_MAJOR: { mds: 1 },
+      LATEST_VERSIONS: { mds: { web: "1.4.2" } },
+      discoverDwtSamples: () => ({}),
+      discoverDcvMobileSamples: () => [],
+      discoverDcvWebSamples: () => [],
+      discoverMdsSamples: () => ["hello-world"],
+      getMdsSamplePlatform: () => "web",
+      findCodeFilesInSample: () => [],
+      getMobileSamplePath: () => "",
+      getWebSamplePath: () => "",
+      getDbrServerSamplePath: () => "",
+      getDcvMobileSamplePath: () => "",
+      getDcvServerSamplePath: () => "",
+      getDcvWebSamplePath: () => "",
+      getDwtSamplePath: () => "",
+      getMdsSamplePath: () => samplePath,
+      getDdvSamplePath: () => "",
+      readCodeFile: (filePath) => filePath === samplePath ? "<html>MDS sample</html>" : "",
+      getMainCodeFile: () => null,
+      parseSampleUri: () => null
+    },
+    ragApi: {
+      searchResources: async () => [],
+      getSampleSuggestions: async () => [],
+      refreshRagIndexes: () => {}
+    }
+  });
+
+  const toolDef = registered.get("get_sample_files");
+  assert.ok(toolDef, "get_sample_files must be registered");
+
+  const result = await toolDef.handler({ product: "mds", edition: "web", sample_id: "hello-world" });
+  const text = result.content[0].text;
+
+  assert.match(text, /# Sample Files: hello-world/);
+  assert.match(text, /<html>MDS sample<\/html>/);
+});
+
+test("get_sample_files supports resource_uri-only flow and validates URI-derived scope", { concurrency: false }, async (t) => {
+  const registered = withRegisteredToolsSpy(t);
+  const tempDir = mkdtempSync(join(tmpdir(), "uri-sample-files-"));
+  const samplePath = join(tempDir, "ScanSingleBarcode.html");
+  writeFileSync(samplePath, "<html>DBR sample</html>");
+  t.after(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  let policyScope = null;
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      registry: { sdks: {} },
+      getPinnedResources: () => [],
+      parseResourceUri: (uri) => uri === "sample://dbr/mobile/android/10.0.0/high-level/ScanSingleBarcode"
+        ? { scheme: "sample", product: "dbr", edition: "mobile", platform: "android", version: "10.0.0" }
+        : null,
+      ensureLatestMajor: (params) => {
+        policyScope = params;
+        return { ok: true };
+      },
+      readResourceContent: async () => null,
+      refreshResourceIndex: () => {},
+      normalizePlatform: (value) => value || "",
+      normalizeApiLevel: (value) => value || "high-level",
+      normalizeSampleName: (value) => value || "",
+      normalizeProduct: (value) => value || "",
+      normalizeEdition: (edition) => edition || "",
+      resourceIndex: [],
+      getSampleIdFromUri: () => "ScanSingleBarcode",
+      getSampleEntries: () => [],
+      buildIndexData: () => ({}),
+      getDisplayEdition: (value) => value,
+      getDisplayPlatform: (value) => value,
+      formatScopeLabel: () => "dbr/mobile/android",
+      LATEST_MAJOR: { dbr: 10 },
+      LATEST_VERSIONS: { dbr: { mobile: "10.0.0" } },
+      discoverDwtSamples: () => ({}),
+      discoverDcvMobileSamples: () => [],
+      discoverDcvWebSamples: () => [],
+      discoverMdsSamples: () => [],
+      getMdsSamplePlatform: () => "web",
+      findCodeFilesInSample: () => [],
+      getMobileSamplePath: (platform, level, sampleName) => {
+        assert.equal(platform, "android");
+        assert.equal(level, "high-level");
+        assert.equal(sampleName, "ScanSingleBarcode");
+        return samplePath;
+      },
+      getWebSamplePath: () => "",
+      getDbrServerSamplePath: () => "",
+      getDcvMobileSamplePath: () => "",
+      getDcvServerSamplePath: () => "",
+      getDcvWebSamplePath: () => "",
+      getDwtSamplePath: () => "",
+      getMdsSamplePath: () => "",
+      getDdvSamplePath: () => "",
+      readCodeFile: (filePath) => filePath === samplePath ? "<html>DBR sample</html>" : "",
+      getMainCodeFile: () => null,
+      parseSampleUri: (uri) => uri === "sample://dbr/mobile/android/10.0.0/high-level/ScanSingleBarcode"
+        ? { product: "dbr", edition: "mobile", platform: "android", version: "10.0.0", level: "high-level", sampleName: "ScanSingleBarcode" }
+        : null
+    },
+    ragApi: {
+      searchResources: async () => [],
+      getSampleSuggestions: async () => [],
+      refreshRagIndexes: () => {}
+    }
+  });
+
+  const toolDef = registered.get("get_sample_files");
+  assert.ok(toolDef, "get_sample_files must be registered");
+  assert.equal(toolDef.def.inputSchema.product.safeParse(undefined).success, true, "product should be optional for resource_uri flow");
+
+  const result = await toolDef.handler({
+    product: "dwt",
+    edition: "web",
+    platform: "web",
+    resource_uri: "sample://dbr/mobile/android/10.0.0/high-level/ScanSingleBarcode"
+  });
+  const text = result.content[0].text;
+
+  assert.match(text, /# Sample Files: ScanSingleBarcode/);
+  assert.match(text, /<html>DBR sample<\/html>/);
+  assert.deepEqual(policyScope, {
+    product: "dbr",
+    version: "10.0.0",
+    query: "ScanSingleBarcode",
+    edition: "mobile",
+    platform: "android"
+  });
+});
+
+test("get_sample_files suggestion fallback uses URI-derived scope", { concurrency: false }, async (t) => {
+  const registered = withRegisteredToolsSpy(t);
+
+  let suggestionScope = null;
+
+  createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      registry: { sdks: {} },
+      getPinnedResources: () => [],
+      parseResourceUri: (uri) => uri === "sample://dbr/mobile/android/10.0.0/high-level/MissingSample"
+        ? { scheme: "sample", product: "dbr", edition: "mobile", platform: "android", version: "10.0.0" }
+        : null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null,
+      refreshResourceIndex: () => {},
+      normalizePlatform: (value) => value || "",
+      normalizeApiLevel: (value) => value || "high-level",
+      normalizeSampleName: (value) => value || "",
+      normalizeProduct: (value) => value || "",
+      normalizeEdition: (edition) => edition || "",
+      resourceIndex: [],
+      getSampleIdFromUri: () => "SuggestedSample",
+      getSampleEntries: () => [],
+      buildIndexData: () => ({}),
+      getDisplayEdition: (value) => value,
+      getDisplayPlatform: (value) => value,
+      formatScopeLabel: () => "dbr/mobile/android",
+      LATEST_MAJOR: { dbr: 10 },
+      LATEST_VERSIONS: { dbr: { mobile: "10.0.0" } },
+      discoverDwtSamples: () => ({}),
+      discoverDcvMobileSamples: () => [],
+      discoverDcvWebSamples: () => [],
+      discoverMdsSamples: () => [],
+      getMdsSamplePlatform: () => "web",
+      findCodeFilesInSample: () => [],
+      getMobileSamplePath: () => "",
+      getWebSamplePath: () => "",
+      getDbrServerSamplePath: () => "",
+      getDcvMobileSamplePath: () => "",
+      getDcvServerSamplePath: () => "",
+      getDcvWebSamplePath: () => "",
+      getDwtSamplePath: () => "",
+      getMdsSamplePath: () => "",
+      getDdvSamplePath: () => "",
+      readCodeFile: () => "",
+      getMainCodeFile: () => null,
+      parseSampleUri: (uri) => uri === "sample://dbr/mobile/android/10.0.0/high-level/MissingSample"
+        ? { product: "dbr", edition: "mobile", platform: "android", version: "10.0.0", level: "high-level", sampleName: "MissingSample" }
+        : null
+    },
+    ragApi: {
+      searchResources: async () => [],
+      getSampleSuggestions: async (params) => {
+        suggestionScope = params;
+        return [];
+      },
+      refreshRagIndexes: () => {}
+    }
+  });
+
+  const toolDef = registered.get("get_sample_files");
+  assert.ok(toolDef, "get_sample_files must be registered");
+
+  const result = await toolDef.handler({
+    product: "dwt",
+    edition: "web",
+    platform: "web",
+    resource_uri: "sample://dbr/mobile/android/10.0.0/high-level/MissingSample"
+  });
+
+  assert.equal(result.isError, true);
+  assert.deepEqual(suggestionScope, {
+    query: "MissingSample",
+    product: "dbr",
+    edition: "mobile",
+    platform: "android",
+    limit: 5
   });
 });

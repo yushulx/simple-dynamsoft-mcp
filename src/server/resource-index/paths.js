@@ -40,6 +40,7 @@ const SAMPLE_ROOTS = {
   dcvNodejs: join(samplesRoot, SAMPLE_DIRS.dcvNodejs),
   dcvSpm: join(samplesRoot, SAMPLE_DIRS.dcvSpm),
   dwt: join(samplesRoot, SAMPLE_DIRS.dwt),
+  mds: join(samplesRoot, SAMPLE_DIRS.mds),
   ddv: join(samplesRoot, SAMPLE_DIRS.ddv)
 };
 
@@ -53,6 +54,7 @@ const DOC_ROOTS = {
   dcvCore: join(docsRoot, DOC_DIRS.dcvCore),
   dwt: join(docsRoot, DOC_DIRS.dwt),
   dwtArticles: join(docsRoot, DOC_DIRS.dwt, "_articles"),
+  mds: join(docsRoot, DOC_DIRS.mds),
   ddv: join(docsRoot, DOC_DIRS.ddv)
 };
 

@@ -24,13 +24,14 @@ export function registerSampleTools({
         "- To discover sample IDs before calling get_sample_files.",
         "- When the user wants to see what samples exist without a specific keyword.",
         "- Use DCV scope for MRZ, VIN, document normalization, and driver license scenarios.",
+        "- Use MDS scope for higher-level web document-scanning samples built on top of DCV JS.",
         "",
         "WHEN NOT TO USE:",
         "- If you have a specific keyword or topic, use search instead (it ranks results by relevance).",
         "- If you already have a sample ID or URI, go directly to get_sample_files.",
         "",
         "PARAMETERS:",
-        "- product: dcv, dbr, dwt, or ddv. Omit to list across all products.",
+        "- product: dcv, dbr, dwt, ddv, or mds. Omit to list across all products.",
         "- edition: core, mobile, web, or server. Omit to list across all editions.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- limit: 1-200 (default 50). Max number of results.",
@@ -42,7 +43,7 @@ export function registerSampleTools({
         "RELATED TOOLS: search (keyword-based discovery), get_sample_files (retrieve full project files for a sample), get_index (discover valid product/edition/platform combinations)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
+        product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv, mds"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         limit: z.number().int().min(1).max(200).optional().describe("Max results (default 50)")
