@@ -480,14 +480,32 @@ jobs:
           share="${{ steps.vars.outputs.cache_share }}"
           current_version="${{ steps.vars.outputs.version }}"
 
-          key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
+          if ! key="$(timeout -k 30s 180s az storage account keys list \
+            --account-name "$account" \
+            --query "[0].value" \
+            --only-show-errors \
+            -o tsv)"; then
+            echo "::warning::Azure Files cache cleanup skipped because storage account key lookup failed"
+            exit 0
+          fi
 
-          mapfile -t dirs < <(az storage directory list \
+          if ! dirs_output="$(timeout -k 30s 180s az storage file list \
             --account-name "$account" \
             --account-key "$key" \
             --share-name "$share" \
-            --query "[].name" \
-            -o tsv)
+            --num-results "*" \
+            --query "[?properties.contentLength == null].name" \
+            --only-show-errors \
+            -o tsv)"; then
+            echo "::warning::Azure Files cache cleanup skipped because the initial directory scan failed"
+            exit 0
+          fi
+
+          if [[ -n "$dirs_output" ]]; then
+            mapfile -t dirs <<< "$dirs_output"
+          else
+            dirs=()
+          fi
 
           version_regex='^[0-9]+(\.[0-9]+){1,3}([.-][0-9A-Za-z]+)*$'
           versioned_dirs=()
@@ -527,22 +545,163 @@ jobs:
             return 1
           }
 
+          cleanup_failed=0
+          cleanup_started_at="$SECONDS"
+          cleanup_deadline_seconds=1800
+
           run_cleanup_command() {
             local label="$1"
+            local exit_code
             shift
 
             if timeout -k 30s 180s "$@"; then
               return 0
+            else
+              exit_code="$?"
             fi
 
-            local exit_code="$?"
             if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 || "$exit_code" -eq 143 ]]; then
               echo "::warning::Cleanup timed out after up to 210s (180s + 30s grace): ${label}"
             else
               echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}"
             fi
 
-            return 0
+            cleanup_failed=1
+            return "$exit_code"
+          }
+
+          run_cleanup_capture() {
+            local label="$1"
+            local output
+            local exit_code
+            shift
+
+            if output="$(timeout -k 30s 180s "$@" 2>&1)"; then
+              printf '%s' "$output"
+              return 0
+            fi
+
+            exit_code="$?"
+            if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 || "$exit_code" -eq 143 ]]; then
+              echo "::warning::Cleanup timed out after up to 210s (180s + 30s grace): ${label}" >&2
+            else
+              echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}" >&2
+            fi
+
+            if [[ -n "$output" ]]; then
+              printf '%s\n' "$output" >&2
+            fi
+
+            cleanup_failed=1
+            return "$exit_code"
+          }
+
+          ensure_cleanup_deadline() {
+            local label="$1"
+            local elapsed_seconds
+            elapsed_seconds="$((SECONDS - cleanup_started_at))"
+
+            if (( elapsed_seconds < cleanup_deadline_seconds )); then
+              return 0
+            fi
+
+            echo "::warning::Cleanup exceeded ${cleanup_deadline_seconds}s overall deadline: ${label}" >&2
+            cleanup_failed=1
+            return 1
+          }
+
+          delete_directory_recursive() {
+            local path="$1"
+            local child_path
+            local file
+            local file_output=""
+            local subdir
+            local subdir_output=""
+            local -a files=()
+            local -a subdirs=()
+
+            ensure_cleanup_deadline "$path" || return 1
+
+            if ! subdir_output="$(run_cleanup_capture "az storage file list for directories in ${path}" \
+              az storage file list \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$path" \
+              --num-results "*" \
+              --query "[?properties.contentLength == null].name" \
+              --only-show-errors \
+              -o tsv)"; then
+              cleanup_failed=1
+              return 1
+            fi
+
+            if [[ -n "$subdir_output" ]]; then
+              mapfile -t subdirs <<< "$subdir_output"
+            fi
+
+            for subdir in "${subdirs[@]}"; do
+              if [[ -z "$subdir" ]]; then
+                continue
+              fi
+
+              ensure_cleanup_deadline "$path/$subdir" || return 1
+
+              child_path="${path}/${subdir}"
+              if ! delete_directory_recursive "$child_path"; then
+                cleanup_failed=1
+                continue
+              fi
+            done
+
+            if ! file_output="$(run_cleanup_capture "az storage file list for ${path}" \
+              az storage file list \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$path" \
+              --exclude-dir \
+              --num-results "*" \
+              --query "[].name" \
+              --only-show-errors \
+              -o tsv)"; then
+              cleanup_failed=1
+              return 1
+            fi
+
+            if [[ -n "$file_output" ]]; then
+              mapfile -t files <<< "$file_output"
+            fi
+
+            for file in "${files[@]}"; do
+              if [[ -z "$file" ]]; then
+                continue
+              fi
+
+              ensure_cleanup_deadline "$path/$file" || return 1
+
+              if ! run_cleanup_command "az storage file delete for ${path}/${file}" \
+                az storage file delete \
+                --account-name "$account" \
+                --account-key "$key" \
+                --share-name "$share" \
+                --path "${path}/${file}" \
+                --only-show-errors; then
+                continue
+              fi
+            done
+
+            ensure_cleanup_deadline "$path" || return 1
+
+            if ! run_cleanup_command "az storage directory delete for ${path}" \
+              az storage directory delete \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$path" \
+              --fail-not-exist; then
+              return 1
+            fi
           }
 
           for dir in "${versioned_dirs[@]}"; do
@@ -552,21 +711,14 @@ jobs:
             fi
 
             echo "Cleaning old cache directory: $dir"
-            run_cleanup_command "az storage file delete-batch for ${dir}" \
-              az storage file delete-batch \
-              --account-name "$account" \
-              --account-key "$key" \
-              --source "$share" \
-              --pattern "${dir}/*"
-
-            run_cleanup_command "az storage directory delete for ${dir}" \
-              az storage directory delete \
-              --account-name "$account" \
-              --account-key "$key" \
-              --share-name "$share" \
-              --name "$dir" \
-              --fail-not-exist
+            if ! delete_directory_recursive "$dir"; then
+              echo "::warning::Recursive cleanup did not fully delete ${dir}"
+            fi
           done
+
+          if [[ "$cleanup_failed" -eq 1 ]]; then
+            echo "::warning::Azure Files cache cleanup completed with one or more failures"
+          fi
 
       - name: Deployment summary
         shell: bash
