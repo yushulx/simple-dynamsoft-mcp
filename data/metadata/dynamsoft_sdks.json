@@ -6,7 +6,7 @@
     "dbr-mobile": {
       "name": "Dynamsoft Barcode Reader Mobile SDK",
       "description": "Barcode scanning for mobile platforms (Android/iOS) using Dynamsoft Barcode Reader.",
-      "version": "11.4.1000",
+      "version": "11.4.1010",
       "default_platform": "android",
       "default_api_level": "high-level",
       "snippet_path": "dynamsoft-barcode-reader",
