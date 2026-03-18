@@ -159,6 +159,44 @@ test("buildIndexData public product selection omits deprecated DCV metadata", ()
   assert.equal(JSON.stringify(indexData.productSelection).includes("Capture Vision"), false, "Should not expose Capture Vision wording");
 });
 
+test("buildIndexData folds DBR python entries into server and preserves web frameworks", () => {
+  const indexData = buildIndexData({
+    LATEST_VERSIONS: TEST_LATEST_VERSIONS,
+    LATEST_MAJOR: TEST_LATEST_MAJOR,
+    resourceIndex: [
+      {
+        type: "sample",
+        product: "dbr",
+        edition: "python",
+        platform: "python",
+        version: TEST_LATEST_VERSIONS.dbr.server,
+        tags: ["sample", "dbr", "server", "python", "read_an_image"]
+      },
+      {
+        type: "sample",
+        product: "dbr",
+        edition: "web",
+        platform: "web",
+        version: TEST_LATEST_VERSIONS.dbr.web,
+        tags: ["sample", "dbr", "web", "frameworks", "react"]
+      },
+      {
+        type: "sample",
+        product: "dbr",
+        edition: "web",
+        platform: "web",
+        version: TEST_LATEST_VERSIONS.dbr.web,
+        tags: ["sample", "dbr", "web", "frameworks", "vue"]
+      }
+    ]
+  });
+
+  assert.equal(indexData.products.dbr.editions.python, undefined, "Should not expose a separate python edition");
+  assert.ok(indexData.products.dbr.editions.server, "Should keep DBR python samples under server");
+  assert.deepEqual(indexData.products.dbr.editions.server.platforms, ["python"]);
+  assert.deepEqual(indexData.products.dbr.editions.web.platforms, ["react", "vue", "web"]);
+});
+
 test("discoverMrzWebSamples ignores nested asset folders and route index pages", () => {
   const samples = discoverMrzWebSamples();
 

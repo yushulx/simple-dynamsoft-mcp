@@ -5,6 +5,13 @@ import { PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
 
 const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
 const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
+const WEB_FRAMEWORK_PLATFORMS = new Set(["react", "vue", "angular", "next", "nuxt", "svelte", "blazor", "capacitor", "electron", "es6", "native-ts", "pwa", "requirejs", "webview"]);
+
+function normalizeFrameworkTag(tag) {
+  const normalized = String(tag || "").trim().toLowerCase();
+  if (normalized === "react-hooks" || normalized === "react-vite") return "react";
+  return normalized;
+}
 
 function countSamples(sampleData) {
   if (Array.isArray(sampleData)) {
@@ -304,7 +311,7 @@ function buildIndexData({
       if (!entry?.product || !PUBLIC_OFFERING_PRODUCTS.includes(entry.product)) continue;
       if (entry.type !== "doc" && entry.type !== "sample") continue;
 
-      const editionName = entry.edition || "web";
+      const editionName = entry.edition === "python" ? "server" : (entry.edition || "web");
       if (!products[entry.product].editions[editionName]) {
         const version = entry.version
           || ((entry.product === "mrz" || entry.product === "mds") ? LATEST_VERSIONS.dcv[editionName] : LATEST_VERSIONS[entry.product]?.[editionName])
@@ -318,8 +325,23 @@ function buildIndexData({
       }
 
       const edition = products[entry.product].editions[editionName];
-      if (entry.platform && !edition.platforms.includes(entry.platform)) {
-        edition.platforms.push(entry.platform);
+      const platforms = new Set();
+      if (entry.platform) {
+        platforms.add(entry.platform);
+      }
+      if (entry.edition === "web" && Array.isArray(entry.tags)) {
+        for (const tag of entry.tags) {
+          const normalizedTag = normalizeFrameworkTag(tag);
+          if (WEB_FRAMEWORK_PLATFORMS.has(normalizedTag)) {
+            platforms.add(normalizedTag);
+          }
+        }
+      }
+
+      for (const platform of platforms) {
+        if (!edition.platforms.includes(platform)) {
+          edition.platforms.push(platform);
+        }
       }
       if (entry.type === "doc") edition.docCount += 1;
       if (entry.type === "sample") edition.sampleCount += 1;

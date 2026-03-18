@@ -155,6 +155,12 @@ async function expectUnknownPublicProduct(toolName, product, args = {}) {
     assert(!/public MCP contract no longer accepts/i.test(text), `${toolName} should not use the removed deprecation flow for ${product}`);
 }
 
+function extractJsonSection(text) {
+    const jsonIndex = text.indexOf('JSON:');
+    assert(jsonIndex !== -1, 'Should include JSON section');
+    return JSON.parse(text.slice(jsonIndex + 5).trim());
+}
+
 await test('unsupported public dcv product is rejected by search without deprecation wording', async () => {
     await expectUnknownPublicProduct('search', 'dcv', { query: 'mrz', type: 'sample' });
 });
@@ -234,6 +240,12 @@ await test('get_index returns only public product offerings', async () => {
     const productSelectionJson = JSON.stringify(parsed.productSelection);
     assert(!/DCV/i.test(productSelectionJson), 'Should not expose DCV wording in productSelection JSON');
     assert(!/Capture Vision/i.test(productSelectionJson), 'Should not expose Capture Vision wording in productSelection JSON');
+
+    assert(parsed.products.dbr.editions.server, 'Should keep DBR server edition');
+    assert(!parsed.products.dbr.editions.python, 'Should not expose separate DBR python edition');
+    assert(parsed.products.dbr.editions.server.platforms.includes('python'), 'Should keep python under DBR server platforms');
+    assert(parsed.products.mrz.editions.web.platforms.includes('react'), 'Should preserve MRZ web framework platforms');
+    assert(parsed.products.mds.editions.web.platforms.includes('react'), 'Should preserve MDS web framework platforms');
 });
 
 await test('runtime mrz web resources come from dedicated MRZ web roots', async () => {
@@ -836,8 +848,8 @@ await test('get_quickstart returns a non-error public response for MRZ web', asy
     const text = response.result.content[0].text;
     assert(/MRZ/i.test(text), 'Should identify the MRZ quickstart');
     assert(/reference|quick start/i.test(text), 'Should return a usable quickstart response');
-    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should include public MRZ web docs link');
-    assert(text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should include public MRZ web samples link');
+    assert(text.includes('https://www.dynamsoft.com/mrz-scanner/docs/web/'), 'Should include public MRZ web docs link');
+    assert(text.includes('https://github.com/Dynamsoft/mrz-scanner-javascript'), 'Should include public MRZ web samples link');
     assert(!text.includes('web / web'), 'Should not repeat the web scope label');
 });
 
@@ -857,8 +869,8 @@ await test('get_quickstart returns a non-error public response for MDS web', asy
     const text = response.result.content[0].text;
     assert(/MDS/i.test(text), 'Should identify the MDS quickstart');
     assert(/reference|quick start/i.test(text), 'Should return a usable quickstart response');
-    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should include public MDS web docs link');
-    assert(text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should include public MDS web samples link');
+    assert(text.includes('https://www.dynamsoft.com/mobile-document-scanner/docs/web/'), 'Should include public MDS web docs link');
+    assert(text.includes('https://github.com/Dynamsoft/document-scanner-javascript'), 'Should include public MDS web samples link');
     assert(!text.includes('web / web'), 'Should not repeat the web scope label');
 });
 
@@ -938,6 +950,195 @@ await test('list_samples returns platform-aware redirect links for unsupported M
     assert(!text.includes('JSON:'), 'Should not return sample JSON for unsupported MDS server scope');
     assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include server docs link');
     assert(text.includes('https://github.com/Dynamsoft/capture-vision-nodejs-samples'), 'Should include nodejs server samples link');
+});
+
+await test('list_samples returns platform-aware redirect links for unsupported MDS mobile ios scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'ios' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MDS/i.test(text), 'Should identify the MDS scope');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/mobile/'), 'Should include mobile docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/iOS'), 'Should include iOS mobile samples link');
+    assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link');
+});
+
+await test('list_samples returns MRZ web framework sample ids from the dedicated URI tail', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mrz', edition: 'web', platform: 'react' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const parsed = extractJsonSection(response.result.content[0].text);
+    const sampleIds = parsed.samples.map((sample) => sample.sample_id);
+    assert(sampleIds.includes('react-hooks'), 'Should expose the sample leaf as sample_id for MRZ web framework samples');
+});
+
+await test('get_sample_files reads dedicated MRZ web sample repos from resource_uri', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_sample_files',
+            arguments: {
+                product: 'mrz',
+                resource_uri: 'sample://mrz/web/web/3.4.1000/frameworks/angular'
+            }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('# Sample Files: angular'), 'Should resolve the dedicated MRZ sample name from the URI tail');
+    assert(text.includes('## README.md'), 'Should read files from the dedicated MRZ sample directory');
+    assert(text.includes('## package.json'), 'Should include framework project files from the dedicated MRZ sample repo');
+});
+
+await test('get_sample_files reads dedicated MDS web sample files from resource_uri', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_sample_files',
+            arguments: {
+                product: 'mds',
+                resource_uri: 'sample://mds/web/web/3.4.1000/scenarios/scanning-to-pdf'
+            }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('# Sample Files: scanning-to-pdf'), 'Should resolve the dedicated MDS sample name from the URI tail');
+    assert(text.includes('scanning-to-pdf.html'), 'Should read the dedicated MDS web sample file instead of DCV web content');
+});
+
+await test('get_sample_files resolves MRZ web sample_id leaf names from list_samples', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_sample_files',
+            arguments: { product: 'mrz', edition: 'web', platform: 'react', sample_id: 'react-hooks' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should resolve MRZ web leaf sample ids from list_samples');
+    const text = response.result.content[0].text;
+    assert(text.includes('# Sample Files: react-hooks'), 'Should use the requested MRZ sample id');
+    assert(text.includes('package.json'), 'Should return files from the dedicated MRZ framework sample');
+});
+
+await test('get_sample_files resolves MDS web sample_id leaf names from list_samples', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_sample_files',
+            arguments: { product: 'mds', edition: 'web', sample_id: 'scanning-to-pdf' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should resolve MDS web leaf sample ids from list_samples');
+    const text = response.result.content[0].text;
+    assert(text.includes('# Sample Files: scanning-to-pdf'), 'Should use the requested MDS sample id');
+    assert(text.includes('scanning-to-pdf.html'), 'Should return the dedicated MDS scenario sample file');
+});
+
+await test('get_quickstart defaults MRZ without edition to the supported public web path', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mrz' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should not return an error for MRZ quickstart without edition');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://www.dynamsoft.com/mrz-scanner/docs/web/'), 'Should default MRZ quickstart to the public MRZ web docs');
+    assert(text.includes('https://github.com/Dynamsoft/mrz-scanner-javascript'), 'Should use dedicated MRZ web sample repo links');
+    assert(!text.includes('docs/server/'), 'Should not default MRZ quickstart to unsupported server guidance');
+});
+
+await test('get_quickstart defaults MDS without edition to the supported public web path', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mds' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should not return an error for MDS quickstart without edition');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://www.dynamsoft.com/mobile-document-scanner/docs/web/'), 'Should default MDS quickstart to the public MDS web docs');
+    assert(text.includes('https://github.com/Dynamsoft/document-scanner-javascript'), 'Should use dedicated MDS web sample repo links');
+    assert(!text.includes('docs/server/'), 'Should not default MDS quickstart to unsupported server guidance');
+});
+
+await test('get_quickstart uses MRZ specific web links', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mrz', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://www.dynamsoft.com/mrz-scanner/docs/web/'), 'Should use MRZ specific web docs');
+    assert(text.includes('https://github.com/Dynamsoft/mrz-scanner-javascript'), 'Should use MRZ dedicated sample repo');
+    assert(!text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should not use DCV web docs for MRZ quickstart');
+    assert(!text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should not use DCV web samples for MRZ quickstart');
+});
+
+await test('get_quickstart uses MDS specific web links', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mds', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://www.dynamsoft.com/mobile-document-scanner/docs/web/'), 'Should use MDS specific web docs');
+    assert(text.includes('https://github.com/Dynamsoft/document-scanner-javascript'), 'Should use MDS dedicated sample repo');
+    assert(!text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should not use DCV web docs for MDS quickstart');
+    assert(!text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should not use DCV web samples for MDS quickstart');
 });
 
 await test('Invalid tool call returns error', async () => {

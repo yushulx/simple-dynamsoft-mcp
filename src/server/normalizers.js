@@ -96,6 +96,7 @@ const platformAliases = {
   reactjs: "react",
   "react.js": "react",
   "react-vite": "react",
+  "react-hooks": "react",
   vue: "vue",
   vuejs: "vue",
   next: "next",

@@ -24,10 +24,46 @@ export function registerProjectTools({
   getDcvMobileSamplePath,
   getDcvServerSamplePath,
   getDcvWebSamplePath,
+  getMrzWebSamplePath,
+  getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
   getSampleSuggestions
 }) {
+  async function resolveDedicatedPublicWebSamplePath({
+    product,
+    platform,
+    sampleName,
+    getSamplePath,
+    getSuggestions
+  }) {
+    const directPath = getSamplePath(undefined, sampleName);
+    if (directPath && existsSync(directPath)) {
+      return directPath;
+    }
+
+    const suggestions = await getSuggestions({
+      query: sampleName,
+      product,
+      edition: "web",
+      platform,
+      limit: 10
+    });
+
+    const matchingEntry = suggestions.find((entry) => {
+      if (entry.type !== "sample") return false;
+      const parsed = parseSampleUri(entry.uri);
+      return parsed?.product === product && parsed?.edition === "web" && parsed?.sampleName === sampleName;
+    });
+
+    if (!matchingEntry) {
+      return directPath;
+    }
+
+    const parsed = parseSampleUri(matchingEntry.uri);
+    return getSamplePath(parsed?.category, sampleName);
+  }
+
   server.registerTool(
     "get_sample_files",
     {
@@ -156,7 +192,9 @@ export function registerProjectTools({
         } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "server") {
           samplePath = getDcvServerSamplePath(sampleInfo.platform, sampleInfo.sampleName);
         } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "web") {
-          samplePath = getDcvWebSamplePath(sampleInfo.sampleName);
+          samplePath = sampleInfo.product === "mrz"
+            ? getMrzWebSamplePath(sampleInfo.category, sampleInfo.sampleName)
+            : getMdsWebSamplePath(sampleInfo.category, sampleInfo.sampleName);
         } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "mobile") {
           samplePath = getDcvMobileSamplePath(sampleInfo.platform, sampleInfo.sampleName);
         } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "server") {
@@ -202,7 +240,13 @@ export function registerProjectTools({
             }
           }
         } else if ((normalizedProduct === "mrz" || normalizedProduct === "mds") && normalizedEdition === "web") {
-          samplePath = getDcvWebSamplePath(sampleName);
+          samplePath = await resolveDedicatedPublicWebSamplePath({
+            product: normalizedProduct,
+            platform: normalizedPlatform,
+            sampleName,
+            getSamplePath: normalizedProduct === "mrz" ? getMrzWebSamplePath : getMdsWebSamplePath,
+            getSuggestions: getSampleSuggestions
+          });
         } else if ((normalizedProduct === "mrz" || normalizedProduct === "mds") && normalizedEdition === "server") {
           samplePath = getDcvServerSamplePath(normalizedPlatform || "python", sampleName);
         } else if (normalizedProduct === "dcv" && normalizedEdition === "mobile") {

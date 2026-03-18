@@ -403,13 +403,6 @@ function getDedicatedWebSamplePath(root, category, sampleName) {
 
   const dirPath = join(webPath, category, sampleName);
   if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
-    const indexPath = join(dirPath, "index.html");
-    if (existsSync(indexPath)) return indexPath;
-    const readmePath = join(dirPath, "README.md");
-    if (existsSync(readmePath)) return readmePath;
-    for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
-      if (entry.isFile() && entry.name.endsWith(".html")) return join(dirPath, entry.name);
-    }
     return dirPath;
   }
 

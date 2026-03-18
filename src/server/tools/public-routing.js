@@ -20,10 +20,11 @@ function getUnsupportedPublicScopeRedirect(product, edition, platform) {
   }
 
   if (product === "mds" && edition === "mobile") {
+    const mobilePath = platform === "ios" ? "iOS" : "Android";
     return {
       label: "MDS",
       docsUrl: "https://www.dynamsoft.com/capture-vision/docs/mobile/",
-      samplesUrl: "https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/Android"
+      samplesUrl: `https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/${mobilePath}`
     };
   }
 

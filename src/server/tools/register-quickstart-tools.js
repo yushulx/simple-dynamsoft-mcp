@@ -27,6 +27,24 @@ export function registerQuickstartTools({
   getMainCodeFile,
   getWebSamplePath
 }) {
+  function getPublicWebQuickstartLinks(product) {
+    if (product === "mrz") {
+      return {
+        docsUrl: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
+        samplesUrl: "https://github.com/Dynamsoft/mrz-scanner-javascript"
+      };
+    }
+
+    if (product === "mds") {
+      return {
+        docsUrl: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
+        samplesUrl: "https://github.com/Dynamsoft/document-scanner-javascript"
+      };
+    }
+
+    return { docsUrl: "", samplesUrl: "" };
+  }
+
   function getPublicProductLabel(product) {
     if (product === "mrz") return "MRZ";
     if (product === "mds") return "MDS";
@@ -142,7 +160,7 @@ export function registerQuickstartTools({
           ? `${normalizedProduct === "mrz" ? "mrz" : "document scan"} ${scenario || ""} ${language || ""}`
           : `${scenario || ""} ${language || ""}`;
         const scenarioLower = seededScenario.toLowerCase();
-        const effectiveEdition = normalizedEdition || (normalizedPlatform ? normalizeEdition("", normalizedPlatform, "dcv") : "server");
+        const effectiveEdition = normalizedEdition || (isPublicDcvProduct ? "web" : (normalizedPlatform ? normalizeEdition("", normalizedPlatform, "dcv") : "server"));
 
         function selectDcvServerSample(platformHint, hint) {
           const platformName = normalizePlatform(platformHint) || "python";
@@ -267,12 +285,13 @@ export function registerQuickstartTools({
         if (effectiveEdition === "web") {
           const sdkEntry = registry.sdks["dcv-web"];
           if (isPublicDcvProduct) {
+            const publicLinks = getPublicWebQuickstartLinks(normalizedProduct);
             return buildPublicReferenceQuickstart({
               product: normalizedProduct,
               edition: effectiveEdition,
               platform: "web",
-              docsUrl: sdkEntry.platforms?.web?.docs?.["user-guide"] || "https://www.dynamsoft.com/capture-vision/docs/web/",
-              samplesUrl: sdkEntry.platforms?.web?.samples?.repo || ""
+              docsUrl: publicLinks.docsUrl,
+              samplesUrl: publicLinks.samplesUrl
             });
           }
           const available = discoverDcvWebSamples();

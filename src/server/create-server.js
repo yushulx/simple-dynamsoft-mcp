@@ -22,6 +22,8 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getDcvMobileSamplePath,
     getDcvServerSamplePath,
     getDcvWebSamplePath,
+    getMrzWebSamplePath,
+    getMdsWebSamplePath,
     getDwtSamplePath,
     getDdvSamplePath,
     readCodeFile,
@@ -149,6 +151,8 @@ registerProjectTools({
   getDcvMobileSamplePath,
   getDcvServerSamplePath,
   getDcvWebSamplePath,
+  getMrzWebSamplePath,
+  getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
   getSampleSuggestions
