@@ -313,7 +313,8 @@ function buildIndexData() {
     discoverDbrServerSamples,
     discoverDwtSamples,
     discoverDdvSamples,
-    getDdvWebFrameworkPlatforms
+    getDdvWebFrameworkPlatforms,
+    resourceIndex
   });
 }
 

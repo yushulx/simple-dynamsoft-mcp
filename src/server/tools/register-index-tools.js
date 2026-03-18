@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
+import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerIndexTools({
   server,
@@ -21,18 +23,18 @@ export function registerIndexTools({
     {
       title: "Get Index",
       description: [
-        "Get a compact index of all Dynamsoft products, editions, platforms, versions, and available docs/samples.",
+        "Get a compact index of the public Dynamsoft offerings, editions, platforms, versions, and available docs/samples.",
         "",
         "WHEN TO USE:",
         "- As the first call in any conversation to discover what is available.",
         "- To determine valid product/edition/platform combinations before calling other tools.",
-        "- To get DBR-vs-DCV selection guidance (DBR for barcode-only; DCV for MRZ, VIN, document normalization, driver license).",
+        "- To get public product-selection guidance (DBR for barcode-only; MRZ for machine-readable-zone workflows; MDS for document scan and normalization workflows).",
         "",
         "WHEN NOT TO USE:",
         "- Do not call get_index repeatedly; the index is static within a session.",
         "- If you already know the product/edition/platform, skip directly to search or get_quickstart.",
         "",
-        "RETURNS: A JSON object with top-level keys: productSelection and products. productSelection contains guidance for choosing between products (for example, DBR vs DCV), and products contains per-product entries (dcv, dbr, dwt, ddv) with editions, platforms, latest versions, and counts of available docs and samples.",
+        "RETURNS: A JSON object with top-level keys: productSelection and products. productSelection contains guidance for choosing between public offerings, and products contains per-product entries (dbr, dwt, ddv, mrz, mds) with editions, platforms, latest versions, and counts of available docs and samples.",
         "",
         "PARAMETERS: None.",
         "",
@@ -64,7 +66,7 @@ export function registerIndexTools({
         "",
         "WHEN TO USE:",
         "- To find docs or samples by keyword, topic, or exact sample ID.",
-        "- To look up specific scenarios: MRZ scanning, VIN reading, barcode decoding, document normalization, etc.",
+        "- To look up specific scenarios: MRZ scanning, barcode decoding, document normalization, document scanning, and viewer workflows.",
         "- When you have a natural-language question about a Dynamsoft SDK.",
         "- For sample lookup by exact ID (e.g. query='hello-world', type='sample').",
         "",
@@ -75,7 +77,7 @@ export function registerIndexTools({
         "",
         "PARAMETERS:",
         "- query (required): Keywords or exact sample ID. Examples: 'barcode scanning from camera', 'MRZ passport reader', 'hello-world'.",
-        "- product: dcv, dbr, dwt, or ddv. Prefer DCV for MRZ/VIN/document-normalization/driver-license; DBR for barcode-only.",
+        "- product: dbr, dwt, ddv, mrz, or mds. Use DBR for barcode-only, MRZ for passport/machine-readable-zone workflows, and MDS for document scan or normalization workflows.",
         "- edition: core, mobile, web, or server.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- version: Version constraint (e.g. '10', '11.x'). Only latest major is served by default.",
@@ -88,7 +90,7 @@ export function registerIndexTools({
       ].join("\n"),
       inputSchema: {
         query: z.string().trim().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
-        product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
+        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         version: z.string().optional().describe("Version constraint (major or full version)"),
@@ -103,9 +105,14 @@ export function registerIndexTools({
       }
     },
     async ({ query, product, edition, platform, version, type, limit }) => {
+      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
+      if (deprecatedProductResponse) return deprecatedProductResponse;
+
       const normalizedProduct = normalizeProduct(product);
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+      const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+      if (unsupportedScopeResponse) return unsupportedScopeResponse;
 
       await ensureScopeHydrated({
         product: normalizedProduct,

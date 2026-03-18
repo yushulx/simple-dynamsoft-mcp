@@ -1,4 +1,5 @@
 import { normalizeHydrationScopes } from "./hydration-policy.js";
+import { getHydrationProduct } from "../server/public-offerings.js";
 
 const REPO_MAP = {
   dbr: {
@@ -129,12 +130,12 @@ function resolveRepoPathsForScopes(scopes = [], manifest = null) {
     const includeSamples = scope.type === "any" || scope.type === "sample";
 
     if (includeDocs) {
-      for (const path of getMappedPaths(scope.product, scope.edition, "docs")) {
+      for (const path of getMappedPaths(getHydrationProduct(scope.product), scope.edition, "docs")) {
         resolved.add(path);
       }
     }
     if (includeSamples) {
-      for (const path of getMappedPaths(scope.product, scope.edition, "samples")) {
+      for (const path of getMappedPaths(getHydrationProduct(scope.product), scope.edition, "samples")) {
         resolved.add(path);
       }
     }

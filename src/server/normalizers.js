@@ -1,3 +1,5 @@
+import { normalizePublicOffering } from "./public-offerings.js";
+
 const sdkAliases = {
   // DCV
   "dcv": "dcv-mobile",
@@ -234,6 +236,9 @@ function normalizeSampleName(name) {
 function normalizeProduct(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
+  const publicOffering = normalizePublicOffering(normalized);
+  if (publicOffering) return publicOffering;
+
   if (
     [
       "dcv",
@@ -242,23 +247,11 @@ function normalizeProduct(product) {
       "dynamsoft capture vision",
       "dynamsoft capture vision sdk",
       "capture vision bundle",
-      "mrz scanner",
       "vin scanner",
-      "driver license scanner",
-      "document scanner",
-      "document normalization"
+      "driver license scanner"
     ].includes(normalized)
   ) {
     return "dcv";
-  }
-  if (["ddv", "document viewer", "document-viewer", "dynamsoft document viewer", "doc viewer", "pdf viewer"].includes(normalized)) {
-    return "ddv";
-  }
-  if (["dbr", "barcode reader", "barcode-reader", "dynamsoft barcode reader"].includes(normalized)) {
-    return "dbr";
-  }
-  if (["dwt", "dynamic web twain", "web twain", "webtwain"].includes(normalized)) {
-    return "dwt";
   }
   return normalized;
 }

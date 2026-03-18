@@ -1,7 +1,10 @@
 import { z } from "zod";
+import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerSampleTools({
   server,
+  registry,
   ensureScopeHydrated,
   ensureLatestMajor,
   normalizeProduct,
@@ -23,14 +26,14 @@ export function registerSampleTools({
         "- To browse the full catalog of samples available for a product/edition/platform.",
         "- To discover sample IDs before calling get_sample_files.",
         "- When the user wants to see what samples exist without a specific keyword.",
-        "- Use DCV scope for MRZ, VIN, document normalization, and driver license scenarios.",
+        "- Use MRZ for passport and machine-readable-zone workflows, and MDS for document scan and normalization workflows.",
         "",
         "WHEN NOT TO USE:",
         "- If you have a specific keyword or topic, use search instead (it ranks results by relevance).",
         "- If you already have a sample ID or URI, go directly to get_sample_files.",
         "",
         "PARAMETERS:",
-        "- product: dcv, dbr, dwt, or ddv. Omit to list across all products.",
+        "- product: dbr, dwt, ddv, mrz, or mds. Omit to list across all public offerings.",
         "- edition: core, mobile, web, or server. Omit to list across all editions.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- limit: 1-200 (default 50). Max number of results.",
@@ -42,7 +45,7 @@ export function registerSampleTools({
         "RELATED TOOLS: search (keyword-based discovery), get_sample_files (retrieve full project files for a sample), get_index (discover valid product/edition/platform combinations)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().optional().describe("Product: dcv, dbr, dwt, ddv"),
+        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         limit: z.number().int().min(1).max(200).optional().describe("Max results (default 50)")
@@ -55,9 +58,14 @@ export function registerSampleTools({
       }
     },
     async ({ product, edition, platform, limit }) => {
+      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
+      if (deprecatedProductResponse) return deprecatedProductResponse;
+
       const normalizedProduct = normalizeProduct(product);
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+      const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+      if (unsupportedScopeResponse) return unsupportedScopeResponse;
 
       await ensureScopeHydrated({
         product: normalizedProduct,

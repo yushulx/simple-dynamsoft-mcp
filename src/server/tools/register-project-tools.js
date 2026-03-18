@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { z } from "zod";
+import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerProjectTools({
   server,
@@ -43,12 +45,12 @@ export function registerProjectTools({
         "- If the user just wants a quick code snippet, use get_quickstart instead.",
         "",
         "PARAMETERS:",
-        "- product (required): dcv, dbr, dwt, or ddv.",
+        "- product (required): dbr, dwt, ddv, mrz, or mds.",
         "- edition: mobile, web, or server.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- version: Version constraint. Latest major is used by default.",
         "- sample_id: Sample identifier as returned by list_samples (e.g. 'hello-world', 'ScanSingleBarcode'). Requires product/edition.",
-        "- resource_uri: A sample:// URI as returned by search (e.g. 'sample://dbr/mobile/android/10/high-level/ScanSingleBarcode'). Preferred over sample_id when available.",
+        "- resource_uri: A sample:// URI as returned by search (e.g. 'sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' or 'sample://mrz/server/python/3/mrz_scanner'). Preferred over sample_id when available.",
         "- api_level: 'high-level' or 'low-level' (DBR mobile only).",
         "",
         "RETURNS: A text block containing all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No zip file is created.",
@@ -58,7 +60,7 @@ export function registerProjectTools({
         "RELATED TOOLS: list_samples (discover sample IDs), search (find samples by keyword), get_quickstart (quick single-file snippet)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
         edition: z.string().optional().describe("Edition: mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview"),
         version: z.string().optional().describe("Version constraint"),
@@ -74,28 +76,8 @@ export function registerProjectTools({
       }
     },
     async ({ product, edition, platform, version, sample_id, resource_uri, api_level }) => {
-      const normalizedProduct = normalizeProduct(product);
-      const normalizedPlatform = normalizePlatform(platform);
-      const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
-
-      await ensureScopeHydrated({
-        product: normalizedProduct,
-        edition: normalizedEdition,
-        platform: normalizedPlatform,
-        type: "sample"
-      });
-
-      const policy = ensureLatestMajor({
-        product: normalizedProduct,
-        version,
-        query: sample_id,
-        edition: normalizedEdition,
-        platform: normalizedPlatform
-      });
-
-      if (!policy.ok) {
-        return { isError: true, content: [{ type: "text", text: policy.message }] };
-      }
+      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
+      if (deprecatedProductResponse) return deprecatedProductResponse;
 
       let sampleInfo = null;
       if (resource_uri) {
@@ -130,6 +112,31 @@ export function registerProjectTools({
         }
       }
 
+      const normalizedProduct = normalizeProduct(sampleInfo?.product || product);
+      const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
+      const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
+      const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+      if (unsupportedScopeResponse) return unsupportedScopeResponse;
+
+      await ensureScopeHydrated({
+        product: normalizedProduct,
+        edition: normalizedEdition,
+        platform: normalizedPlatform,
+        type: "sample"
+      });
+
+      const policy = ensureLatestMajor({
+        product: normalizedProduct,
+        version,
+        query: sample_id,
+        edition: normalizedEdition,
+        platform: normalizedPlatform
+      });
+
+      if (!policy.ok) {
+        return { isError: true, content: [{ type: "text", text: policy.message }] };
+      }
+
       let samplePath = null;
       let sampleLabel = "";
       let sampleQuery = "";
@@ -143,6 +150,12 @@ export function registerProjectTools({
           samplePath = getWebSamplePath(sampleInfo.category, sampleInfo.sampleName);
         } else if (sampleInfo.product === "dbr" && (sampleInfo.edition === "python" || sampleInfo.edition === "server")) {
           samplePath = getDbrServerSamplePath(sampleInfo.platform, sampleInfo.sampleName);
+        } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "mobile") {
+          samplePath = getDcvMobileSamplePath(sampleInfo.platform, sampleInfo.sampleName);
+        } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "server") {
+          samplePath = getDcvServerSamplePath(sampleInfo.platform, sampleInfo.sampleName);
+        } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "web") {
+          samplePath = getDcvWebSamplePath(sampleInfo.sampleName);
         } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "mobile") {
           samplePath = getDcvMobileSamplePath(sampleInfo.platform, sampleInfo.sampleName);
         } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "server") {
@@ -176,6 +189,21 @@ export function registerProjectTools({
           const altLevel = level === "high-level" ? "low-level" : "high-level";
           const alternatePath = getMobileSamplePath(targetPlatform, altLevel, sampleName);
           samplePath = existsSync(primaryPath) ? primaryPath : (existsSync(alternatePath) ? alternatePath : null);
+        } else if ((normalizedProduct === "mrz" || normalizedProduct === "mds") && normalizedEdition === "mobile") {
+          const platformCandidates = normalizedPlatform
+            ? [normalizedPlatform]
+            : ["android", "ios", "react-native", "flutter", "maui", "spm"];
+          for (const platformCandidate of platformCandidates) {
+            const candidate = getDcvMobileSamplePath(platformCandidate, sampleName);
+            if (candidate && existsSync(candidate)) {
+              samplePath = candidate;
+              break;
+            }
+          }
+        } else if ((normalizedProduct === "mrz" || normalizedProduct === "mds") && normalizedEdition === "web") {
+          samplePath = getDcvWebSamplePath(sampleName);
+        } else if ((normalizedProduct === "mrz" || normalizedProduct === "mds") && normalizedEdition === "server") {
+          samplePath = getDcvServerSamplePath(normalizedPlatform || "python", sampleName);
         } else if (normalizedProduct === "dcv" && normalizedEdition === "mobile") {
           const platformCandidates = normalizedPlatform
             ? [normalizedPlatform]
@@ -265,7 +293,7 @@ export function registerProjectTools({
       const textExtensions = [
         ".java", ".kt", ".swift", ".m", ".h", ".xml", ".gradle", ".properties",
         ".pro", ".json", ".plist", ".storyboard", ".xib", ".gitignore", ".md",
-        ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".html", ".css"
+        ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".html", ".css", ".py"
       ];
 
       const files = [];

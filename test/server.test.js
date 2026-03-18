@@ -17,6 +17,7 @@ const serverPath = join(__dirname, '..', 'src', 'index.js');
 let passed = 0;
 let failed = 0;
 const results = [];
+const testFilter = process.env.TEST_FILTER || '';
 
 async function sendRequest(request) {
     return new Promise((resolve, reject) => {
@@ -66,6 +67,10 @@ async function sendRequest(request) {
 }
 
 async function test(name, fn) {
+    if (testFilter && !name.includes(testFilter)) {
+        return;
+    }
+
     try {
         await fn();
         passed++;
@@ -131,7 +136,71 @@ await test('tools/list returns the minimal tool surface', async () => {
     }
 });
 
-await test('get_index returns product data', async () => {
+async function expectDeprecatedDcvProduct(toolName, args = {}) {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: toolName,
+            arguments: { product: 'dcv', ...args }
+        }
+    });
+
+    assert(response.result && response.result.isError, `${toolName} should reject deprecated public dcv input`);
+    const text = response.result.content[0].text;
+    assert(/public MCP contract/i.test(text), `${toolName} should explain the public contract`);
+    assert(/dbr, dwt, ddv, mrz, and mds/i.test(text), `${toolName} should list supported public products`);
+    assert(/mrz/i.test(text), `${toolName} should guide MRZ usage`);
+    assert(/mds/i.test(text), `${toolName} should guide MDS usage`);
+}
+
+async function expectDeprecatedDcvAlias(toolName, alias, args = {}) {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: toolName,
+            arguments: { product: alias, ...args }
+        }
+    });
+
+    assert(response.result && response.result.isError, `${toolName} should reject deprecated public alias ${alias}`);
+    const text = response.result.content[0].text;
+    assert(/public MCP contract/i.test(text), `${toolName} should explain the public contract for alias ${alias}`);
+    assert(/dbr, dwt, ddv, mrz, and mds/i.test(text), `${toolName} should list supported public products for alias ${alias}`);
+}
+
+await test('deprecated public dcv product is rejected by search', async () => {
+    await expectDeprecatedDcvProduct('search', { query: 'mrz', type: 'sample' });
+});
+
+await test('deprecated public dcv product is rejected by list_samples', async () => {
+    await expectDeprecatedDcvProduct('list_samples', { edition: 'server', platform: 'python' });
+});
+
+await test('deprecated public dcv product is rejected by resolve_version', async () => {
+    await expectDeprecatedDcvProduct('resolve_version');
+});
+
+await test('deprecated public dcv product is rejected by get_quickstart', async () => {
+    await expectDeprecatedDcvProduct('get_quickstart', { edition: 'server', platform: 'python' });
+});
+
+await test('deprecated public dcv product is rejected by get_sample_files', async () => {
+    await expectDeprecatedDcvProduct('get_sample_files', { edition: 'server', platform: 'python', sample_id: 'mrz_scanner' });
+});
+
+await test('deprecated public capture vision alias is rejected by search', async () => {
+    await expectDeprecatedDcvAlias('search', 'capture vision', { query: 'mrz', type: 'sample' });
+});
+
+await test('deprecated public capture vision bundle alias is rejected by search', async () => {
+    await expectDeprecatedDcvAlias('search', 'capture vision bundle', { query: 'mrz', type: 'sample' });
+});
+
+await test('get_index returns only public product offerings', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -145,11 +214,15 @@ await test('get_index returns product data', async () => {
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     const parsed = JSON.parse(text);
-    assert(parsed.products.dcv, 'Should include DCV');
+
+    const productNames = Object.keys(parsed.products).sort();
+    assert(JSON.stringify(productNames) === JSON.stringify(['dbr', 'ddv', 'dwt', 'mds', 'mrz']), 'Should expose only public offerings');
     assert(parsed.products.dbr, 'Should include DBR');
     assert(parsed.products.dwt, 'Should include DWT');
     assert(parsed.products.ddv, 'Should include DDV');
-    assert(parsed.productSelection?.dcvSupersetSummary, 'Should include DCV superset summary');
+    assert(parsed.products.mrz, 'Should include MRZ');
+    assert(parsed.products.mds, 'Should include MDS');
+    assert(!parsed.products.dcv, 'Should not include DCV');
 
     const heavyFields = ['docTitles', 'samples', 'sampleCategories'];
 
@@ -171,6 +244,27 @@ await test('get_index returns product data', async () => {
             }
         }
     }
+});
+
+await test('search returns redirect links for unsupported MRZ server scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'mrz', product: 'mrz', edition: 'server', platform: 'python', type: 'sample' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MRZ/i.test(text), 'Should identify the MRZ scope');
+    assert(/reference|redirect/i.test(text), 'Should return redirect/reference guidance');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include server docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-python-samples'), 'Should include server samples link');
+    const links = response.result.content.filter(item => item.type === 'resource_link');
+    assert(links.length === 0, 'Should not leak indexed MRZ server results');
 });
 
 await test('search returns resource links for DWT', async () => {
@@ -252,24 +346,99 @@ await test('list_samples returns DBR nodejs server samples', async () => {
     assert(parsed.samples.every(s => s.platform === 'nodejs'), 'All samples should be nodejs platform');
 });
 
-await test('list_samples returns DCV python server samples', async () => {
+await test('list_samples returns redirect links for unsupported MRZ server scope', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: 'list_samples',
-            arguments: { product: 'dcv', edition: 'server', platform: 'python' }
+            arguments: { product: 'mrz', edition: 'server', platform: 'python' }
         }
     });
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    const jsonIndex = text.indexOf('JSON:');
-    assert(jsonIndex !== -1, 'Should include JSON section');
-    const parsed = JSON.parse(text.slice(jsonIndex + 5).trim());
-    assert(parsed.samples.length > 0, 'Should return DCV python samples');
-    assert(parsed.samples.every(s => s.platform === 'python'), 'All samples should be python platform');
+    assert(/MRZ/i.test(text), 'Should identify the MRZ scope');
+    assert(/reference/i.test(text), 'Should return reference links');
+    assert(!text.includes('JSON:'), 'Should not return sample JSON for unsupported MRZ server scope');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include server docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-python-samples'), 'Should include server samples link');
+});
+
+await test('list_samples returns redirect links for unsupported MDS mobile scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'android' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MDS/i.test(text), 'Should identify the MDS scope');
+    assert(/reference/i.test(text), 'Should return reference links');
+    assert(!text.includes('JSON:'), 'Should not return sample JSON for unsupported MDS mobile scope');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/mobile/'), 'Should include mobile docs link');
+});
+
+await test('public MRZ search results do not expose DCV branding', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'mrz', product: 'mrz', edition: 'mobile', type: 'sample' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const links = response.result.content.filter(item => item.type === 'resource_link');
+    assert(links.length > 0, 'Should return public MRZ sample links');
+    assert(links.every(link => !/DCV/i.test(link.name)), 'Public MRZ link names should not expose DCV branding');
+    assert(links.every(link => !/DCV/i.test(link.description)), 'Public MRZ link descriptions should not expose DCV branding');
+});
+
+await test('public MRZ doc search results do not expose Capture Vision branding', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'mrz', product: 'mrz', edition: 'web', type: 'doc' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const links = response.result.content.filter(item => item.type === 'resource_link');
+    assert(links.length > 0, 'Should return public MRZ doc links');
+    assert(links.every(link => !/capture vision/i.test(link.name)), 'Public MRZ doc names should not expose Capture Vision branding');
+    assert(links.every(link => !/capture vision/i.test(link.description)), 'Public MRZ doc descriptions should not expose Capture Vision branding');
+});
+
+await test('search returns redirect links for unsupported MDS mobile scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'document', product: 'mds', edition: 'mobile', platform: 'android', type: 'sample' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MDS/i.test(text), 'Should identify the MDS scope');
+    assert(/reference|redirect/i.test(text), 'Should return redirect/reference guidance');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/mobile/'), 'Should include mobile docs link');
+    const links = response.result.content.filter(item => item.type === 'resource_link');
+    assert(links.length === 0, 'Should not leak indexed MDS mobile results');
 });
 
 await test('list_samples returns DBR maui mobile samples', async () => {
@@ -342,6 +511,12 @@ await test('resources/list returns pinned resources', async () => {
     assert(uris.includes('doc://index'), 'Should include doc://index');
     assert(uris.includes('doc://version-policy'), 'Should include doc://version-policy');
     assert(uris.includes('doc://product-selection'), 'Should include doc://product-selection guidance');
+
+    const productSelection = response.result.resources.find(r => r.uri === 'doc://product-selection');
+    assert(productSelection, 'Should expose product-selection metadata');
+    assert(!/DCV vs DBR/i.test(productSelection.description), 'Should not use legacy DCV vs DBR wording');
+    assert(/MRZ/i.test(productSelection.description), 'Should mention MRZ in public product guidance');
+    assert(/MDS/i.test(productSelection.description), 'Should mention MDS in public product guidance');
 });
 
 await test('search + resources/read works together', async () => {
@@ -421,20 +596,59 @@ await test('resolve_version returns latest for DDV', async () => {
     assert(text.includes('DDV Version Resolution'), 'Should include DDV resolution');
 });
 
-await test('resolve_version returns latest for DCV', async () => {
+await test('resolve_version returns latest for MRZ with public labeling', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: 'resolve_version',
-            arguments: { product: 'dcv' }
+            arguments: { product: 'mrz' }
         }
     });
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    assert(text.includes('DCV Version Resolution'), 'Should include DCV resolution');
+    assert(text.includes('MRZ Version Resolution'), 'Should include MRZ resolution');
+    assert(!text.includes('DCV Version Resolution'), 'Should not present MRZ as DCV');
+});
+
+await test('resolve_version for MRZ without edition only shows supported public editions', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mrz' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('MRZ Version Resolution'), 'Should include MRZ resolution');
+    assert(text.includes('Web:'), 'Should include supported MRZ web edition');
+    assert(text.includes('Mobile:'), 'Should include supported MRZ mobile edition');
+    assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MRZ server edition');
+});
+
+await test('resolve_version for MDS without edition only shows supported public editions', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mds' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('MDS Version Resolution'), 'Should include MDS resolution');
+    assert(text.includes('Web:'), 'Should include supported MDS web edition');
+    assert(!text.includes('Mobile:'), 'Should not advertise unsupported MDS mobile edition');
+    assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MDS server edition');
 });
 
 await test('resolve_version rejects old major version', async () => {
@@ -469,20 +683,101 @@ await test('get_quickstart returns a DDV quickstart', async () => {
     assert(text.includes('Quick Start: Dynamsoft Document Viewer'), 'Should include DDV quickstart header');
 });
 
-await test('get_quickstart returns a DCV quickstart', async () => {
+await test('get_quickstart defaults DBR web to foundational messaging', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: 'get_quickstart',
-            arguments: { product: 'dcv', edition: 'server', platform: 'python', scenario: 'mrz' }
+            arguments: { product: 'dbr', edition: 'web' }
         }
     });
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    assert(text.includes('Quick Start: DCV Server'), 'Should include DCV quickstart header');
+    assert(text.includes('Quick Start: DBR Web'), 'Should include DBR web quickstart header');
+    assert(/foundational/i.test(text), 'Should steer DBR web quickstart to foundational messaging');
+    assert(!text.includes('hello-world'), 'Should not default to the hello-world sample');
+});
+
+await test('get_quickstart returns redirect links for unsupported MRZ server scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mrz', edition: 'server', platform: 'python' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MRZ/i.test(text), 'Should identify the MRZ request');
+    assert(/redirect|reference/i.test(text), 'Should present a redirect/reference response');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include public server docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-python-samples'), 'Should include public server samples link');
+});
+
+await test('get_quickstart returns redirect links for unsupported MDS mobile scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'android' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MDS/i.test(text), 'Should identify the MDS request');
+    assert(/redirect|reference/i.test(text), 'Should present a redirect/reference response');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/mobile/'), 'Should include public mobile docs link');
+});
+
+await test('get_quickstart returns a non-error public response for MRZ web', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mrz', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should not return an error for MRZ web quickstart');
+    const text = response.result.content[0].text;
+    assert(/MRZ/i.test(text), 'Should identify the MRZ quickstart');
+    assert(/reference|quick start/i.test(text), 'Should return a usable quickstart response');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should include public MRZ web docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should include public MRZ web samples link');
+    assert(!text.includes('web / web'), 'Should not repeat the web scope label');
+});
+
+await test('get_quickstart returns a non-error public response for MDS web', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_quickstart',
+            arguments: { product: 'mds', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should not return an error for MDS web quickstart');
+    const text = response.result.content[0].text;
+    assert(/MDS/i.test(text), 'Should identify the MDS quickstart');
+    assert(/reference|quick start/i.test(text), 'Should return a usable quickstart response');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should include public MDS web docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should include public MDS web samples link');
+    assert(!text.includes('web / web'), 'Should not repeat the web scope label');
 });
 
 await test('get_sample_files returns DDV project structure', async () => {
@@ -499,6 +794,68 @@ await test('get_sample_files returns DDV project structure', async () => {
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('# Sample Files:'), 'Should include sample files header');
+});
+
+await test('get_sample_files returns redirect links for unsupported MRZ server scope when resource_uri is used', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_sample_files',
+            arguments: {
+                product: 'mrz',
+                resource_uri: 'sample://mrz/server/python/3.4.1000/mrz_scanner'
+            }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MRZ/i.test(text), 'Should identify the MRZ scope');
+    assert(/reference|redirect/i.test(text), 'Should return reference links');
+    assert(!text.includes('# Sample Files:'), 'Should not return backing sample files for unsupported MRZ server scope');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include server docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-python-samples'), 'Should include python server samples link');
+});
+
+await test('get_sample_files returns redirect links for unsupported MRZ server scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'get_sample_files',
+            arguments: { product: 'mrz', edition: 'server', platform: 'python', sample_id: 'mrz_scanner' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MRZ/i.test(text), 'Should identify the MRZ scope');
+    assert(/reference|redirect/i.test(text), 'Should return reference links');
+    assert(!text.includes('# Sample Files:'), 'Should not return backing sample files for unsupported MRZ server scope');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include server docs link');
+});
+
+await test('list_samples returns platform-aware redirect links for unsupported MDS server scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'server', platform: 'nodejs' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/MDS/i.test(text), 'Should identify the MDS scope');
+    assert(/reference|redirect/i.test(text), 'Should return reference links');
+    assert(!text.includes('JSON:'), 'Should not return sample JSON for unsupported MDS server scope');
+    assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/server/'), 'Should include server docs link');
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-nodejs-samples'), 'Should include nodejs server samples link');
 });
 
 await test('Invalid tool call returns error', async () => {

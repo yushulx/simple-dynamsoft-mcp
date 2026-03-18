@@ -62,7 +62,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
 const server = new McpServer({
   name: "simple-dynamsoft-mcp",
   version: pkgVersion,
-  description: "MCP server for latest major versions of Dynamsoft SDKs: Capture Vision, Barcode Reader, Dynamic Web TWAIN, and Document Viewer. Includes guidance for choosing DBR vs DCV by scenario."
+  description: "MCP server for the public Dynamsoft offerings: Barcode Reader, Dynamic Web TWAIN, Document Viewer, MRZ, and MDS. Includes guidance for choosing the right public product by workflow."
 });
 
 registerIndexTools({
@@ -83,6 +83,7 @@ registerIndexTools({
 
 registerSampleTools({
   server,
+  registry,
   ensureScopeHydrated,
   ensureLatestMajor,
   normalizeProduct,

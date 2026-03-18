@@ -38,3 +38,21 @@ test("resolveRepoPathsForScopes falls back to all repos when scope empty", () =>
   const all = resolveRepoPathsForScopes([], manifest);
   assert.equal(all.length, manifest.repos.length);
 });
+
+test("resolveRepoPathsForScopes maps MRZ web docs to documentation/capture-vision-docs-js", () => {
+  const paths = resolveRepoPathsForScopes(
+    [{ product: "mrz", edition: "web", type: "doc" }],
+    manifest
+  );
+
+  assert.deepEqual(paths, ["documentation/capture-vision-docs-js"]);
+});
+
+test("resolveRepoPathsForScopes maps MDS web samples to samples/dynamsoft-capture-vision-javascript", () => {
+  const paths = resolveRepoPathsForScopes(
+    [{ product: "mds", edition: "web", type: "sample" }],
+    manifest
+  );
+
+  assert.deepEqual(paths, ["samples/dynamsoft-capture-vision-javascript"]);
+});

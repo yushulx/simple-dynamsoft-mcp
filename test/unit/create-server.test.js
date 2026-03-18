@@ -76,7 +76,7 @@ test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurren
   const expectations = {
     get_index: {
       minLines: 10,
-      requiredPhrases: ["products", "editions", "versions", "DBR", "DCV", "get_index", "search"]
+      requiredPhrases: ["products", "editions", "versions", "DBR", "MRZ", "MDS", "get_index", "search"]
     },
     search: {
       minLines: 10,
@@ -88,7 +88,7 @@ test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurren
     },
     resolve_version: {
       minLines: 10,
-      requiredPhrases: ["version", "product", "dcv", "dbr", "dwt", "ddv"]
+      requiredPhrases: ["version", "product", "mrz", "mds", "dbr", "dwt", "ddv"]
     },
     get_quickstart: {
       minLines: 10,
@@ -125,6 +125,42 @@ test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurren
       assert.ok(desc.includes(section), `${toolName} description should include section "${section}"`);
     }
   }
+});
+
+test("server and tool descriptions advertise only public offerings", { concurrency: false }, (t) => {
+  const registered = withRegisteredToolsSpy(t);
+
+  const server = createMcpServerInstance({
+    pkgVersion: "0.0.0-test",
+    resourceIndexApi: {
+      getPinnedResources: () => [],
+      parseResourceUri: () => null,
+      ensureLatestMajor: () => ({ ok: true }),
+      readResourceContent: async () => null
+    },
+    ragApi: {}
+  });
+
+  const serverDescription = server.server._serverInfo.description;
+  assert.match(serverDescription, /MRZ/i);
+  assert.match(serverDescription, /MDS/i);
+  assert.doesNotMatch(serverDescription, /Capture Vision/i);
+  assert.doesNotMatch(serverDescription, /DCV/i);
+
+  const getIndexDescription = registered.get("get_index").def.description;
+  assert.match(getIndexDescription, /MRZ/i);
+  assert.match(getIndexDescription, /MDS/i);
+  assert.doesNotMatch(getIndexDescription, /DBR-vs-DCV/i);
+
+  const resolveVersionDescription = registered.get("resolve_version").def.description;
+  assert.match(resolveVersionDescription, /mrz/i);
+  assert.match(resolveVersionDescription, /mds/i);
+  assert.doesNotMatch(resolveVersionDescription, /dcv/i);
+
+  const getSampleFilesDescription = registered.get("get_sample_files").def.description;
+  assert.match(getSampleFilesDescription, /MRZ/i);
+  assert.match(getSampleFilesDescription, /MDS/i);
+  assert.doesNotMatch(getSampleFilesDescription, /dcv/i);
 });
 
 function withRegisteredResourcesSpy(t, run) {
