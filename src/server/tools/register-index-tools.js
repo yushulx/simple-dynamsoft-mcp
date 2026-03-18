@@ -18,6 +18,12 @@ export function registerIndexTools({
   getSampleEntries,
   getSampleSuggestions
 }) {
+  function looksLikeSampleIdQuery(value) {
+    const normalized = String(value || "").trim();
+    if (!normalized) return false;
+    return /[-_/]/.test(normalized);
+  }
+
   server.registerTool(
     "get_index",
     {
@@ -192,14 +198,19 @@ export function registerIndexTools({
         }
       }
 
-      const topResults = await searchResources({
-        query,
-        product: normalizedProduct,
-        edition: normalizedEdition,
-        platform: normalizedPlatform,
-        type: effectiveType,
-        limit: maxResults
-      });
+      const preferSampleSuggestionFallback =
+        effectiveType === "sample" && looksLikeSampleIdQuery(query);
+
+      const topResults = preferSampleSuggestionFallback
+        ? []
+        : await searchResources({
+            query,
+            product: normalizedProduct,
+            edition: normalizedEdition,
+            platform: normalizedPlatform,
+            type: effectiveType,
+            limit: maxResults
+          });
 
       if (topResults.length === 0) {
         // Only try sample suggestions when searching samples or any type

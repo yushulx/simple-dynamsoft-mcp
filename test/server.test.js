@@ -8,7 +8,7 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { resourceIndex } from "../src/server/resource-index.js";
+import { ensureResourceIndexReady, resourceIndex } from "../src/server/resource-index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -545,6 +545,7 @@ await test('search + resources/read works together', async () => {
 });
 
 await test('resources/read tolerates doc URI with decoded slash in slug', async () => {
+    ensureResourceIndexReady();
     const uriWithEncodedSlash = resourceIndex.find(
         (entry) => entry.type === 'doc' && entry.uri.startsWith('doc://') && entry.uri.includes('%2F')
     )?.uri;
