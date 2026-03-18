@@ -32,14 +32,20 @@ import {
   discoverDcvMobileSamples,
   discoverDcvServerSamples,
   discoverDcvWebSamples,
+  discoverMrzWebSamples,
+  discoverMdsWebSamples,
   discoverWebSamples,
   getWebSamplePath,
+  getMrzWebSamplePath,
+  getMdsWebSamplePath,
   discoverDwtSamples,
   discoverDdvSamples,
   mapDdvSampleToFramework,
   getDbrWebFrameworkPlatforms,
   getDcvWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms,
+  getMrzWebFrameworkPlatforms,
+  getMdsWebFrameworkPlatforms,
   getWebFrameworkPlatforms,
   findCodeFilesInSample,
   getDbrMobilePlatforms,
@@ -137,6 +143,8 @@ let dbrMobileDocs = [];
 let dbrServerDocs = [];
 let dcvCoreDocs = [];
 let dcvWebDocs = [];
+let mrzWebDocs = [];
+let mdsWebDocs = [];
 let dcvMobileDocs = [];
 let dcvServerDocs = [];
 let dwtDocs = { articles: [] };
@@ -193,6 +201,28 @@ function loadDocumentationSets() {
       urlBase: DOCS_CONFIG.dcvWeb.urlBase,
       excludeDirs: DOCS_CONFIG.dcvWeb.excludeDirs,
       excludeFiles: DOCS_CONFIG.dcvWeb.excludeFiles
+    }).articles,
+    "web",
+    () => "web"
+  );
+
+  mrzWebDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.mrzWeb,
+      urlBase: DOCS_CONFIG.mrzWeb.urlBase,
+      excludeDirs: DOCS_CONFIG.mrzWeb.excludeDirs,
+      excludeFiles: DOCS_CONFIG.mrzWeb.excludeFiles
+    }).articles,
+    "web",
+    () => "web"
+  );
+
+  mdsWebDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.mdsWeb,
+      urlBase: DOCS_CONFIG.mdsWeb.urlBase,
+      excludeDirs: DOCS_CONFIG.mdsWeb.excludeDirs,
+      excludeFiles: DOCS_CONFIG.mdsWeb.excludeFiles
     }).articles,
     "web",
     () => "web"
@@ -292,6 +322,8 @@ function buildIndexData() {
     LATEST_MAJOR,
     dcvCoreDocs,
     dcvWebDocs,
+    mrzWebDocs,
+    mdsWebDocs,
     dcvMobileDocs,
     dcvServerDocs,
     dbrWebDocs,
@@ -301,6 +333,10 @@ function buildIndexData() {
     ddvDocs,
     discoverDcvWebSamples,
     getDcvWebFrameworkPlatforms,
+    discoverMrzWebSamples,
+    getMrzWebFrameworkPlatforms,
+    discoverMdsWebSamples,
+    getMdsWebFrameworkPlatforms,
     getDcvMobilePlatforms,
     getDcvServerPlatforms,
     discoverDcvMobileSamples,
@@ -327,6 +363,8 @@ function buildResourceIndex() {
     LATEST_MAJOR,
     dcvCoreDocs,
     dcvWebDocs,
+    mrzWebDocs,
+    mdsWebDocs,
     dcvMobileDocs,
     dcvServerDocs,
     dbrWebDocs,
@@ -342,6 +380,10 @@ function buildResourceIndex() {
     getDcvServerSampleContent,
     discoverDcvWebSamples,
     getDcvWebSamplePath,
+    discoverMrzWebSamples,
+    getMrzWebSamplePath,
+    discoverMdsWebSamples,
+    getMdsWebSamplePath,
     discoverMobileSamples,
     getDbrMobilePlatforms,
     getMobileSamplePath,
@@ -394,9 +436,12 @@ function platformMatches(normalizedPlatform, entry) {
   if (normalizedPlatform === entry.platform) return true;
   if (normalizedPlatform === "web") return entry.platform === "web";
   if (isWebFrameworkPlatform(normalizedPlatform)) {
+    const aliases = WEB_FRAMEWORK_TAG_ALIASES[normalizedPlatform] || [normalizedPlatform];
+    if (aliases.includes(entry.platform)) {
+      return true;
+    }
     if (entry.platform === "web" && Array.isArray(entry.tags)) {
       const tags = entry.tags.map((tag) => String(tag).toLowerCase());
-      const aliases = WEB_FRAMEWORK_TAG_ALIASES[normalizedPlatform] || [normalizedPlatform];
       return aliases.some((alias) => tags.includes(alias));
     }
     return entry.platform === normalizedPlatform;
@@ -500,6 +545,8 @@ function getRagSignatureData() {
     resourceCount: resourceIndex.length,
     dcvCoreDocCount: dcvCoreDocs.length,
     dcvWebDocCount: dcvWebDocs.length,
+    mrzWebDocCount: mrzWebDocs.length,
+    mdsWebDocCount: mdsWebDocs.length,
     dcvMobileDocCount: dcvMobileDocs.length,
     dcvServerDocCount: dcvServerDocs.length,
     dbrWebDocCount: dbrWebDocs.length,
@@ -520,6 +567,8 @@ function getRagSignatureData() {
       dbrFlutterSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrFlutter),
       dbrNodejsSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrNodejs),
       dcvWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvWeb),
+      mrzWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mrzWeb),
+      mdsWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mdsWeb),
       dcvMobileSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvMobile),
       dcvPythonSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvPython),
       dcvDotnetSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvDotnet),
@@ -537,6 +586,8 @@ function getRagSignatureData() {
       dbrServerDocsHead: readManifestRepoCommit(DOC_ROOTS.dbrServer),
       dcvCoreDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvCore),
       dcvWebDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvWeb),
+      mrzWebDocsHead: readManifestRepoCommit(DOC_ROOTS.mrzWeb),
+      mdsWebDocsHead: readManifestRepoCommit(DOC_ROOTS.mdsWeb),
       dcvMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvMobile),
       dcvServerDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvServer),
       dwtDocsHead: readManifestRepoCommit(DOC_ROOTS.dwt),
@@ -561,6 +612,8 @@ export {
   discoverDcvMobileSamples,
   discoverDcvServerSamples,
   discoverDcvWebSamples,
+  discoverMrzWebSamples,
+  discoverMdsWebSamples,
   discoverWebSamples,
   getWebSamplePath,
   discoverDwtSamples,
@@ -569,6 +622,8 @@ export {
   getDbrWebFrameworkPlatforms,
   getDcvWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms,
+  getMrzWebFrameworkPlatforms,
+  getMdsWebFrameworkPlatforms,
   getWebFrameworkPlatforms,
   findCodeFilesInSample,
   getDbrServerSamplePath,
@@ -581,6 +636,8 @@ export {
   getDcvMobileSamplePath,
   getDcvServerSamplePath,
   getDcvWebSamplePath,
+  getMrzWebSamplePath,
+  getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
   readCodeFile,

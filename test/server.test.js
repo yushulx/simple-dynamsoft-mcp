@@ -136,68 +136,51 @@ await test('tools/list returns the minimal tool surface', async () => {
     }
 });
 
-async function expectDeprecatedDcvProduct(toolName, args = {}) {
+async function expectUnknownPublicProduct(toolName, product, args = {}) {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: toolName,
-            arguments: { product: 'dcv', ...args }
+            arguments: { product, ...args }
         }
     });
 
-    assert(response.result && response.result.isError, `${toolName} should reject deprecated public dcv input`);
+    assert(response.result && response.result.isError, `${toolName} should reject unsupported public product ${product}`);
     const text = response.result.content[0].text;
-    assert(/public MCP contract/i.test(text), `${toolName} should explain the public contract`);
-    assert(/dbr, dwt, ddv, mrz, and mds/i.test(text), `${toolName} should list supported public products`);
-    assert(/mrz/i.test(text), `${toolName} should guide MRZ usage`);
-    assert(/mds/i.test(text), `${toolName} should guide MDS usage`);
+    assert(/unknown|unsupported/i.test(text), `${toolName} should identify ${product} as unknown or unsupported`);
+    assert(/dbr, dwt, ddv, mrz, or mds/i.test(text), `${toolName} should list supported public products`);
+    assert(!/deprecated/i.test(text), `${toolName} should not use deprecation wording for ${product}`);
+    assert(!/public MCP contract no longer accepts/i.test(text), `${toolName} should not use the removed deprecation flow for ${product}`);
 }
 
-async function expectDeprecatedDcvAlias(toolName, alias, args = {}) {
-    const response = await sendRequest({
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'tools/call',
-        params: {
-            name: toolName,
-            arguments: { product: alias, ...args }
-        }
-    });
-
-    assert(response.result && response.result.isError, `${toolName} should reject deprecated public alias ${alias}`);
-    const text = response.result.content[0].text;
-    assert(/public MCP contract/i.test(text), `${toolName} should explain the public contract for alias ${alias}`);
-    assert(/dbr, dwt, ddv, mrz, and mds/i.test(text), `${toolName} should list supported public products for alias ${alias}`);
-}
-
-await test('deprecated public dcv product is rejected by search', async () => {
-    await expectDeprecatedDcvProduct('search', { query: 'mrz', type: 'sample' });
+await test('unsupported public dcv product is rejected by search without deprecation wording', async () => {
+    await expectUnknownPublicProduct('search', 'dcv', { query: 'mrz', type: 'sample' });
 });
 
-await test('deprecated public dcv product is rejected by list_samples', async () => {
-    await expectDeprecatedDcvProduct('list_samples', { edition: 'server', platform: 'python' });
+await test('unsupported public dcv product is rejected by list_samples without deprecation wording', async () => {
+    await expectUnknownPublicProduct('list_samples', 'dcv', { edition: 'server', platform: 'python' });
 });
 
-await test('deprecated public dcv product is rejected by resolve_version', async () => {
-    await expectDeprecatedDcvProduct('resolve_version');
+await test('unsupported public dcv product is rejected by resolve_version without deprecation wording', async () => {
+    await expectUnknownPublicProduct('resolve_version', 'dcv');
 });
 
-await test('deprecated public dcv product is rejected by get_quickstart', async () => {
-    await expectDeprecatedDcvProduct('get_quickstart', { edition: 'server', platform: 'python' });
+await test('unsupported public dcv product is rejected by get_quickstart without deprecation wording', async () => {
+    await expectUnknownPublicProduct('get_quickstart', 'dcv', { edition: 'server', platform: 'python' });
 });
 
-await test('deprecated public dcv product is rejected by get_sample_files', async () => {
-    await expectDeprecatedDcvProduct('get_sample_files', { edition: 'server', platform: 'python', sample_id: 'mrz_scanner' });
+await test('unsupported public dcv product is rejected by get_sample_files without deprecation wording', async () => {
+    await expectUnknownPublicProduct('get_sample_files', 'dcv', { edition: 'server', platform: 'python', sample_id: 'mrz_scanner' });
 });
 
-await test('deprecated public capture vision alias is rejected by search', async () => {
-    await expectDeprecatedDcvAlias('search', 'capture vision', { query: 'mrz', type: 'sample' });
+await test('unsupported public capture vision alias is rejected by search without deprecation wording', async () => {
+    await expectUnknownPublicProduct('search', 'capture vision', { query: 'mrz', type: 'sample' });
 });
 
-await test('deprecated public capture vision bundle alias is rejected by search', async () => {
-    await expectDeprecatedDcvAlias('search', 'capture vision bundle', { query: 'mrz', type: 'sample' });
+await test('unsupported public capture vision bundle alias is rejected by search without deprecation wording', async () => {
+    await expectUnknownPublicProduct('search', 'capture vision bundle', { query: 'mrz', type: 'sample' });
 });
 
 await test('get_index returns only public product offerings', async () => {
@@ -223,6 +206,7 @@ await test('get_index returns only public product offerings', async () => {
     assert(parsed.products.mrz, 'Should include MRZ');
     assert(parsed.products.mds, 'Should include MDS');
     assert(!parsed.products.dcv, 'Should not include DCV');
+    assert(!parsed.products.mrz.editions.server, 'Should not expose unsupported MRZ server resources');
 
     const heavyFields = ['docTitles', 'samples', 'sampleCategories'];
 
@@ -244,6 +228,80 @@ await test('get_index returns only public product offerings', async () => {
             }
         }
     }
+
+    assert(parsed.productSelection, 'Should include product-selection guidance');
+    assert(!('dcvBackedOfferings' in parsed.productSelection), 'Should not expose dcvBackedOfferings');
+    const productSelectionJson = JSON.stringify(parsed.productSelection);
+    assert(!/DCV/i.test(productSelectionJson), 'Should not expose DCV wording in productSelection JSON');
+    assert(!/Capture Vision/i.test(productSelectionJson), 'Should not expose Capture Vision wording in productSelection JSON');
+});
+
+await test('runtime mrz web resources come from dedicated MRZ web roots', async () => {
+    ensureResourceIndexReady();
+
+    const mrzWebDocs = resourceIndex.filter((entry) => entry.product === 'mrz' && entry.edition === 'web' && entry.type === 'doc');
+    const mrzWebSamples = resourceIndex.filter((entry) => entry.product === 'mrz' && entry.edition === 'web' && entry.type === 'sample');
+
+    assert(mrzWebDocs.length > 0, 'Should index MRZ web docs');
+    assert(mrzWebSamples.length > 0, 'Should index MRZ web samples');
+    assert(mrzWebSamples.some((entry) => entry.uri.includes('/frameworks/')), 'Should expose dedicated MRZ framework samples');
+    assert(mrzWebDocs.every((entry) => !entry.id.startsWith('dcv-web-')), 'MRZ web docs should not be reclassified DCV web docs');
+    assert(mrzWebSamples.every((entry) => !entry.id.startsWith('dcv-web-')), 'MRZ web samples should not be reclassified DCV web samples');
+
+    const docContent = await mrzWebDocs[0].loadContent();
+    assert(docContent.text.includes('https://www.dynamsoft.com/mrz-scanner/docs/web/'), 'MRZ web docs should use the MRZ docs URL base');
+    assert(!docContent.text.includes('https://www.dynamsoft.com/capture-vision/docs/web/'), 'MRZ web docs should not use the DCV web docs URL base');
+});
+
+await test('runtime mds web resources come from dedicated MDS web roots', async () => {
+    ensureResourceIndexReady();
+
+    const mdsWebDocs = resourceIndex.filter((entry) => entry.product === 'mds' && entry.edition === 'web' && entry.type === 'doc');
+    const mdsWebSamples = resourceIndex.filter((entry) => entry.product === 'mds' && entry.edition === 'web' && entry.type === 'sample');
+
+    assert(mdsWebDocs.length > 0, 'Should index MDS web docs');
+    assert(mdsWebSamples.length > 0, 'Should index MDS web samples');
+    assert(mdsWebSamples.some((entry) => entry.uri.includes('/frameworks/') || entry.uri.includes('/hello-world')), 'Should expose dedicated MDS web samples');
+    assert(mdsWebDocs.every((entry) => !entry.id.startsWith('dcv-web-')), 'MDS web docs should not be reclassified DCV web docs');
+    assert(mdsWebSamples.every((entry) => !entry.id.startsWith('dcv-web-')), 'MDS web samples should not be reclassified DCV web samples');
+
+    const docContent = await mdsWebDocs[0].loadContent();
+    assert(docContent.text.includes('https://www.dynamsoft.com/mobile-document-scanner/docs/web/'), 'MDS web docs should use the MDS docs URL base');
+    assert(!docContent.text.includes('https://www.dynamsoft.com/capture-vision/docs/web/'), 'MDS web docs should not use the DCV web docs URL base');
+});
+
+await test('list_samples returns MRZ web React samples through the public react alias', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mrz', edition: 'web', platform: 'react' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/react/i.test(text), 'Should include a React MRZ sample');
+    assert(/mrz/i.test(text), 'Should stay in the MRZ scope');
+});
+
+await test('list_samples returns MDS web React samples through the public react alias', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'web', platform: 'react' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(/react/i.test(text), 'Should include a React MDS sample');
+    assert(/mds/i.test(text), 'Should stay in the MDS scope');
 });
 
 await test('search returns redirect links for unsupported MRZ server scope', async () => {
@@ -517,6 +575,29 @@ await test('resources/list returns pinned resources', async () => {
     assert(!/DCV vs DBR/i.test(productSelection.description), 'Should not use legacy DCV vs DBR wording');
     assert(/MRZ/i.test(productSelection.description), 'Should mention MRZ in public product guidance');
     assert(/MDS/i.test(productSelection.description), 'Should mention MDS in public product guidance');
+});
+
+await test('resources/read returns rich public product-selection guidance without DCV wording', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'resources/read',
+        params: { uri: 'doc://product-selection' }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.contents[0].text;
+    assert(/Dynamic Web TWAIN \(DWT\)/i.test(text), 'Should use full DWT name first');
+    assert(/Dynamsoft Document Viewer \(DDV\)/i.test(text), 'Should use full DDV name first');
+    assert(/Dynamsoft Barcode Reader \(DBR\)/i.test(text), 'Should use full DBR name first');
+    assert(/MRZ Scanner \(MRZ\)/i.test(text), 'Should use full MRZ name first');
+    assert(/Mobile Document Scanner \(MDS\)/i.test(text), 'Should use full MDS name first');
+    assert(/browser-based document acquisition/i.test(text), 'Should describe DWT positioning');
+    assert(/standalone viewer/i.test(text), 'Should describe DDV positioning');
+    assert(/foundational subset/i.test(text), 'Should describe DBR server\/desktop positioning');
+    assert(/web\/mobile solution\/RTU only/i.test(text), 'Should describe MRZ or MDS RTU positioning');
+    assert(!/\bDCV\b/i.test(text), 'Should not mention DCV in public guidance');
+    assert(!/Capture Vision/i.test(text), 'Should not mention Capture Vision in public guidance');
 });
 
 await test('search + resources/read works together', async () => {

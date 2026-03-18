@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { z } from "zod";
-import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerProjectTools({
@@ -76,9 +76,6 @@ export function registerProjectTools({
       }
     },
     async ({ product, edition, platform, version, sample_id, resource_uri, api_level }) => {
-      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
-      if (deprecatedProductResponse) return deprecatedProductResponse;
-
       let sampleInfo = null;
       if (resource_uri) {
         const parsed = parseResourceUri(resource_uri);
@@ -113,6 +110,10 @@ export function registerProjectTools({
       }
 
       const normalizedProduct = normalizeProduct(sampleInfo?.product || product);
+      if ((sampleInfo?.product || product) && !isKnownPublicOffering(normalizedProduct)) {
+        return buildUnknownPublicProductResponse(sampleInfo?.product || product);
+      }
+
       const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
       const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
       const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);

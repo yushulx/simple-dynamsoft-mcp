@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { z } from "zod";
-import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerQuickstartTools({
@@ -81,7 +81,7 @@ export function registerQuickstartTools({
         "- language: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular. Helps select the best sample variant.",
         "- version: Version constraint. Latest major is used by default.",
         "- api_level: 'high-level' or 'low-level' (mobile only). Controls API abstraction level in generated code.",
-        "- scenario: MRZ, document scan, camera, image, single, multiple, react, vue, angular, etc. DBR web defaults to foundational guidance; MRZ and MDS route to public DCV-backed workflows where available.",
+        "- scenario: MRZ, document scan, camera, image, single, multiple, react, vue, angular, etc. DBR web defaults to foundational guidance; MRZ and MDS return public workflow guidance where available.",
         "",
         "RETURNS: A formatted text block with SDK version, trial license key, install commands, and sample code. Ready to copy-paste.",
         "",
@@ -104,10 +104,11 @@ export function registerQuickstartTools({
       }
     },
     async ({ product, edition, platform, language, version, api_level, scenario }) => {
-      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
-      if (deprecatedProductResponse) return deprecatedProductResponse;
-
       const normalizedProduct = normalizeProduct(product);
+      if (product && !isKnownPublicOffering(normalizedProduct)) {
+        return buildUnknownPublicProductResponse(product);
+      }
+
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
       const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);

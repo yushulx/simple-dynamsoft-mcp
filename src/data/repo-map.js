@@ -86,6 +86,22 @@ const REPO_MAP = {
       ]
     }
   },
+  mrz: {
+    docs: {
+      web: ["documentation/mrz-scanner-docs-js"]
+    },
+    samples: {
+      web: ["samples/mrz-scanner-javascript"]
+    }
+  },
+  mds: {
+    docs: {
+      web: ["documentation/mobile-document-scanner-docs-js"]
+    },
+    samples: {
+      web: ["samples/document-scanner-javascript"]
+    }
+  },
   dwt: {
     docs: {
       any: ["documentation/web-twain-docs"]
@@ -130,12 +146,18 @@ function resolveRepoPathsForScopes(scopes = [], manifest = null) {
     const includeSamples = scope.type === "any" || scope.type === "sample";
 
     if (includeDocs) {
-      for (const path of getMappedPaths(getHydrationProduct(scope.product), scope.edition, "docs")) {
+      const docsPaths = getMappedPaths(scope.product, scope.edition, "docs");
+      for (const path of (docsPaths.length > 0
+        ? docsPaths
+        : getMappedPaths(getHydrationProduct(scope.product), scope.edition, "docs"))) {
         resolved.add(path);
       }
     }
     if (includeSamples) {
-      for (const path of getMappedPaths(getHydrationProduct(scope.product), scope.edition, "samples")) {
+      const samplePaths = getMappedPaths(scope.product, scope.edition, "samples");
+      for (const path of (samplePaths.length > 0
+        ? samplePaths
+        : getMappedPaths(getHydrationProduct(scope.product), scope.edition, "samples"))) {
         resolved.add(path);
       }
     }

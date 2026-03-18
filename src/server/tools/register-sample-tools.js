@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerSampleTools({
@@ -58,10 +58,11 @@ export function registerSampleTools({
       }
     },
     async ({ product, edition, platform, limit }) => {
-      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
-      if (deprecatedProductResponse) return deprecatedProductResponse;
-
       const normalizedProduct = normalizeProduct(product);
+      if (product && !isKnownPublicOffering(normalizedProduct)) {
+        return buildUnknownPublicProductResponse(product);
+      }
+
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
       const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);

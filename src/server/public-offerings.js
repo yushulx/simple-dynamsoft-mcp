@@ -33,6 +33,8 @@ const HYDRATION_PRODUCT_MAP = {
   mds: "dcv"
 };
 
+const PUBLIC_OFFERINGS_TEXT = "dbr, dwt, ddv, mrz, or mds";
+
 function normalizePublicOffering(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
@@ -44,8 +46,26 @@ function getHydrationProduct(product) {
   return HYDRATION_PRODUCT_MAP[normalized] || normalized;
 }
 
+function isKnownPublicOffering(product) {
+  return PUBLIC_OFFERING_PRODUCTS.includes(product);
+}
+
+function buildUnknownPublicProductResponse(requestedProduct) {
+  const value = String(requestedProduct || "").trim();
+  return {
+    isError: true,
+    content: [{
+      type: "text",
+      text: `Unknown public product "${value}". Use ${PUBLIC_OFFERINGS_TEXT}.`
+    }]
+  };
+}
+
 export {
   PUBLIC_OFFERING_PRODUCTS,
+  PUBLIC_OFFERINGS_TEXT,
   normalizePublicOffering,
-  getHydrationProduct
+  getHydrationProduct,
+  isKnownPublicOffering,
+  buildUnknownPublicProductResponse
 };

@@ -18,12 +18,16 @@ let cachedWebFrameworkPlatforms = null;
 let cachedDbrWebFrameworkPlatforms = null;
 let cachedDdvWebFrameworkPlatforms = null;
 let cachedDcvWebFrameworkPlatforms = null;
+let cachedMrzWebFrameworkPlatforms = null;
+let cachedMdsWebFrameworkPlatforms = null;
 
 function resetSampleDiscoveryCaches() {
   cachedWebFrameworkPlatforms = null;
   cachedDbrWebFrameworkPlatforms = null;
   cachedDdvWebFrameworkPlatforms = null;
   cachedDcvWebFrameworkPlatforms = null;
+  cachedMrzWebFrameworkPlatforms = null;
+  cachedMdsWebFrameworkPlatforms = null;
 }
 
 function getCodeFileExtensions() {
@@ -44,6 +48,10 @@ function classifyMobileSampleLevel(sampleName) {
 
 function getDbrWebSamplesRoot() {
   return getExistingPath(join(SAMPLE_ROOTS.dbrWeb, "web"), SAMPLE_ROOTS.dbrWeb);
+}
+
+function getDedicatedWebSamplesRoot(root) {
+  return getExistingPath(join(root, "samples"), root);
 }
 
 function getDbrCrossMobileRoot(platform) {
@@ -291,6 +299,63 @@ function discoverWebSamples() {
   return categories;
 }
 
+function discoverDedicatedWebSamples(root) {
+  const categories = { root: [] };
+  const webPath = getDedicatedWebSamplesRoot(root);
+  if (!webPath || !existsSync(webPath)) return categories;
+
+  for (const entry of readdirSync(webPath, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
+
+    if (entry.isFile() && entry.name.endsWith(".html")) {
+      if (entry.name !== "index.html") {
+        categories.root.push(entry.name.replace(".html", ""));
+      }
+      continue;
+    }
+
+    if (!entry.isDirectory()) continue;
+
+    const categoryPath = join(webPath, entry.name);
+
+    if (entry.name === "frameworks" || entry.name === "scenarios") {
+      const categorySamples = [];
+      for (const child of readdirSync(categoryPath, { withFileTypes: true })) {
+        if (child.name.startsWith(".")) continue;
+        if (child.isDirectory()) categorySamples.push(child.name);
+        else if (child.isFile() && child.name.endsWith(".html") && child.name !== "index.html") {
+          categorySamples.push(child.name.replace(".html", ""));
+        }
+      }
+
+      categories[entry.name] = sortUnique(categorySamples);
+      continue;
+    }
+
+    if (existsSync(join(categoryPath, "index.html")) || existsSync(join(categoryPath, "README.md"))) {
+      categories.root.push(entry.name);
+      continue;
+    }
+
+    const categorySamples = [];
+    for (const child of readdirSync(categoryPath, { withFileTypes: true })) {
+      if (child.name.startsWith(".")) continue;
+      if (child.isDirectory()) categorySamples.push(child.name);
+      else if (child.isFile() && child.name.endsWith(".html") && child.name !== "index.html") {
+        categorySamples.push(child.name.replace(".html", ""));
+      }
+    }
+
+    categories[entry.name] = sortUnique(categorySamples);
+  }
+
+  for (const [key, value] of Object.entries(categories)) {
+    if (value.length === 0) delete categories[key];
+  }
+
+  return categories;
+}
+
 function getWebSamplePath(category, sampleName) {
   const webPath = getDbrWebSamplesRoot();
   if (!webPath || !existsSync(webPath)) return null;
@@ -314,6 +379,51 @@ function getWebSamplePath(category, sampleName) {
   const rootPath = join(webPath, `${sampleName}.html`);
   if (existsSync(rootPath)) return rootPath;
   return null;
+}
+
+function getDedicatedWebSamplePath(root, category, sampleName) {
+  const webPath = getDedicatedWebSamplesRoot(root);
+  if (!webPath || !existsSync(webPath)) return null;
+
+  if (category === "root" || !category) {
+    const htmlPath = join(webPath, `${sampleName}.html`);
+    if (existsSync(htmlPath)) return htmlPath;
+
+    const dirPath = join(webPath, sampleName);
+    if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
+      const indexPath = join(dirPath, "index.html");
+      if (existsSync(indexPath)) return indexPath;
+      const readmePath = join(dirPath, "README.md");
+      if (existsSync(readmePath)) return readmePath;
+      return dirPath;
+    }
+
+    return null;
+  }
+
+  const dirPath = join(webPath, category, sampleName);
+  if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
+    const indexPath = join(dirPath, "index.html");
+    if (existsSync(indexPath)) return indexPath;
+    const readmePath = join(dirPath, "README.md");
+    if (existsSync(readmePath)) return readmePath;
+    for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.endsWith(".html")) return join(dirPath, entry.name);
+    }
+    return dirPath;
+  }
+
+  const htmlPath = join(webPath, category, `${sampleName}.html`);
+  if (existsSync(htmlPath)) return htmlPath;
+  return null;
+}
+
+function discoverMrzWebSamples() {
+  return discoverDedicatedWebSamples(SAMPLE_ROOTS.mrzWeb);
+}
+
+function discoverMdsWebSamples() {
+  return discoverDedicatedWebSamples(SAMPLE_ROOTS.mdsWeb);
 }
 
 function discoverDwtSamples() {
@@ -388,12 +498,42 @@ function getDdvWebFrameworkPlatforms() {
   return cachedDdvWebFrameworkPlatforms;
 }
 
+function getMrzWebFrameworkPlatforms() {
+  if (cachedMrzWebFrameworkPlatforms) return cachedMrzWebFrameworkPlatforms;
+  const frameworks = new Set();
+  const webSamples = discoverMrzWebSamples();
+  if (webSamples.frameworks) {
+    for (const name of webSamples.frameworks) {
+      const normalized = normalizePlatform(name);
+      if (normalized && normalized !== "web") frameworks.add(normalized);
+    }
+  }
+  cachedMrzWebFrameworkPlatforms = Array.from(frameworks).sort();
+  return cachedMrzWebFrameworkPlatforms;
+}
+
+function getMdsWebFrameworkPlatforms() {
+  if (cachedMdsWebFrameworkPlatforms) return cachedMdsWebFrameworkPlatforms;
+  const frameworks = new Set();
+  const webSamples = discoverMdsWebSamples();
+  if (webSamples.frameworks) {
+    for (const name of webSamples.frameworks) {
+      const normalized = normalizePlatform(name);
+      if (normalized && normalized !== "web") frameworks.add(normalized);
+    }
+  }
+  cachedMdsWebFrameworkPlatforms = Array.from(frameworks).sort();
+  return cachedMdsWebFrameworkPlatforms;
+}
+
 function getWebFrameworkPlatforms() {
   if (cachedWebFrameworkPlatforms) return cachedWebFrameworkPlatforms;
   const frameworks = new Set([
     ...getDbrWebFrameworkPlatforms(),
     ...getDdvWebFrameworkPlatforms(),
-    ...getDcvWebFrameworkPlatforms()
+    ...getDcvWebFrameworkPlatforms(),
+    ...getMrzWebFrameworkPlatforms(),
+    ...getMdsWebFrameworkPlatforms()
   ]);
   cachedWebFrameworkPlatforms = frameworks;
   return cachedWebFrameworkPlatforms;
@@ -575,6 +715,14 @@ function getDcvWebSamplePath(sampleName) {
   return null;
 }
 
+function getMrzWebSamplePath(category, sampleName) {
+  return getDedicatedWebSamplePath(SAMPLE_ROOTS.mrzWeb, category, sampleName);
+}
+
+function getMdsWebSamplePath(category, sampleName) {
+  return getDedicatedWebSamplePath(SAMPLE_ROOTS.mdsWeb, category, sampleName);
+}
+
 function readCodeFile(filePath) {
   if (!existsSync(filePath)) return null;
   return readFileSync(filePath, "utf8");
@@ -701,6 +849,8 @@ export {
   discoverDcvServerSamples,
   discoverDcvWebSamples,
   discoverWebSamples,
+  discoverMrzWebSamples,
+  discoverMdsWebSamples,
   getWebSamplePath,
   discoverDwtSamples,
   discoverDdvSamples,
@@ -708,6 +858,8 @@ export {
   getDbrWebFrameworkPlatforms,
   getDcvWebFrameworkPlatforms,
   getDdvWebFrameworkPlatforms,
+  getMrzWebFrameworkPlatforms,
+  getMdsWebFrameworkPlatforms,
   getWebFrameworkPlatforms,
   findCodeFilesInSample,
   getDbrMobilePlatforms,
@@ -720,6 +872,8 @@ export {
   getDcvMobileSamplePath,
   getDcvServerSamplePath,
   getDcvWebSamplePath,
+  getMrzWebSamplePath,
+  getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
   readCodeFile,

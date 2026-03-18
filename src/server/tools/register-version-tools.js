@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { buildDeprecatedProductResponse } from "./public-contract.js";
+import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
 
 export function registerVersionTools({
   server,
@@ -24,7 +24,6 @@ export function registerVersionTools({
         `# ${label} Version Resolution`,
         `- Latest major: v${LATEST_MAJOR.dcv}`,
         ...supportedEditions.map((entry) => `- ${entry.name}: ${entry.version}`),
-        `- Notes: ${label} is DCV-backed.`,
         "",
         "Specify edition/platform to resolve a single version."
       ];
@@ -45,8 +44,7 @@ export function registerVersionTools({
       `- Edition: ${edition}`,
       displayPlatform ? `- Platform: ${displayPlatform}` : "",
       `- Latest major: v${LATEST_MAJOR.dcv}`,
-      `- Resolved version: ${supportedEdition.version}`,
-      `- Notes: ${label} is DCV-backed.`
+      `- Resolved version: ${supportedEdition.version}`
     ].filter(Boolean);
 
     return { content: [{ type: "text", text: lines.join("\n") }] };
@@ -96,19 +94,13 @@ export function registerVersionTools({
       }
     },
     async ({ product, edition, platform, constraint, feature }) => {
-      const deprecatedProductResponse = buildDeprecatedProductResponse(product);
-      if (deprecatedProductResponse) return deprecatedProductResponse;
-
       const normalizedProduct = normalizeProduct(product);
+      if (product && !isKnownPublicOffering(normalizedProduct)) {
+        return buildUnknownPublicProductResponse(product);
+      }
+
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
-
-      if (!["dbr", "dwt", "ddv", "mrz", "mds"].includes(normalizedProduct)) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Unknown product "${product}". Use dbr, dwt, ddv, mrz, or mds.` }]
-        };
-      }
 
       const policy = ensureLatestMajor({
         product: normalizedProduct,

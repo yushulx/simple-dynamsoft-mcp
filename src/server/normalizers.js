@@ -115,7 +115,7 @@ const platformAliases = {
 
 const SERVER_PLATFORMS = new Set(["python", "cpp", "java", "dotnet", "nodejs"]);
 const WEB_FRAMEWORK_TAG_ALIASES = {
-  react: ["react", "react-vite"]
+  react: ["react", "react-vite", "react-hooks"]
 };
 
 const languageAliases = {
