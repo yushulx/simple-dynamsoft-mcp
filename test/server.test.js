@@ -746,6 +746,40 @@ await test('resolve_version for MDS without edition only shows supported public 
     assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MDS server edition');
 });
 
+await test('resolve_version lists supported editions for unsupported MRZ edition requests', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mrz', edition: 'server' }
+        }
+    });
+
+    assert(response.result && response.result.isError, 'Should return an error for unsupported MRZ editions');
+    const text = response.result.content[0].text;
+    assert(text.includes('Edition "server" is not hosted by this MCP server.'), 'Should identify the unsupported MRZ edition');
+    assert(/Supported editions: web, mobile/i.test(text), 'Should list supported MRZ editions');
+});
+
+await test('resolve_version lists supported editions for unsupported MDS edition requests', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mds', edition: 'mobile' }
+        }
+    });
+
+    assert(response.result && response.result.isError, 'Should return an error for unsupported MDS editions');
+    const text = response.result.content[0].text;
+    assert(text.includes('Edition "mobile" is not hosted by this MCP server.'), 'Should identify the unsupported MDS edition');
+    assert(/Supported editions: web/i.test(text), 'Should list supported MDS editions');
+});
+
 await test('resolve_version rejects old major version', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
@@ -1021,6 +1055,23 @@ await test('list_samples returns platform-aware redirect links for unsupported M
     const text = response.result.content[0].text;
     assert(text.includes('https://github.com/Dynamsoft/capture-vision-maui-samples'), 'Should include MAUI sample repo');
     assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link');
+});
+
+await test('list_samples returns platform-aware redirect links for unsupported MDS mobile spm scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'spm' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/iOS'), 'Should map SPM redirects to the iOS mobile samples path');
+    assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link for SPM');
 });
 
 await test('list_samples returns MRZ web framework sample ids from the dedicated URI tail', async () => {

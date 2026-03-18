@@ -9,6 +9,7 @@ const SERVER_SAMPLE_REPOS = {
 const MOBILE_SAMPLE_REPOS = {
   android: "https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/Android",
   ios: "https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/iOS",
+  spm: "https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/iOS",
   "react-native": "https://github.com/Dynamsoft/capture-vision-react-native-samples",
   flutter: "https://github.com/Dynamsoft/capture-vision-flutter-samples",
   maui: "https://github.com/Dynamsoft/capture-vision-maui-samples"
@@ -59,7 +60,7 @@ function buildUnsupportedPublicScopeResponse(product, edition, platform) {
     content: [{
       type: "text",
       text: [
-        `${redirect.label} ${scope} is served as reference links in the public MCP contract.`,
+        `${redirect.label} ${scope} is not indexed in this MCP yet. Use these official links instead.`,
         "Reference links:",
         `- Docs: ${redirect.docsUrl}`,
         `- Samples: ${redirect.samplesUrl}`

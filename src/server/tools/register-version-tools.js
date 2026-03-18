@@ -18,6 +18,7 @@ export function registerVersionTools({
           { key: "mobile", name: "Mobile", version: LATEST_VERSIONS.dcv.mobile }
         ]
       : [{ key: "web", name: "Web", version: LATEST_VERSIONS.dcv.web }];
+    const supportedEditionKeys = supportedEditions.map((entry) => entry.key).join(", ");
 
     if (!edition) {
       const lines = [
@@ -34,7 +35,7 @@ export function registerVersionTools({
     if (!supportedEdition) {
       return {
         isError: true,
-        content: [{ type: "text", text: `Edition \"${edition}\" is not hosted by this MCP server.` }]
+        content: [{ type: "text", text: `Edition "${edition}" is not hosted by this MCP server. Supported editions: ${supportedEditionKeys}.` }]
       };
     }
 
