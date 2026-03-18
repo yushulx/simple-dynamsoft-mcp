@@ -6,18 +6,26 @@ import {
   discoverMrzWebSamples
 } from "../../src/server/resource-index/samples.js";
 
+const TEST_LATEST_VERSIONS = {
+  dcv: { core: "3.2.5000", web: "3.2.5000", mobile: "3.4.1000", server: "3.4.1000" },
+  dbr: { mobile: "10.4.2000", web: "10.4.2000", server: "10.4.2000" },
+  dwt: { web: "19.0.0" },
+  ddv: { web: "3.0.0" }
+};
+
+const TEST_LATEST_MAJOR = { dcv: 3, dbr: 10, dwt: 19, ddv: 3 };
+
+function buildExpectedSampleUri(product, version, group, name) {
+  return `sample://${product}/web/web/${version}/${group}/${name}`;
+}
+
 function createBuilderArgs(addResourceToIndex, overrides = {}) {
   return {
     addResourceToIndex,
     buildIndexData: () => ({}),
     buildVersionPolicyText: () => "policy",
-    LATEST_VERSIONS: {
-      dcv: { core: "3.2.5000", web: "3.2.5000", mobile: "3.4.1000", server: "3.4.1000" },
-      dbr: { mobile: "10.4.2000", web: "10.4.2000", server: "10.4.2000" },
-      dwt: { web: "19.0.0" },
-      ddv: { web: "3.0.0" }
-    },
-    LATEST_MAJOR: { dcv: 3, dbr: 10, dwt: 19, ddv: 3 },
+    LATEST_VERSIONS: TEST_LATEST_VERSIONS,
+    LATEST_MAJOR: TEST_LATEST_MAJOR,
     dcvCoreDocs: [],
     dcvWebDocs: [],
     mrzWebDocs: [],
@@ -134,19 +142,14 @@ test("buildResourceIndex publishes richer public product-selection guidance with
 
 test("buildIndexData public product selection omits deprecated DCV metadata", () => {
   const indexData = buildIndexData({
-    LATEST_VERSIONS: {
-      dcv: { core: "3.2.5000", web: "3.2.5000", mobile: "3.4.1000", server: "3.4.1000" },
-      dbr: { mobile: "10.4.2000", web: "10.4.2000", server: "10.4.2000" },
-      dwt: { web: "19.0.0" },
-      ddv: { web: "3.0.0" }
-    },
-    LATEST_MAJOR: { dcv: 3, dbr: 10, dwt: 19, ddv: 3 },
+    LATEST_VERSIONS: TEST_LATEST_VERSIONS,
+    LATEST_MAJOR: TEST_LATEST_MAJOR,
     resourceIndex: [
-      { type: "doc", product: "dbr", edition: "web", platform: "web", version: "10.4.2000" },
-      { type: "doc", product: "dwt", edition: "web", platform: "web", version: "19.0.0" },
-      { type: "doc", product: "ddv", edition: "web", platform: "web", version: "3.0.0" },
-      { type: "doc", product: "mrz", edition: "web", platform: "web", version: "3.2.5000" },
-      { type: "doc", product: "mds", edition: "web", platform: "web", version: "3.2.5000" }
+      { type: "doc", product: "dbr", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dbr.web },
+      { type: "doc", product: "dwt", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dwt.web },
+      { type: "doc", product: "ddv", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.ddv.web },
+      { type: "doc", product: "mrz", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dcv.web },
+      { type: "doc", product: "mds", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dcv.web }
     ]
   });
 
@@ -206,8 +209,8 @@ test("buildResourceIndex indexes mrz web docs and samples from dedicated MRZ roo
   assert.equal(mrzSamples.length, 2);
   assert.equal(mrzDocs[0].uri.startsWith("doc://mrz/web/"), true);
   assert.deepEqual(mrzSamples.map((entry) => entry.uri).sort(), [
-    "sample://mrz/web/web/3.2.5000/frameworks/angular",
-    "sample://mrz/web/web/3.2.5000/root/hello-world"
+    buildExpectedSampleUri("mrz", TEST_LATEST_VERSIONS.dcv.web, "frameworks", "angular"),
+    buildExpectedSampleUri("mrz", TEST_LATEST_VERSIONS.dcv.web, "root", "hello-world")
   ]);
 });
 
@@ -237,8 +240,8 @@ test("buildResourceIndex indexes mds web docs and samples from dedicated MDS roo
   assert.equal(mdsSamples.length, 2);
   assert.equal(mdsDocs[0].uri.startsWith("doc://mds/web/"), true);
   assert.deepEqual(mdsSamples.map((entry) => entry.uri).sort(), [
-    "sample://mds/web/web/3.2.5000/frameworks/react-hooks",
-    "sample://mds/web/web/3.2.5000/scenarios/scanning-to-pdf"
+    buildExpectedSampleUri("mds", TEST_LATEST_VERSIONS.dcv.web, "frameworks", "react-hooks"),
+    buildExpectedSampleUri("mds", TEST_LATEST_VERSIONS.dcv.web, "scenarios", "scanning-to-pdf")
   ]);
 });
 
