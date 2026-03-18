@@ -3,10 +3,11 @@
 MCP server that helps AI assistants generate accurate code and guidance for Dynamsoft SDKs.
 
 Supported products:
-- Dynamsoft Capture Vision (DCV)
-- Dynamsoft Barcode Reader (DBR): mobile, web, server/desktop
 - Dynamic Web TWAIN (DWT)
 - Dynamsoft Document Viewer (DDV)
+- Dynamsoft Barcode Reader (DBR): mobile, web, server/desktop
+- Dynamsoft MRZ Scanner (MRZ)
+- Dynamsoft Mobile Scanner (MDS)
 
 Default transport is `stdio`. Native Streamable HTTP is also supported at `/mcp`.
 
