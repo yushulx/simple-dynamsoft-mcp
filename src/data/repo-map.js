@@ -88,18 +88,35 @@ const REPO_MAP = {
   },
   mrz: {
     docs: {
-      web: ["documentation/mrz-scanner-docs-js"]
+      web: ["documentation/mrz-scanner-docs-js"],
+      any: [
+        "documentation/mrz-scanner-docs-js",
+        "documentation/capture-vision-docs-mobile"
+      ]
     },
     samples: {
-      web: ["samples/mrz-scanner-javascript"]
+      web: ["samples/mrz-scanner-javascript"],
+      mobile: [
+        "samples/dynamsoft-capture-vision-react-native",
+        "samples/dynamsoft-capture-vision-flutter",
+        "samples/dynamsoft-capture-vision-mobile"
+      ],
+      any: [
+        "samples/mrz-scanner-javascript",
+        "samples/dynamsoft-capture-vision-react-native",
+        "samples/dynamsoft-capture-vision-flutter",
+        "samples/dynamsoft-capture-vision-mobile"
+      ]
     }
   },
   mds: {
     docs: {
-      web: ["documentation/mobile-document-scanner-docs-js"]
+      web: ["documentation/mobile-document-scanner-docs-js"],
+      any: ["documentation/mobile-document-scanner-docs-js"]
     },
     samples: {
-      web: ["samples/document-scanner-javascript"]
+      web: ["samples/document-scanner-javascript"],
+      any: ["samples/document-scanner-javascript"]
     }
   },
   dwt: {

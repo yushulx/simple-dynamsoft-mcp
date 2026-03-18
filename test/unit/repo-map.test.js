@@ -10,6 +10,9 @@ const manifest = {
     { path: "documentation/mrz-scanner-docs-js" },
     { path: "samples/dynamsoft-barcode-reader" },
     { path: "samples/dynamsoft-capture-vision-javascript" },
+    { path: "samples/dynamsoft-capture-vision-mobile" },
+    { path: "samples/dynamsoft-capture-vision-react-native" },
+    { path: "samples/dynamsoft-capture-vision-flutter" },
     { path: "samples/document-scanner-javascript" },
     { path: "samples/mrz-scanner-javascript" },
     { path: "documentation/web-twain-docs" },
@@ -61,6 +64,20 @@ test("resolveRepoPathsForScopes maps MRZ web samples to samples/mrz-scanner-java
   assert.deepEqual(paths, ["samples/mrz-scanner-javascript"]);
 });
 
+test("resolveRepoPathsForScopes maps MRZ any-scope samples to dedicated web and supported mobile repos", () => {
+  const paths = resolveRepoPathsForScopes(
+    [{ product: "mrz", edition: "", type: "sample" }],
+    manifest
+  );
+
+  assert.deepEqual(paths, [
+    "samples/dynamsoft-capture-vision-flutter",
+    "samples/dynamsoft-capture-vision-mobile",
+    "samples/dynamsoft-capture-vision-react-native",
+    "samples/mrz-scanner-javascript"
+  ]);
+});
+
 test("resolveRepoPathsForScopes maps MDS web docs to documentation/mobile-document-scanner-docs-js", () => {
   const paths = resolveRepoPathsForScopes(
     [{ product: "mds", edition: "web", type: "doc" }],
@@ -73,6 +90,15 @@ test("resolveRepoPathsForScopes maps MDS web docs to documentation/mobile-docume
 test("resolveRepoPathsForScopes maps MDS web samples to samples/document-scanner-javascript", () => {
   const paths = resolveRepoPathsForScopes(
     [{ product: "mds", edition: "web", type: "sample" }],
+    manifest
+  );
+
+  assert.deepEqual(paths, ["samples/document-scanner-javascript"]);
+});
+
+test("resolveRepoPathsForScopes maps MDS any-scope samples to dedicated web repo only", () => {
+  const paths = resolveRepoPathsForScopes(
+    [{ product: "mds", edition: "", type: "sample" }],
     manifest
   );
 
