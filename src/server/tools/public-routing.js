@@ -6,8 +6,20 @@ const SERVER_SAMPLE_REPOS = {
   nodejs: "https://github.com/Dynamsoft/capture-vision-nodejs-samples"
 };
 
+const MOBILE_SAMPLE_REPOS = {
+  android: "https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/Android",
+  ios: "https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/iOS",
+  "react-native": "https://github.com/Dynamsoft/capture-vision-react-native-samples",
+  flutter: "https://github.com/Dynamsoft/capture-vision-flutter-samples",
+  maui: "https://github.com/Dynamsoft/capture-vision-maui-samples"
+};
+
 function getPublicServerSamplesUrl(platform) {
   return SERVER_SAMPLE_REPOS[platform] || SERVER_SAMPLE_REPOS.python;
+}
+
+function getPublicMobileSamplesUrl(platform) {
+  return MOBILE_SAMPLE_REPOS[platform] || MOBILE_SAMPLE_REPOS.android;
 }
 
 function getUnsupportedPublicScopeRedirect(product, edition, platform) {
@@ -20,11 +32,10 @@ function getUnsupportedPublicScopeRedirect(product, edition, platform) {
   }
 
   if (product === "mds" && edition === "mobile") {
-    const mobilePath = platform === "ios" ? "iOS" : "Android";
     return {
       label: "MDS",
       docsUrl: "https://www.dynamsoft.com/capture-vision/docs/mobile/",
-      samplesUrl: `https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/${mobilePath}`
+      samplesUrl: getPublicMobileSamplesUrl(platform)
     };
   }
 

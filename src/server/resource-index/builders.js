@@ -328,6 +328,9 @@ function buildIndexData({
       const platforms = new Set();
       if (entry.platform) {
         platforms.add(entry.platform);
+        if (entry.edition === "web" && entry.platform === "web") {
+          platforms.add("js");
+        }
       }
       if (entry.edition === "web" && Array.isArray(entry.tags)) {
         for (const tag of entry.tags) {

@@ -244,6 +244,7 @@ await test('get_index returns only public product offerings', async () => {
     assert(parsed.products.dbr.editions.server, 'Should keep DBR server edition');
     assert(!parsed.products.dbr.editions.python, 'Should not expose separate DBR python edition');
     assert(parsed.products.dbr.editions.server.platforms.includes('python'), 'Should keep python under DBR server platforms');
+    assert(parsed.products.dbr.editions.web.platforms.includes('js'), 'Should preserve js alias for web offerings');
     assert(parsed.products.mrz.editions.web.platforms.includes('react'), 'Should preserve MRZ web framework platforms');
     assert(parsed.products.mds.editions.web.platforms.includes('react'), 'Should preserve MDS web framework platforms');
 });
@@ -968,6 +969,57 @@ await test('list_samples returns platform-aware redirect links for unsupported M
     assert(/MDS/i.test(text), 'Should identify the MDS scope');
     assert(text.includes('https://www.dynamsoft.com/capture-vision/docs/mobile/'), 'Should include mobile docs link');
     assert(text.includes('https://github.com/Dynamsoft/capture-vision-mobile-samples/tree/main/iOS'), 'Should include iOS mobile samples link');
+    assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link');
+});
+
+await test('list_samples returns platform-aware redirect links for unsupported MDS mobile react-native scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'react-native' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-react-native-samples'), 'Should include React Native sample repo');
+    assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link');
+});
+
+await test('list_samples returns platform-aware redirect links for unsupported MDS mobile flutter scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'flutter' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-flutter-samples'), 'Should include Flutter sample repo');
+    assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link');
+});
+
+await test('list_samples returns platform-aware redirect links for unsupported MDS mobile maui scope', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'list_samples',
+            arguments: { product: 'mds', edition: 'mobile', platform: 'maui' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('https://github.com/Dynamsoft/capture-vision-maui-samples'), 'Should include MAUI sample repo');
     assert(!text.includes('/Android'), 'Should not fall back to Android mobile samples link');
 });
 

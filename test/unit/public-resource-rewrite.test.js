@@ -194,7 +194,7 @@ test("buildIndexData folds DBR python entries into server and preserves web fram
   assert.equal(indexData.products.dbr.editions.python, undefined, "Should not expose a separate python edition");
   assert.ok(indexData.products.dbr.editions.server, "Should keep DBR python samples under server");
   assert.deepEqual(indexData.products.dbr.editions.server.platforms, ["python"]);
-  assert.deepEqual(indexData.products.dbr.editions.web.platforms, ["react", "vue", "web"]);
+  assert.deepEqual(indexData.products.dbr.editions.web.platforms, ["js", "react", "vue", "web"]);
 });
 
 test("discoverMrzWebSamples ignores nested asset folders and route index pages", () => {
