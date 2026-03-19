@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { detectFromPackageJson, normalizeVersion, sdkVersionSources } from "./sdk-version-sources.mjs";
 
 const projectRoot = process.cwd();
 const metadataPath = join(projectRoot, "data", "metadata", "dynamsoft_sdks.json");
@@ -31,16 +32,6 @@ function walkFiles(rootDir, fileFilter) {
 
   walk(rootDir);
   return files.sort((a, b) => a.localeCompare(b));
-}
-
-function normalizeVersion(version) {
-  const parts = String(version)
-    .trim()
-    .split(".")
-    .map((part) => Number.parseInt(part, 10))
-    .filter((part) => Number.isInteger(part) && part >= 0);
-  if (parts.length < 2) return "";
-  return parts.join(".");
 }
 
 function compareVersion(a, b) {
@@ -172,6 +163,15 @@ function detectFromStrategies(strategies, source, resolvedVersions, metadata) {
       continue;
     }
 
+    if (typeof strategy === "object" && strategy.type === "package-json") {
+      const result = detectFromPackageJson(projectRoot, strategy.file || "package.json");
+      attempts.push(`package-json(${strategy.file || "package.json"}): ${result.detail}`);
+      if (result.version) {
+        return { version: result.version, strategy: `package-json(${strategy.file || "package.json"})`, attempts };
+      }
+      continue;
+    }
+
     if (typeof strategy === "object" && strategy.type === "max-of-sdks") {
       const candidates = [];
       for (const sdkId of strategy.sdkIds || []) {
@@ -190,54 +190,6 @@ function detectFromStrategies(strategies, source, resolvedVersions, metadata) {
 
   return { version: "", strategy: "", attempts };
 }
-
-const sdkVersionSources = [
-  {
-    sdkId: "dbr-web",
-    docsPath: "data/documentation/barcode-reader-docs-js",
-    strategies: ["release-note-indexes"]
-  },
-  {
-    sdkId: "dbr-mobile",
-    docsPath: "data/documentation/barcode-reader-docs-mobile",
-    strategies: ["release-note-indexes"]
-  },
-  {
-    sdkId: "dbr-server",
-    docsPath: "data/documentation/barcode-reader-docs-server",
-    strategies: ["release-note-indexes"]
-  },
-  {
-    sdkId: "dwt",
-    docsPath: "data/documentation/web-twain-docs",
-    strategies: [{ type: "latest-version-js", file: "assets/js/setLatestVersion.js" }]
-  },
-  {
-    sdkId: "ddv",
-    docsPath: "data/documentation/document-viewer-docs",
-    strategies: ["product-version-yml", "release-note-indexes"]
-  },
-  {
-    sdkId: "dcv-web",
-    docsPath: "data/documentation/capture-vision-docs-js",
-    strategies: ["release-note-indexes"]
-  },
-  {
-    sdkId: "dcv-mobile",
-    docsPath: "data/documentation/capture-vision-docs-mobile",
-    strategies: ["release-note-indexes"]
-  },
-  {
-    sdkId: "dcv-server",
-    docsPath: "data/documentation/capture-vision-docs-server",
-    strategies: ["release-note-indexes"]
-  },
-  {
-    sdkId: "dcv-core",
-    docsPath: "data/documentation/capture-vision-docs",
-    strategies: ["product-version-yml", { type: "max-of-sdks", sdkIds: ["dcv-server", "dcv-mobile", "dcv-web"] }]
-  }
-];
 
 if (!existsSync(metadataPath)) {
   console.error(`[version-sync] metadata file not found: ${metadataPath}`);

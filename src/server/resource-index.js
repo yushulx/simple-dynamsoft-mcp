@@ -269,6 +269,8 @@ const dcvMobileSdk = registry.sdks["dcv-mobile"];
 const dcvWebSdk = registry.sdks["dcv-web"];
 const dcvServerSdk = registry.sdks["dcv-server"];
 const dcvCoreSdk = registry.sdks["dcv-core"];
+const mrzWebSdk = registry.sdks["mrz-web"];
+const mdsWebSdk = registry.sdks["mds-web"];
 
 const LATEST_VERSIONS = {
   dbr: {
@@ -288,6 +290,12 @@ const LATEST_VERSIONS = {
   },
   ddv: {
     web: registry.sdks.ddv.version
+  },
+  mrz: {
+    web: mrzWebSdk.version
+  },
+  mds: {
+    web: mdsWebSdk.version
   }
 };
 
@@ -295,7 +303,9 @@ const LATEST_MAJOR = {
   dbr: parseMajorVersion(registry.sdks["dbr-mobile"].version),
   dcv: parseMajorVersion(dcvMobileSdk.version),
   dwt: parseMajorVersion(registry.sdks.dwt.version),
-  ddv: parseMajorVersion(registry.sdks.ddv.version)
+  ddv: parseMajorVersion(registry.sdks.ddv.version),
+  mrz: parseMajorVersion(mrzWebSdk.version),
+  mds: parseMajorVersion(mdsWebSdk.version)
 };
 
 setWebFrameworkPlatformsGetter(getWebFrameworkPlatforms);

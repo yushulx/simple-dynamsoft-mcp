@@ -303,7 +303,7 @@ function buildIndexData({
 }) {
   if (Array.isArray(resourceIndex) && resourceIndex.length > 0) {
     const products = Object.fromEntries(PUBLIC_OFFERING_PRODUCTS.map((product) => [product, {
-      latestMajor: product === "mrz" || product === "mds" ? LATEST_MAJOR.dcv : LATEST_MAJOR[product],
+      latestMajor: LATEST_MAJOR[product],
       editions: {}
     }]));
 
@@ -312,9 +312,10 @@ function buildIndexData({
       if (entry.type !== "doc" && entry.type !== "sample") continue;
 
       const editionName = entry.edition === "python" ? "server" : (entry.edition || "web");
+      if (entry.product === "mrz" && editionName === "mobile") continue;
       if (!products[entry.product].editions[editionName]) {
         const version = entry.version
-          || ((entry.product === "mrz" || entry.product === "mds") ? LATEST_VERSIONS.dcv[editionName] : LATEST_VERSIONS[entry.product]?.[editionName])
+          || LATEST_VERSIONS[entry.product]?.[editionName]
           || "";
         products[entry.product].editions[editionName] = {
           version,
@@ -403,6 +404,8 @@ function buildIndexData({
   const dbrServerVersion = LATEST_VERSIONS.dbr.server;
   const dwtVersion = LATEST_VERSIONS.dwt.web;
   const ddvVersion = LATEST_VERSIONS.ddv.web;
+  const mrzWebVersion = LATEST_VERSIONS.mrz.web;
+  const mdsWebVersion = LATEST_VERSIONS.mds.web;
 
   const dcvWebSamples = discoverDcvWebSamples();
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
@@ -510,10 +513,10 @@ function buildIndexData({
         }
       },
       mrz: {
-        latestMajor: LATEST_MAJOR.dcv,
+        latestMajor: LATEST_MAJOR.mrz,
         editions: {
           web: {
-            version: dcvWebVersion,
+            version: mrzWebVersion,
             platforms: ["js", ...mrzWebFrameworks],
             docCount: mrzWebDocs.length,
             sampleCount: countSamples(mrzWebSamples)
@@ -521,10 +524,10 @@ function buildIndexData({
         }
       },
       mds: {
-        latestMajor: LATEST_MAJOR.dcv,
+        latestMajor: LATEST_MAJOR.mds,
         editions: {
           web: {
-            version: dcvWebVersion,
+            version: mdsWebVersion,
             platforms: ["js", ...mdsWebFrameworks],
             docCount: mdsWebDocs.length,
             sampleCount: countSamples(mdsWebSamples)
@@ -635,6 +638,8 @@ function buildResourceIndex({
   const dbrServerVersion = LATEST_VERSIONS.dbr.server;
   const dwtVersion = LATEST_VERSIONS.dwt.web;
   const ddvVersion = LATEST_VERSIONS.ddv.web;
+  const mrzWebVersion = LATEST_VERSIONS.mrz.web;
+  const mdsWebVersion = LATEST_VERSIONS.mds.web;
 
   addMarkdownDocResources({
     addResourceToIndex,
@@ -671,8 +676,8 @@ function buildResourceIndex({
     uriPrefix: "doc://mrz/web",
     product: "mrz",
     edition: "web",
-    version: dcvWebVersion,
-    majorVersion: LATEST_MAJOR.dcv,
+    version: mrzWebVersion,
+    majorVersion: LATEST_MAJOR.mrz,
     defaultPlatform: "web",
     defaultSummary: "Dynamsoft MRZ Scanner Web documentation",
     baseTags: ["doc", "mrz", "web"]
@@ -685,8 +690,8 @@ function buildResourceIndex({
     uriPrefix: "doc://mds/web",
     product: "mds",
     edition: "web",
-    version: dcvWebVersion,
-    majorVersion: LATEST_MAJOR.dcv,
+    version: mdsWebVersion,
+    majorVersion: LATEST_MAJOR.mds,
     defaultPlatform: "web",
     defaultSummary: "Dynamsoft Mobile Document Scanner Web documentation",
     baseTags: ["doc", "mds", "web"]
@@ -761,13 +766,13 @@ function buildResourceIndex({
     for (const sampleName of samples) {
       addResourceToIndex({
         id: `mrz-web-${category}-${sampleName}`,
-        uri: `sample://mrz/web/web/${dcvWebVersion}/${category}/${sampleName}`,
+        uri: `sample://mrz/web/web/${mrzWebVersion}/${category}/${sampleName}`,
         type: "sample",
         product: "mrz",
         edition: "web",
         platform: "web",
-        version: dcvWebVersion,
-        majorVersion: LATEST_MAJOR.dcv,
+        version: mrzWebVersion,
+        majorVersion: LATEST_MAJOR.mrz,
         title: `MRZ sample: ${sampleName} (${category})`,
         summary: `MRZ web sample ${category}/${sampleName}.`,
         mimeType: "text/plain",
@@ -788,13 +793,13 @@ function buildResourceIndex({
     for (const sampleName of samples) {
       addResourceToIndex({
         id: `mds-web-${category}-${sampleName}`,
-        uri: `sample://mds/web/web/${dcvWebVersion}/${category}/${sampleName}`,
+        uri: `sample://mds/web/web/${mdsWebVersion}/${category}/${sampleName}`,
         type: "sample",
         product: "mds",
         edition: "web",
         platform: "web",
-        version: dcvWebVersion,
-        majorVersion: LATEST_MAJOR.dcv,
+        version: mdsWebVersion,
+        majorVersion: LATEST_MAJOR.mds,
         title: `MDS sample: ${sampleName} (${category})`,
         summary: `MDS web sample ${category}/${sampleName}.`,
         mimeType: "text/plain",

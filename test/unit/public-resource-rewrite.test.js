@@ -10,10 +10,12 @@ const TEST_LATEST_VERSIONS = {
   dcv: { core: "3.2.5000", web: "3.2.5000", mobile: "3.4.1000", server: "3.4.1000" },
   dbr: { mobile: "10.4.2000", web: "10.4.2000", server: "10.4.2000" },
   dwt: { web: "19.0.0" },
-  ddv: { web: "3.0.0" }
+  ddv: { web: "3.0.0" },
+  mrz: { web: "3.1.0" },
+  mds: { web: "1.4.2" }
 };
 
-const TEST_LATEST_MAJOR = { dcv: 3, dbr: 10, dwt: 19, ddv: 3 };
+const TEST_LATEST_MAJOR = { dcv: 3, dbr: 10, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
 
 function buildExpectedSampleUri(product, version, group, name) {
   return `sample://${product}/web/web/${version}/${group}/${name}`;
@@ -159,6 +161,24 @@ test("buildIndexData public product selection omits deprecated DCV metadata", ()
   assert.equal(JSON.stringify(indexData.productSelection).includes("Capture Vision"), false, "Should not expose Capture Vision wording");
 });
 
+test("buildIndexData uses public MRZ and MDS web versions and hides MRZ mobile from the compact index", () => {
+  const indexData = buildIndexData({
+    LATEST_VERSIONS: TEST_LATEST_VERSIONS,
+    LATEST_MAJOR: TEST_LATEST_MAJOR,
+    resourceIndex: [
+      { type: "doc", product: "mrz", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.mrz.web },
+      { type: "sample", product: "mrz", edition: "mobile", platform: "android", version: TEST_LATEST_VERSIONS.dcv.mobile },
+      { type: "doc", product: "mds", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.mds.web }
+    ]
+  });
+
+  assert.equal(indexData.products.mrz.editions.web.version, TEST_LATEST_VERSIONS.mrz.web);
+  assert.equal(indexData.products.mds.editions.web.version, TEST_LATEST_VERSIONS.mds.web);
+  assert.equal(indexData.products.mrz.editions.mobile, undefined, "Should not expose MRZ mobile in the compact index");
+  assert.equal(indexData.products.mrz.latestMajor, TEST_LATEST_MAJOR.mrz, "Should derive MRZ latestMajor from the public web version");
+  assert.equal(indexData.products.mds.latestMajor, TEST_LATEST_MAJOR.mds, "Should derive MDS latestMajor from the public web version");
+});
+
 test("buildIndexData folds DBR python entries into server and preserves web frameworks", () => {
   const indexData = buildIndexData({
     LATEST_VERSIONS: TEST_LATEST_VERSIONS,
@@ -246,10 +266,13 @@ test("buildResourceIndex indexes mrz web docs and samples from dedicated MRZ roo
   assert.equal(mrzDocs.length, 1);
   assert.equal(mrzSamples.length, 2);
   assert.equal(mrzDocs[0].uri.startsWith("doc://mrz/web/"), true);
+  assert.equal(mrzDocs[0].version, TEST_LATEST_VERSIONS.mrz.web);
   assert.deepEqual(mrzSamples.map((entry) => entry.uri).sort(), [
-    buildExpectedSampleUri("mrz", TEST_LATEST_VERSIONS.dcv.web, "frameworks", "angular"),
-    buildExpectedSampleUri("mrz", TEST_LATEST_VERSIONS.dcv.web, "root", "hello-world")
+    buildExpectedSampleUri("mrz", TEST_LATEST_VERSIONS.mrz.web, "frameworks", "angular"),
+    buildExpectedSampleUri("mrz", TEST_LATEST_VERSIONS.mrz.web, "root", "hello-world")
   ]);
+  assert.ok(mrzSamples.every((entry) => entry.version === TEST_LATEST_VERSIONS.mrz.web));
+  assert.ok(mrzSamples.every((entry) => entry.majorVersion === TEST_LATEST_MAJOR.mrz));
 });
 
 test("buildResourceIndex indexes mds web docs and samples from dedicated MDS roots", () => {
@@ -277,10 +300,13 @@ test("buildResourceIndex indexes mds web docs and samples from dedicated MDS roo
   assert.equal(mdsDocs.length, 1);
   assert.equal(mdsSamples.length, 2);
   assert.equal(mdsDocs[0].uri.startsWith("doc://mds/web/"), true);
+  assert.equal(mdsDocs[0].version, TEST_LATEST_VERSIONS.mds.web);
   assert.deepEqual(mdsSamples.map((entry) => entry.uri).sort(), [
-    buildExpectedSampleUri("mds", TEST_LATEST_VERSIONS.dcv.web, "frameworks", "react-hooks"),
-    buildExpectedSampleUri("mds", TEST_LATEST_VERSIONS.dcv.web, "scenarios", "scanning-to-pdf")
+    buildExpectedSampleUri("mds", TEST_LATEST_VERSIONS.mds.web, "frameworks", "react-hooks"),
+    buildExpectedSampleUri("mds", TEST_LATEST_VERSIONS.mds.web, "scenarios", "scanning-to-pdf")
   ]);
+  assert.ok(mdsSamples.every((entry) => entry.version === TEST_LATEST_VERSIONS.mds.web));
+  assert.ok(mdsSamples.every((entry) => entry.majorVersion === TEST_LATEST_MAJOR.mds));
 });
 
 test("buildResourceIndex does not reclassify dcv web docs into public mrz or mds web entries", () => {

@@ -12,18 +12,13 @@ export function registerVersionTools({
 }) {
   function buildPublicDcvVersionResponse(product, edition, platform) {
     const label = product === "mrz" ? "MRZ" : "MDS";
-    const supportedEditions = product === "mrz"
-      ? [
-          { key: "web", name: "Web", version: LATEST_VERSIONS.dcv.web },
-          { key: "mobile", name: "Mobile", version: LATEST_VERSIONS.dcv.mobile }
-        ]
-      : [{ key: "web", name: "Web", version: LATEST_VERSIONS.dcv.web }];
+    const supportedEditions = [{ key: "web", name: "Web", version: LATEST_VERSIONS[product].web }];
     const supportedEditionKeys = supportedEditions.map((entry) => entry.key).join(", ");
 
     if (!edition) {
       const lines = [
         `# ${label} Version Resolution`,
-        `- Latest major: v${LATEST_MAJOR.dcv}`,
+        `- Latest major: v${LATEST_MAJOR[product]}`,
         ...supportedEditions.map((entry) => `- ${entry.name}: ${entry.version}`),
         "",
         "Specify edition/platform to resolve a single version."
@@ -44,7 +39,7 @@ export function registerVersionTools({
       `# ${label} Version Resolution`,
       `- Edition: ${edition}`,
       displayPlatform ? `- Platform: ${displayPlatform}` : "",
-      `- Latest major: v${LATEST_MAJOR.dcv}`,
+      `- Latest major: v${LATEST_MAJOR[product]}`,
       `- Resolved version: ${supportedEdition.version}`
     ].filter(Boolean);
 

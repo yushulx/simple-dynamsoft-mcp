@@ -245,6 +245,11 @@ await test('get_index returns only public product offerings', async () => {
     assert(!parsed.products.dbr.editions.python, 'Should not expose separate DBR python edition');
     assert(parsed.products.dbr.editions.server.platforms.includes('python'), 'Should keep python under DBR server platforms');
     assert(parsed.products.dbr.editions.web.platforms.includes('js'), 'Should preserve js alias for web offerings');
+    assert(parsed.products.mrz.editions.web.version === '3.1.0', 'Should expose the public MRZ web version in the compact index');
+    assert(parsed.products.mds.editions.web.version === '1.4.2', 'Should expose the public MDS web version in the compact index');
+    assert(!parsed.products.mrz.editions.mobile, 'Should hide unsupported MRZ mobile from the compact index');
+    assert(parsed.products.mrz.latestMajor === 3, 'MRZ latestMajor should follow the public MRZ web version');
+    assert(parsed.products.mds.latestMajor === 1, 'MDS latestMajor should follow the public MDS web version');
     assert(parsed.products.mrz.editions.web.platforms.includes('react'), 'Should preserve MRZ web framework platforms');
     assert(parsed.products.mds.editions.web.platforms.includes('react'), 'Should preserve MDS web framework platforms');
 });
@@ -723,7 +728,8 @@ await test('resolve_version for MRZ without edition only shows supported public 
     const text = response.result.content[0].text;
     assert(text.includes('MRZ Version Resolution'), 'Should include MRZ resolution');
     assert(text.includes('Web:'), 'Should include supported MRZ web edition');
-    assert(text.includes('Mobile:'), 'Should include supported MRZ mobile edition');
+    assert(text.includes('Web: 3.1.0'), 'Should use the public MRZ web version from metadata');
+    assert(!text.includes('Mobile:'), 'Should not advertise unsupported MRZ mobile edition');
     assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MRZ server edition');
 });
 
@@ -741,26 +747,60 @@ await test('resolve_version for MDS without edition only shows supported public 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('MDS Version Resolution'), 'Should include MDS resolution');
-    assert(text.includes('Web:'), 'Should include supported MDS web edition');
+    assert(text.includes('Web: 1.4.2'), 'Should use the public MDS web version from metadata');
     assert(!text.includes('Mobile:'), 'Should not advertise unsupported MDS mobile edition');
     assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MDS server edition');
 });
 
-await test('resolve_version lists supported editions for unsupported MRZ edition requests', async () => {
+await test('resolve_version for MRZ web uses the public MRZ web version', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
         params: {
             name: 'resolve_version',
-            arguments: { product: 'mrz', edition: 'server' }
+            arguments: { product: 'mrz', edition: 'web' }
         }
     });
 
-    assert(response.result && response.result.isError, 'Should return an error for unsupported MRZ editions');
+    assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    assert(text.includes('Edition "server" is not hosted by this MCP server.'), 'Should identify the unsupported MRZ edition');
-    assert(/Supported editions: web, mobile/i.test(text), 'Should list supported MRZ editions');
+    assert(text.includes('MRZ Version Resolution'), 'Should include MRZ resolution');
+    assert(text.includes('Resolved version: 3.1.0'), 'Should resolve to the public MRZ web version from metadata');
+});
+
+await test('resolve_version for MDS web uses the public MDS web version', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mds', edition: 'web' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    const text = response.result.content[0].text;
+    assert(text.includes('MDS Version Resolution'), 'Should include MDS resolution');
+    assert(text.includes('Resolved version: 1.4.2'), 'Should resolve to the public MDS web version from metadata');
+});
+
+await test('resolve_version lists supported editions for unsupported MRZ mobile requests', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'resolve_version',
+            arguments: { product: 'mrz', edition: 'mobile' }
+        }
+    });
+
+    assert(response.result && response.result.isError, 'Should return an error for unsupported MRZ mobile');
+    const text = response.result.content[0].text;
+    assert(text.includes('Edition "mobile" is not hosted by this MCP server.'), 'Should identify the unsupported MRZ mobile edition');
+    assert(/Supported editions: web/i.test(text), 'Should list only the supported public MRZ editions');
 });
 
 await test('resolve_version lists supported editions for unsupported MDS edition requests', async () => {

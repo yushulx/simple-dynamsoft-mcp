@@ -520,6 +520,48 @@
           }
         }
       }
+    },
+    "mrz-web": {
+      "name": "Dynamsoft MRZ Scanner JavaScript SDK",
+      "description": "MRZ scanning for web applications using JavaScript/TypeScript.",
+      "version": "3.1.0",
+      "default_platform": "web",
+      "snippet_path": "dynamsoft-mrz-scanner/web",
+      "platforms": {
+        "web": {
+          "languages": [
+            "JavaScript",
+            "TypeScript"
+          ],
+          "samples": {
+            "repo": "https://github.com/Dynamsoft/mrz-scanner-javascript"
+          },
+          "installation": {
+            "npm": "npm install dynamsoft-mrz-scanner"
+          }
+        }
+      }
+    },
+    "mds-web": {
+      "name": "Dynamsoft Document Scanner JavaScript SDK",
+      "description": "Document scanning for web applications using JavaScript/TypeScript.",
+      "version": "1.4.2",
+      "default_platform": "web",
+      "snippet_path": "dynamsoft-document-scanner/web",
+      "platforms": {
+        "web": {
+          "languages": [
+            "JavaScript",
+            "TypeScript"
+          ],
+          "samples": {
+            "repo": "https://github.com/Dynamsoft/document-scanner-javascript"
+          },
+          "installation": {
+            "npm": "npm install dynamsoft-document-scanner"
+          }
+        }
+      }
     }
   }
 }
