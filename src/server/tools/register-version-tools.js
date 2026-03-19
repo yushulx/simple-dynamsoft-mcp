@@ -10,7 +10,7 @@ export function registerVersionTools({
   LATEST_MAJOR,
   LATEST_VERSIONS
 }) {
-  function buildPublicDcvVersionResponse(product, edition, platform) {
+  function buildPublicWebVersionResponse(product, edition, platform) {
     const label = product === "mrz" ? "MRZ" : "MDS";
     const supportedEditions = [{ key: "web", name: "Web", version: LATEST_VERSIONS[product].web }];
     const supportedEditionKeys = supportedEditions.map((entry) => entry.key).join(", ");
@@ -111,7 +111,7 @@ export function registerVersionTools({
       }
 
       if (normalizedProduct === "mrz" || normalizedProduct === "mds") {
-        return buildPublicDcvVersionResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+        return buildPublicWebVersionResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
       }
 
       if (normalizedProduct === "dbr") {
