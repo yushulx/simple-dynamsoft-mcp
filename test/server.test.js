@@ -8,7 +8,7 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { ensureResourceIndexReady, LATEST_VERSIONS, resourceIndex } from "../src/server/resource-index.js";
+import { ensureResourceIndexReady, LATEST_MAJOR, LATEST_VERSIONS, resourceIndex } from "../src/server/resource-index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,6 +20,8 @@ const results = [];
 const testFilter = process.env.TEST_FILTER || '';
 const EXPECTED_MRZ_WEB_VERSION = LATEST_VERSIONS.mrz.web;
 const EXPECTED_MDS_WEB_VERSION = LATEST_VERSIONS.mds.web;
+const EXPECTED_MRZ_MAJOR = LATEST_MAJOR.mrz;
+const EXPECTED_MDS_MAJOR = LATEST_MAJOR.mds;
 
 async function sendRequest(request) {
     return new Promise((resolve, reject) => {
@@ -247,11 +249,11 @@ await test('get_index returns only public product offerings', async () => {
     assert(!parsed.products.dbr.editions.python, 'Should not expose separate DBR python edition');
     assert(parsed.products.dbr.editions.server.platforms.includes('python'), 'Should keep python under DBR server platforms');
     assert(parsed.products.dbr.editions.web.platforms.includes('js'), 'Should preserve js alias for web offerings');
-    assert(parsed.products.mrz.editions.web.version === '3.1.0', 'Should expose the public MRZ web version in the compact index');
-    assert(parsed.products.mds.editions.web.version === '1.4.2', 'Should expose the public MDS web version in the compact index');
+    assert(parsed.products.mrz.editions.web.version === EXPECTED_MRZ_WEB_VERSION, 'Should expose the public MRZ web version in the compact index');
+    assert(parsed.products.mds.editions.web.version === EXPECTED_MDS_WEB_VERSION, 'Should expose the public MDS web version in the compact index');
     assert(!parsed.products.mrz.editions.mobile, 'Should hide unsupported MRZ mobile from the compact index');
-    assert(parsed.products.mrz.latestMajor === 3, 'MRZ latestMajor should follow the public MRZ web version');
-    assert(parsed.products.mds.latestMajor === 1, 'MDS latestMajor should follow the public MDS web version');
+    assert(parsed.products.mrz.latestMajor === EXPECTED_MRZ_MAJOR, 'MRZ latestMajor should follow the public MRZ web version');
+    assert(parsed.products.mds.latestMajor === EXPECTED_MDS_MAJOR, 'MDS latestMajor should follow the public MDS web version');
     assert(parsed.products.mrz.editions.web.platforms.includes('react'), 'Should preserve MRZ web framework platforms');
     assert(parsed.products.mds.editions.web.platforms.includes('react'), 'Should preserve MDS web framework platforms');
 });
