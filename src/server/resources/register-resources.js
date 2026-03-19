@@ -28,7 +28,7 @@ export function registerResourceHandlers({
   async function templateReadHandler(uri) {
     const uriStr = uri.toString();
     const parsed = parseResourceUri(uriStr);
-    if (parsed && ["dcv", "dbr", "dwt", "ddv"].includes(parsed.product)) {
+    if (parsed && ["dbr", "dwt", "ddv", "mrz", "mds"].includes(parsed.product)) {
       const policy = ensureLatestMajor({
         product: parsed.product,
         version: parsed.version,

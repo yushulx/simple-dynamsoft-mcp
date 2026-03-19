@@ -10,6 +10,7 @@ Use it as the default source for build/test workflows and coding conventions.
 - Server factory: `src/server/create-server.js`.
 - Test framework: built-in `node:test` + `node:assert/strict`.
 - Key domains: MCP tool registration, resource indexing, RAG providers, data bootstrap/submodule sync.
+- Public MCP surface: `dwt`, `ddv`, `dbr`, `mrz`, `mds`; `dcv` may still appear in internal resource or version wiring, but do not expose it as a public product.
 
 ## Repository Rules Discovery
 Checked for repository-level editor-agent policy files:

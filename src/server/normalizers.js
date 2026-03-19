@@ -1,3 +1,5 @@
+import { normalizePublicOffering } from "./public-offerings.js";
+
 const sdkAliases = {
   // DCV
   "dcv": "dcv-mobile",
@@ -94,6 +96,7 @@ const platformAliases = {
   reactjs: "react",
   "react.js": "react",
   "react-vite": "react",
+  "react-hooks": "react",
   vue: "vue",
   vuejs: "vue",
   next: "next",
@@ -113,7 +116,7 @@ const platformAliases = {
 
 const SERVER_PLATFORMS = new Set(["python", "cpp", "java", "dotnet", "nodejs"]);
 const WEB_FRAMEWORK_TAG_ALIASES = {
-  react: ["react", "react-vite"]
+  react: ["react", "react-vite", "react-hooks"]
 };
 
 const languageAliases = {
@@ -234,6 +237,9 @@ function normalizeSampleName(name) {
 function normalizeProduct(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
+  const publicOffering = normalizePublicOffering(normalized);
+  if (publicOffering) return publicOffering;
+
   if (
     [
       "dcv",
@@ -242,23 +248,11 @@ function normalizeProduct(product) {
       "dynamsoft capture vision",
       "dynamsoft capture vision sdk",
       "capture vision bundle",
-      "mrz scanner",
       "vin scanner",
-      "driver license scanner",
-      "document scanner",
-      "document normalization"
+      "driver license scanner"
     ].includes(normalized)
   ) {
     return "dcv";
-  }
-  if (["ddv", "document viewer", "document-viewer", "dynamsoft document viewer", "doc viewer", "pdf viewer"].includes(normalized)) {
-    return "ddv";
-  }
-  if (["dbr", "barcode reader", "barcode-reader", "dynamsoft barcode reader"].includes(normalized)) {
-    return "dbr";
-  }
-  if (["dwt", "dynamic web twain", "web twain", "webtwain"].includes(normalized)) {
-    return "dwt";
   }
   return normalized;
 }

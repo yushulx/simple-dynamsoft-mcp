@@ -1,6 +1,17 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { DDV_PREFERRED_ENTRY_FILES } from "./config.js";
+import { PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
+
+const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
+const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
+const WEB_FRAMEWORK_PLATFORMS = new Set(["react", "vue", "angular", "next", "nuxt", "svelte", "blazor", "capacitor", "electron", "es6", "native-ts", "pwa", "requirejs", "webview"]);
+
+function normalizeFrameworkTag(tag) {
+  const normalized = String(tag || "").trim().toLowerCase();
+  if (normalized === "react-hooks" || normalized === "react-vite") return "react";
+  return normalized;
+}
 
 function countSamples(sampleData) {
   if (Array.isArray(sampleData)) {
@@ -47,21 +58,123 @@ function buildProductSelectionGuidanceText() {
   return [
     "# Product Selection Guidance",
     "",
-    "## Dynamsoft Barcode Reader (DBR) vs Dynamsoft Capture Vision (DCV)",
+    "## Public Product Offerings",
     "",
-    "Dynamsoft Capture Vision (DCV) is a superset architecture that aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE).",
+    "The public MCP catalog exposes five first-tier products: Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), and Mobile Document Scanner (MDS).",
     "",
-    "Use Dynamsoft Barcode Reader (DBR) when you only need barcode reading and do not need Dynamsoft Capture Vision (DCV) workflows.",
+    "- Dynamic Web TWAIN (DWT): use for browser-based document acquisition and scanner control.",
+    "- Dynamsoft Document Viewer (DDV): use as a standalone viewer. It is the extension path for DWT users who need mobile support or PDF annotation, and for MDS users who need multi-page support or PDF output.",
+    "- Dynamsoft Barcode Reader (DBR): use for barcode workflows. On server/desktop, it is the foundational subset with dedicated docs, samples, and packages for C++, Python, Java, and .NET. On web, start with the foundational API by default for the current 11.4 positioning, with only minimal use of BarcodeScanner RTU when utter simplicity matters. On mobile, both the foundational API and BarcodeScanner RTU remain official.",
+    "- MRZ Scanner (MRZ): use for passport and machine-readable-zone workflows. Public guidance is web/mobile solution/RTU only. Do not default to a foundational API path here; handle server/desktop separately through contact-driven guidance.",
+    "- Mobile Document Scanner (MDS): use for document scan and normalization workflows. Public guidance is web-only solution/RTU. Do not default to a foundational API path here; handle mobile and server/desktop separately through contact-driven guidance.",
     "",
-    "Use Dynamsoft Capture Vision (DCV) when your scenario includes:",
-    "- VIN scanning",
-    "- MRZ/passport/ID scanning",
-    "- Driver license parsing",
-    "- Document detection/normalization/auto-capture/cropping",
-    "- Multi-task image processing and parsing workflows",
-    "",
-    "If a query includes MRZ, VIN, driver license, or document-normalization intents, prefer Dynamsoft Capture Vision (DCV) samples and docs."
+    "Choose DBR when you want direct barcode capabilities, MRZ when you want passport/MRZ flows, MDS when you want document scanning flows, DWT when you need browser acquisition, and DDV when you need viewing, annotation, multi-page handling, or PDF-oriented extension paths."
   ].join("\n");
+}
+
+function getEntryClassificationText(entry) {
+  return [
+    entry.title,
+    entry.summary,
+    entry.uri,
+    entry.path,
+    Array.isArray(entry.tags) ? entry.tags.join(" ") : ""
+  ].filter(Boolean).join(" ");
+}
+
+function classifyDcvPublicProduct(entry) {
+  if (entry.edition === "web" || entry.platform === "web") {
+    return "";
+  }
+
+  const text = getEntryClassificationText(entry);
+  const isSupportedMrzEdition = entry.edition === "mobile";
+
+  if (isSupportedMrzEdition && MRZ_MATCHER.test(text)) {
+    return "mrz";
+  }
+
+  return "";
+}
+
+function rewriteProductInUri(uri, product) {
+  if (typeof uri !== "string" || !uri.includes("://") || !product) return uri;
+  const [scheme, rest] = uri.split("://");
+  const parts = String(rest || "").split("/");
+  if (parts.length === 0) return uri;
+  parts[0] = product;
+  return `${scheme}://${parts.join("/")}`;
+}
+
+function rewritePublicTitle(title, publicProduct) {
+  if (typeof title !== "string") return title;
+  const base = title
+    .replace(/\bDynamsoft\s+Capture\s+Vision\b\s*/gi, "")
+    .replace(/\bCapture\s+Vision\b\s*/gi, "")
+    .replace(/\bDCV\b\s*/gi, "")
+    .trim();
+  if (publicProduct === "mrz") return base.replace(/sample:/i, "MRZ sample:");
+  if (publicProduct === "mds") return base.replace(/sample:/i, "MDS sample:");
+  return base;
+}
+
+function rewritePublicSummary(summary, publicProduct) {
+  if (typeof summary !== "string") return summary;
+  const withoutBrand = summary
+    .replace(/\bDynamsoft\s+Capture\s+Vision\b\s*/gi, "")
+    .replace(/\bCapture\s+Vision\b\s*/gi, "")
+    .replace(/\bDCV\b\s*/gi, "")
+    .trim();
+  if (publicProduct === "mrz") {
+    return withoutBrand.replace(/^python sample/i, "MRZ python sample")
+      .replace(/^cpp sample/i, "MRZ cpp sample")
+      .replace(/^dotnet sample/i, "MRZ dotnet sample")
+      .replace(/^java sample/i, "MRZ java sample")
+      .replace(/^mobile ([a-z-]+) sample/i, "MRZ mobile $1 sample")
+      .replace(/^web documentation/i, "MRZ web documentation")
+      .replace(/^mobile documentation/i, "MRZ mobile documentation")
+      .replace(/^server\/desktop documentation/i, "MRZ server/desktop documentation")
+      .replace(/^core documentation/i, "MRZ core documentation");
+  }
+  if (publicProduct === "mds") {
+    return withoutBrand.replace(/^python sample/i, "MDS python sample")
+      .replace(/^cpp sample/i, "MDS cpp sample")
+      .replace(/^dotnet sample/i, "MDS dotnet sample")
+      .replace(/^java sample/i, "MDS java sample")
+      .replace(/^mobile ([a-z-]+) sample/i, "MDS mobile $1 sample")
+      .replace(/^web documentation/i, "MDS web documentation")
+      .replace(/^mobile documentation/i, "MDS mobile documentation")
+      .replace(/^server\/desktop documentation/i, "MDS server/desktop documentation")
+      .replace(/^core documentation/i, "MDS core documentation");
+  }
+  return withoutBrand;
+}
+
+function toPublicEntry(entry) {
+  if (!entry?.product || entry.product !== "dcv") {
+    return entry;
+  }
+
+  const publicProduct = classifyDcvPublicProduct(entry);
+  if (!publicProduct) {
+    return null;
+  }
+
+  return {
+    ...entry,
+    product: publicProduct,
+    uri: rewriteProductInUri(entry.uri, publicProduct),
+    title: rewritePublicTitle(entry.title, publicProduct),
+    summary: rewritePublicSummary(entry.summary, publicProduct),
+    tags: Array.from(new Set([...(entry.tags || []), publicProduct]))
+  };
+}
+
+function addPublicResourceToIndex(addResourceToIndex, entry) {
+  const publicEntry = toPublicEntry(entry);
+  if (publicEntry) {
+    addResourceToIndex(publicEntry);
+  }
 }
 
 function addMarkdownDocResources({
@@ -85,7 +198,7 @@ function addMarkdownDocResources({
     const tags = [...baseTags, platform];
     if (article.breadcrumb) tags.push(...article.breadcrumb.toLowerCase().split(/\s*>\s*/));
 
-    addResourceToIndex({
+    addPublicResourceToIndex(addResourceToIndex, {
       id: `${idPrefix}-${i}`,
       uri: `${uriPrefix}/${platform}/${version}/${slug}`,
       type: "doc",
@@ -94,8 +207,12 @@ function addMarkdownDocResources({
       platform,
       version,
       majorVersion,
-      title: article.title,
-      summary: article.breadcrumb || defaultSummary,
+      title: product === "mrz" || product === "mds"
+        ? rewritePublicTitle(article.title, product)
+        : article.title,
+      summary: product === "mrz" || product === "mds"
+        ? rewritePublicSummary(article.breadcrumb || defaultSummary, product)
+        : (article.breadcrumb || defaultSummary),
       embedText: article.content,
       mimeType: "text/markdown",
       tags,
@@ -116,11 +233,46 @@ function addMarkdownDocResources({
   }
 }
 
+function loadStructuredWebSampleContent({
+  category,
+  sampleName,
+  getSamplePath,
+  findCodeFilesInSample,
+  readCodeFile,
+  getMimeTypeForExtension
+}) {
+  const samplePath = getSamplePath(category, sampleName);
+  if (!samplePath || !existsSync(samplePath)) {
+    return { text: "Sample not found", mimeType: "text/plain" };
+  }
+
+  const stat = statSync(samplePath);
+  if (stat.isDirectory()) {
+    const readmePath = join(samplePath, "README.md");
+    if (existsSync(readmePath)) {
+      return { text: readCodeFile(readmePath), mimeType: "text/markdown" };
+    }
+
+    const codeFiles = findCodeFilesInSample(samplePath);
+    if (codeFiles.length > 0) {
+      const preferred = codeFiles.find((file) => file.filename === "index.html") || codeFiles[0];
+      return { text: readCodeFile(preferred.path), mimeType: getMimeTypeForExtension(preferred.extension) };
+    }
+
+    return { text: "Sample found, but no code files detected.", mimeType: "text/plain" };
+  }
+
+  const ext = extname(samplePath).replace(".", "");
+  return { text: readCodeFile(samplePath), mimeType: getMimeTypeForExtension(ext) };
+}
+
 function buildIndexData({
   LATEST_VERSIONS,
   LATEST_MAJOR,
   dcvCoreDocs,
   dcvWebDocs,
+  mrzWebDocs,
+  mdsWebDocs,
   dcvMobileDocs,
   dcvServerDocs,
   dbrWebDocs,
@@ -130,6 +282,10 @@ function buildIndexData({
   ddvDocs,
   discoverDcvWebSamples,
   getDcvWebFrameworkPlatforms,
+  discoverMrzWebSamples,
+  getMrzWebFrameworkPlatforms,
+  discoverMdsWebSamples,
+  getMdsWebFrameworkPlatforms,
   getDcvMobilePlatforms,
   getDcvServerPlatforms,
   discoverDcvMobileSamples,
@@ -142,8 +298,102 @@ function buildIndexData({
   discoverDbrServerSamples,
   discoverDwtSamples,
   discoverDdvSamples,
-  getDdvWebFrameworkPlatforms
+  getDdvWebFrameworkPlatforms,
+  resourceIndex
 }) {
+  if (Array.isArray(resourceIndex) && resourceIndex.length > 0) {
+    const products = Object.fromEntries(PUBLIC_OFFERING_PRODUCTS.map((product) => [product, {
+      latestMajor: product === "mrz" || product === "mds" ? LATEST_MAJOR.dcv : LATEST_MAJOR[product],
+      editions: {}
+    }]));
+
+    for (const entry of resourceIndex) {
+      if (!entry?.product || !PUBLIC_OFFERING_PRODUCTS.includes(entry.product)) continue;
+      if (entry.type !== "doc" && entry.type !== "sample") continue;
+
+      const editionName = entry.edition === "python" ? "server" : (entry.edition || "web");
+      if (!products[entry.product].editions[editionName]) {
+        const version = entry.version
+          || ((entry.product === "mrz" || entry.product === "mds") ? LATEST_VERSIONS.dcv[editionName] : LATEST_VERSIONS[entry.product]?.[editionName])
+          || "";
+        products[entry.product].editions[editionName] = {
+          version,
+          platforms: [],
+          docCount: 0,
+          sampleCount: 0
+        };
+      }
+
+      const edition = products[entry.product].editions[editionName];
+      const platforms = new Set();
+      if (entry.platform) {
+        platforms.add(entry.platform);
+        if (entry.edition === "web" && entry.platform === "web") {
+          platforms.add("js");
+        }
+      }
+      if (entry.edition === "web" && Array.isArray(entry.tags)) {
+        for (const tag of entry.tags) {
+          const normalizedTag = normalizeFrameworkTag(tag);
+          if (WEB_FRAMEWORK_PLATFORMS.has(normalizedTag)) {
+            platforms.add(normalizedTag);
+          }
+        }
+      }
+
+      for (const platform of platforms) {
+        if (!edition.platforms.includes(platform)) {
+          edition.platforms.push(platform);
+        }
+      }
+      if (entry.type === "doc") edition.docCount += 1;
+      if (entry.type === "sample") edition.sampleCount += 1;
+    }
+
+    for (const product of Object.values(products)) {
+      for (const edition of Object.values(product.editions)) {
+        edition.platforms.sort();
+      }
+    }
+
+    return {
+      productSelection: {
+        publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
+        offerings: {
+          dwt: {
+            name: "Dynamic Web TWAIN",
+            abbreviation: "DWT",
+            whenToUse: ["Browser-based document acquisition and scanner control."]
+          },
+          ddv: {
+            name: "Dynamsoft Document Viewer",
+            abbreviation: "DDV",
+            whenToUse: ["Standalone viewing plus extension paths for mobile, annotation, multi-page handling, and PDF output."]
+          },
+          dbr: {
+            name: "Dynamsoft Barcode Reader",
+            abbreviation: "DBR",
+            whenToUse: [
+              "Barcode workflows across server/desktop, web, and mobile.",
+              "Use the foundational API by default on web; BarcodeScanner RTU is a minimal-simplicity option; mobile supports both foundational API and BarcodeScanner RTU."
+            ]
+          },
+          mrz: {
+            name: "MRZ Scanner",
+            abbreviation: "MRZ",
+            whenToUse: ["Passport and machine-readable-zone workflows on public web/mobile solution or RTU paths."]
+          },
+          mds: {
+            name: "Mobile Document Scanner",
+            abbreviation: "MDS",
+            whenToUse: ["Document scan and normalization workflows on the public web-only solution or RTU path."]
+          }
+        }
+      },
+      products
+    };
+  }
+
   const dcvCoreVersion = LATEST_VERSIONS.dcv.core;
   const dcvWebVersion = LATEST_VERSIONS.dcv.web;
   const dcvMobileVersion = LATEST_VERSIONS.dcv.mobile;
@@ -156,6 +406,10 @@ function buildIndexData({
 
   const dcvWebSamples = discoverDcvWebSamples();
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
+  const mrzWebSamples = discoverMrzWebSamples();
+  const mrzWebFrameworks = getMrzWebFrameworkPlatforms();
+  const mdsWebSamples = discoverMdsWebSamples();
+  const mdsWebFrameworks = getMdsWebFrameworkPlatforms();
   const dcvMobilePlatforms = getDcvMobilePlatforms();
   const dcvServerPlatforms = getDcvServerPlatforms();
   const dbrWebSampleCount = countSamples(discoverWebSamples());
@@ -254,6 +508,28 @@ function buildIndexData({
             sampleCount: countSamples(ddvSamples)
           }
         }
+      },
+      mrz: {
+        latestMajor: LATEST_MAJOR.dcv,
+        editions: {
+          web: {
+            version: dcvWebVersion,
+            platforms: ["js", ...mrzWebFrameworks],
+            docCount: mrzWebDocs.length,
+            sampleCount: countSamples(mrzWebSamples)
+          }
+        }
+      },
+      mds: {
+        latestMajor: LATEST_MAJOR.dcv,
+        editions: {
+          web: {
+            version: dcvWebVersion,
+            platforms: ["js", ...mdsWebFrameworks],
+            docCount: mdsWebDocs.length,
+            sampleCount: countSamples(mdsWebSamples)
+          }
+        }
       }
     }
   };
@@ -267,6 +543,8 @@ function buildResourceIndex({
   LATEST_MAJOR,
   dcvCoreDocs,
   dcvWebDocs,
+  mrzWebDocs,
+  mdsWebDocs,
   dcvMobileDocs,
   dcvServerDocs,
   dbrWebDocs,
@@ -282,6 +560,10 @@ function buildResourceIndex({
   getDcvServerSampleContent,
   discoverDcvWebSamples,
   getDcvWebSamplePath,
+  discoverMrzWebSamples,
+  getMrzWebSamplePath,
+  discoverMdsWebSamples,
+  getMdsWebSamplePath,
   discoverMobileSamples,
   getDbrMobilePlatforms,
   getMobileSamplePath,
@@ -334,9 +616,9 @@ function buildResourceIndex({
     uri: "doc://product-selection",
     type: "policy",
     title: "Product Selection Guidance",
-    summary: "When to use DCV vs DBR (and when DWT/DDV are better fits).",
+    summary: "When to use Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), and Mobile Document Scanner (MDS).",
     mimeType: "text/markdown",
-    tags: ["guidance", "product-selection", "dcv", "dbr", "dwt", "ddv"],
+    tags: ["guidance", "product-selection", "dbr", "dwt", "ddv", "mrz", "mds"],
     pinned: true,
     loadContent: async () => ({
       text: buildProductSelectionGuidanceText(),
@@ -384,6 +666,34 @@ function buildResourceIndex({
 
   addMarkdownDocResources({
     addResourceToIndex,
+    docs: mrzWebDocs,
+    idPrefix: "mrz-web-doc",
+    uriPrefix: "doc://mrz/web",
+    product: "mrz",
+    edition: "web",
+    version: dcvWebVersion,
+    majorVersion: LATEST_MAJOR.dcv,
+    defaultPlatform: "web",
+    defaultSummary: "Dynamsoft MRZ Scanner Web documentation",
+    baseTags: ["doc", "mrz", "web"]
+  });
+
+  addMarkdownDocResources({
+    addResourceToIndex,
+    docs: mdsWebDocs,
+    idPrefix: "mds-web-doc",
+    uriPrefix: "doc://mds/web",
+    product: "mds",
+    edition: "web",
+    version: dcvWebVersion,
+    majorVersion: LATEST_MAJOR.dcv,
+    defaultPlatform: "web",
+    defaultSummary: "Dynamsoft Mobile Document Scanner Web documentation",
+    baseTags: ["doc", "mds", "web"]
+  });
+
+  addMarkdownDocResources({
+    addResourceToIndex,
     docs: dcvMobileDocs,
     idPrefix: "dcv-mobile-doc",
     uriPrefix: "doc://dcv/mobile",
@@ -412,7 +722,7 @@ function buildResourceIndex({
 
   for (const sampleName of discoverDcvWebSamples()) {
     const scenarioTags = getDcvScenarioTags(sampleName);
-    addResourceToIndex({
+    addPublicResourceToIndex(addResourceToIndex, {
       id: `dcv-web-${sampleName}`,
       uri: `sample://dcv/web/web/${dcvWebVersion}/${sampleName}`,
       type: "sample",
@@ -447,10 +757,64 @@ function buildResourceIndex({
     });
   }
 
+  for (const [category, samples] of Object.entries(discoverMrzWebSamples())) {
+    for (const sampleName of samples) {
+      addResourceToIndex({
+        id: `mrz-web-${category}-${sampleName}`,
+        uri: `sample://mrz/web/web/${dcvWebVersion}/${category}/${sampleName}`,
+        type: "sample",
+        product: "mrz",
+        edition: "web",
+        platform: "web",
+        version: dcvWebVersion,
+        majorVersion: LATEST_MAJOR.dcv,
+        title: `MRZ sample: ${sampleName} (${category})`,
+        summary: `MRZ web sample ${category}/${sampleName}.`,
+        mimeType: "text/plain",
+        tags: ["sample", "mrz", "web", category, sampleName],
+        loadContent: async () => loadStructuredWebSampleContent({
+          category,
+          sampleName,
+          getSamplePath: getMrzWebSamplePath,
+          findCodeFilesInSample,
+          readCodeFile,
+          getMimeTypeForExtension
+        })
+      });
+    }
+  }
+
+  for (const [category, samples] of Object.entries(discoverMdsWebSamples())) {
+    for (const sampleName of samples) {
+      addResourceToIndex({
+        id: `mds-web-${category}-${sampleName}`,
+        uri: `sample://mds/web/web/${dcvWebVersion}/${category}/${sampleName}`,
+        type: "sample",
+        product: "mds",
+        edition: "web",
+        platform: "web",
+        version: dcvWebVersion,
+        majorVersion: LATEST_MAJOR.dcv,
+        title: `MDS sample: ${sampleName} (${category})`,
+        summary: `MDS web sample ${category}/${sampleName}.`,
+        mimeType: "text/plain",
+        tags: ["sample", "mds", "web", category, sampleName],
+        loadContent: async () => loadStructuredWebSampleContent({
+          category,
+          sampleName,
+          getSamplePath: getMdsWebSamplePath,
+          findCodeFilesInSample,
+          readCodeFile,
+          getMimeTypeForExtension
+        })
+      });
+    }
+  }
+
   for (const platform of getDcvMobilePlatforms()) {
     for (const sampleName of discoverDcvMobileSamples(platform)) {
       const scenarioTags = getDcvScenarioTags(sampleName);
-      addResourceToIndex({
+      addPublicResourceToIndex(addResourceToIndex, {
         id: `dcv-mobile-${platform}-${sampleName}`,
         uri: `sample://dcv/mobile/${platform}/${dcvMobileVersion}/${sampleName}`,
         type: "sample",
@@ -490,7 +854,7 @@ function buildResourceIndex({
   for (const platform of getDcvServerPlatforms()) {
     for (const sampleName of discoverDcvServerSamples(platform)) {
       const scenarioTags = getDcvScenarioTags(sampleName);
-      addResourceToIndex({
+      addPublicResourceToIndex(addResourceToIndex, {
         id: `dcv-${platform}-${sampleName}`,
         uri: `sample://dcv/server/${platform}/${dcvServerVersion}/${sampleName}`,
         type: "sample",

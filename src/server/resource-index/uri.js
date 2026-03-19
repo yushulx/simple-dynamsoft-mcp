@@ -70,6 +70,18 @@ function parseSampleUri(uri) {
     };
   }
 
+  if ((parsed.product === "mrz" || parsed.product === "mds") && (parsed.edition === "mobile" || parsed.edition === "server" || parsed.edition === "web")) {
+    const isStructuredWebSample = parsed.edition === "web" && parsed.parts.length >= 6;
+    return {
+      product: parsed.product,
+      edition: parsed.edition,
+      platform: parsed.platform,
+      version: parsed.version,
+      category: isStructuredWebSample ? parsed.parts[4] : undefined,
+      sampleName: isStructuredWebSample ? parsed.parts[5] : parsed.parts[4]
+    };
+  }
+
   if (parsed.product === "dcv" && (parsed.edition === "mobile" || parsed.edition === "server" || parsed.edition === "web")) {
     return {
       product: "dcv",

@@ -82,6 +82,26 @@
       "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/b187c4d36884df285d02dfb977e450e53f097d51"
     },
     {
+      "name": "data/documentation/mobile-document-scanner-docs-js",
+      "path": "documentation/mobile-document-scanner-docs-js",
+      "url": "https://github.com/dynamsoft-docs/mobile-document-scanner-docs-js.git",
+      "branch": "main",
+      "owner": "dynamsoft-docs",
+      "repo": "mobile-document-scanner-docs-js",
+      "commit": "ebef2d269a114ac7763a6c0635d098a09cdcbf59",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/ebef2d269a114ac7763a6c0635d098a09cdcbf59"
+    },
+    {
+      "name": "data/documentation/mrz-scanner-docs-js",
+      "path": "documentation/mrz-scanner-docs-js",
+      "url": "https://github.com/dynamsoft-docs/mrz-scanner-docs-js.git",
+      "branch": "main",
+      "owner": "dynamsoft-docs",
+      "repo": "mrz-scanner-docs-js",
+      "commit": "9a4a8914a3c20f10267e5947c27e33264767f342",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mrz-scanner-docs-js/zip/9a4a8914a3c20f10267e5947c27e33264767f342"
+    },
+    {
       "name": "data/documentation/web-twain-docs",
       "path": "documentation/web-twain-docs",
       "url": "https://github.com/dynamsoft-docs/web-twain-docs.git",
@@ -90,6 +110,16 @@
       "repo": "web-twain-docs",
       "commit": "7b8e127b298a2ef9abb7cd870bb742b44a132503",
       "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/7b8e127b298a2ef9abb7cd870bb742b44a132503"
+    },
+    {
+      "name": "data/samples/document-scanner-javascript",
+      "path": "samples/document-scanner-javascript",
+      "url": "https://github.com/Dynamsoft/document-scanner-javascript.git",
+      "branch": "main",
+      "owner": "Dynamsoft",
+      "repo": "document-scanner-javascript",
+      "commit": "af8d65b104ffef6f846b64fc2598baaa2a6ff6ea",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/document-scanner-javascript/zip/af8d65b104ffef6f846b64fc2598baaa2a6ff6ea"
     },
     {
       "name": "data/samples/dynamic-web-twain",
@@ -310,6 +340,16 @@
       "repo": "document-viewer-samples",
       "commit": "84fbb0ce71aa4d327aeeb39dab57cab92c43cd9d",
       "archiveUrl": "https://codeload.github.com/Dynamsoft/document-viewer-samples/zip/84fbb0ce71aa4d327aeeb39dab57cab92c43cd9d"
+    },
+    {
+      "name": "data/samples/mrz-scanner-javascript",
+      "path": "samples/mrz-scanner-javascript",
+      "url": "https://github.com/Dynamsoft/mrz-scanner-javascript.git",
+      "branch": "main",
+      "owner": "Dynamsoft",
+      "repo": "mrz-scanner-javascript",
+      "commit": "1e33685573dafa918bc81a7baa9fc628e3830775",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/mrz-scanner-javascript/zip/1e33685573dafa918bc81a7baa9fc628e3830775"
     }
   ]
 }

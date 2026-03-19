@@ -1,6 +1,11 @@
 import { LEGACY_DBR_LINKS, LEGACY_DWT_LINKS } from "./config.js";
 import { inferProductFromQuery, normalizeEdition, normalizePlatform } from "../normalizers.js";
 
+const VERSION_FAMILY_BY_PRODUCT = {
+  mrz: "dcv",
+  mds: "dcv"
+};
+
 function parseMajorVersion(version) {
   if (!version) return null;
   const match = String(version).match(/(\d+)/);
@@ -69,7 +74,8 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
   const inferredProduct = product || inferProductFromQuery(query);
   if (!inferredProduct) return { ok: true };
 
-  const currentMajor = latestMajor[inferredProduct];
+  const versionFamily = VERSION_FAMILY_BY_PRODUCT[inferredProduct] || inferredProduct;
+  const currentMajor = latestMajor[versionFamily];
   const requestedMajor = parseMajorVersion(version) ?? detectMajorFromQuery(query);
 
   if (!requestedMajor || requestedMajor === currentMajor) {
@@ -83,10 +89,11 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
     };
   }
 
-  if (inferredProduct === "dcv") {
+  if (versionFamily === "dcv") {
+    const offeringName = inferredProduct === "dcv" ? "DCV" : inferredProduct.toUpperCase();
     return {
       ok: false,
-      message: `This MCP server only serves the latest major version of DCV (v${currentMajor}).`
+      message: `This MCP server only serves the latest major version of ${offeringName} (DCV-backed, v${currentMajor}).`
     };
   }
 
@@ -140,13 +147,14 @@ function buildVersionPolicyText(latestMajor) {
     "This MCP server only serves the latest major versions of each product.",
     "",
     `- DBR latest major: v${latestMajor.dbr}`,
-    `- DCV latest major: v${latestMajor.dcv}`,
+    `- MRZ latest major: v${latestMajor.dcv} (DCV-backed)`,
+    `- MDS latest major: v${latestMajor.dcv} (DCV-backed)`,
     `- DWT latest major: v${latestMajor.dwt}`,
     `- DDV latest major: v${latestMajor.ddv}`,
     "",
     "Legacy support:",
     "- DBR v9 and v10 docs are linked when requested.",
-    "- DCV has no legacy archive links in this server.",
+    "- MRZ and MDS do not publish separate legacy archive links; they follow the latest DCV-backed major only.",
     `- DWT archived docs available: ${dwtLegacyVersions || "none"}.`,
     "- DDV has no legacy archive links in this server.",
     "",

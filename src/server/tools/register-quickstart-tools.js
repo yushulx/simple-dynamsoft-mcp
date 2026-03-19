@@ -1,6 +1,8 @@
 import { existsSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { z } from "zod";
+import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
+import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerQuickstartTools({
   server,
@@ -25,6 +27,54 @@ export function registerQuickstartTools({
   getMainCodeFile,
   getWebSamplePath
 }) {
+  function getPublicWebQuickstartLinks(product) {
+    if (product === "mrz") {
+      return {
+        docsUrl: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
+        samplesUrl: "https://github.com/Dynamsoft/mrz-scanner-javascript"
+      };
+    }
+
+    if (product === "mds") {
+      return {
+        docsUrl: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
+        samplesUrl: "https://github.com/Dynamsoft/document-scanner-javascript"
+      };
+    }
+
+    return { docsUrl: "", samplesUrl: "" };
+  }
+
+  function getPublicProductLabel(product) {
+    if (product === "mrz") return "MRZ";
+    if (product === "mds") return "MDS";
+    if (product === "dbr") return "DBR";
+    if (product === "dwt") return "DWT";
+    if (product === "ddv") return "DDV";
+    return String(product || "").toUpperCase();
+  }
+
+  function buildPublicReferenceQuickstart({ product, edition, platform, docsUrl, samplesUrl }) {
+    const label = getPublicProductLabel(product);
+    const scopeParts = [];
+    for (const part of [edition, platform]) {
+      if (!part || scopeParts.includes(part)) continue;
+      scopeParts.push(part);
+    }
+    const scope = scopeParts.join(" / ") || "general";
+    const lines = [
+      `# Quick Start Redirect: ${label}`,
+      "",
+      `${label} is available as a public offering, but this ${scope} quickstart is currently served as reference links instead of an inline starter.`,
+      "",
+      "Reference links:",
+      docsUrl ? `- Docs: ${docsUrl}` : "",
+      samplesUrl ? `- Samples: ${samplesUrl}` : ""
+    ].filter(Boolean);
+
+    return { content: [{ type: "text", text: lines.join("\n") }] };
+  }
+
   server.registerTool(
     "get_quickstart",
     {
@@ -35,7 +85,7 @@ export function registerQuickstartTools({
         "WHEN TO USE:",
         "- When the user wants to get started quickly with a Dynamsoft SDK.",
         "- To generate a ready-to-run code snippet with install commands, license key, and SDK version.",
-        "- For scenario-specific starters: pass scenario='MRZ' for passport reading, 'VIN' for vehicle identification, 'document scan' for document normalization, etc.",
+        "- For scenario-specific starters: pass scenario='MRZ' for passport reading, 'document scan' for document normalization, or barcode/image hints for DBR.",
         "",
         "WHEN NOT TO USE:",
         "- If the user wants full project files (multiple source files, build configs), use get_sample_files instead.",
@@ -43,20 +93,20 @@ export function registerQuickstartTools({
         "- If the user only needs version info, use resolve_version.",
         "",
         "PARAMETERS:",
-        "- product (required): dcv, dbr, dwt, or ddv.",
+        "- product (required): dbr, dwt, ddv, mrz, or mds.",
         "- edition: core, mobile, web, or server. Inferred from platform if omitted.",
         "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
         "- language: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular. Helps select the best sample variant.",
         "- version: Version constraint. Latest major is used by default.",
         "- api_level: 'high-level' or 'low-level' (mobile only). Controls API abstraction level in generated code.",
-        "- scenario: MRZ, VIN, document scan, driver license, camera, image, single, multiple, etc. DCV supports MRZ/VIN/document-normalization/driver-license workflows.",
+        "- scenario: MRZ, document scan, camera, image, single, multiple, react, vue, angular, etc. DBR web defaults to foundational guidance; MRZ and MDS return public workflow guidance where available.",
         "",
         "RETURNS: A formatted text block with SDK version, trial license key, install commands, and sample code. Ready to copy-paste.",
         "",
         "RELATED TOOLS: search (find specific docs or samples), get_sample_files (get full multi-file project), resolve_version (version numbers only)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dcv, dbr, dwt, or ddv"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
         edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
         platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
         language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular"),
@@ -73,8 +123,18 @@ export function registerQuickstartTools({
     },
     async ({ product, edition, platform, language, version, api_level, scenario }) => {
       const normalizedProduct = normalizeProduct(product);
+      if (product && !isKnownPublicOffering(normalizedProduct)) {
+        return buildUnknownPublicProductResponse(product);
+      }
+
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
+      const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+      if (unsupportedScopeResponse) return unsupportedScopeResponse;
+
+      const isPublicDcvProduct = normalizedProduct === "mrz" || normalizedProduct === "mds";
+      const effectiveProduct = isPublicDcvProduct ? "dcv" : normalizedProduct;
+      const publicProductLabel = getPublicProductLabel(normalizedProduct);
 
       await ensureScopeHydrated({
         product: normalizedProduct,
@@ -95,9 +155,12 @@ export function registerQuickstartTools({
         return { isError: true, content: [{ type: "text", text: policy.message }] };
       }
 
-      if (normalizedProduct === "dcv") {
-        const scenarioLower = `${scenario || ""} ${language || ""}`.toLowerCase();
-        const effectiveEdition = normalizedEdition || (normalizedPlatform ? normalizeEdition("", normalizedPlatform, "dcv") : "server");
+      if (effectiveProduct === "dcv") {
+        const seededScenario = isPublicDcvProduct
+          ? `${normalizedProduct === "mrz" ? "mrz" : "document scan"} ${scenario || ""} ${language || ""}`
+          : `${scenario || ""} ${language || ""}`;
+        const scenarioLower = seededScenario.toLowerCase();
+        const effectiveEdition = normalizedEdition || (isPublicDcvProduct ? "web" : (normalizedPlatform ? normalizeEdition("", normalizedPlatform, "dcv") : "server"));
 
         function selectDcvServerSample(platformHint, hint) {
           const platformName = normalizePlatform(platformHint) || "python";
@@ -173,6 +236,17 @@ export function registerQuickstartTools({
         if (effectiveEdition === "server") {
           const sdkEntry = registry.sdks["dcv-server"];
           const targetPlatform = normalizePlatform(normalizedPlatform || sdkEntry.default_platform || "python");
+
+          if (isPublicDcvProduct) {
+            return buildPublicReferenceQuickstart({
+              product: normalizedProduct,
+              edition: effectiveEdition,
+              platform: targetPlatform,
+              docsUrl: "https://www.dynamsoft.com/capture-vision/docs/server/",
+              samplesUrl: sdkEntry.platforms?.[targetPlatform]?.samples?.repo || sdkEntry.platforms?.python?.samples?.repo || ""
+            });
+          }
+
           const sampleName = selectDcvServerSample(targetPlatform, scenarioLower);
           const samplePath = getDcvServerSamplePath(targetPlatform, sampleName);
 
@@ -187,7 +261,7 @@ export function registerQuickstartTools({
             content: [{
               type: "text",
               text: [
-                `# Quick Start: DCV Server (${targetPlatform})`,
+                `# Quick Start: ${isPublicDcvProduct ? publicProductLabel : "DCV Server"} (${targetPlatform})`,
                 "",
                 `**SDK Version:** ${sdkEntry.version}`,
                 `**Trial License:** \`${registry.trial_license}\``,
@@ -210,8 +284,20 @@ export function registerQuickstartTools({
 
         if (effectiveEdition === "web") {
           const sdkEntry = registry.sdks["dcv-web"];
+          if (isPublicDcvProduct) {
+            const publicLinks = getPublicWebQuickstartLinks(normalizedProduct);
+            return buildPublicReferenceQuickstart({
+              product: normalizedProduct,
+              edition: effectiveEdition,
+              platform: "web",
+              docsUrl: publicLinks.docsUrl,
+              samplesUrl: publicLinks.samplesUrl
+            });
+          }
           const available = discoverDcvWebSamples();
-          const sampleName = scenarioLower.includes("vin") ? "VINScanner" : (available[0] || "VINScanner");
+          const sampleName = isPublicDcvProduct
+            ? (normalizedProduct === "mrz" ? "MRZScanner" : "DocumentScanner")
+            : (scenarioLower.includes("vin") ? "VINScanner" : (available[0] || "VINScanner"));
           const samplePath = getDcvWebSamplePath(sampleName);
           if (!samplePath || !existsSync(samplePath)) {
             return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
@@ -223,7 +309,7 @@ export function registerQuickstartTools({
             content: [{
               type: "text",
               text: [
-                "# Quick Start: DCV Web",
+                `# Quick Start: ${isPublicDcvProduct ? publicProductLabel : "DCV Web"}`,
                 "",
                 `**SDK Version:** ${sdkEntry.version}`,
                 `**Trial License:** \`${registry.trial_license}\``,
@@ -262,7 +348,7 @@ export function registerQuickstartTools({
             content: [{
               type: "text",
               text: [
-                `# Quick Start: DCV Mobile (${targetPlatform})`,
+                `# Quick Start: ${isPublicDcvProduct ? publicProductLabel : "DCV Mobile"} (${targetPlatform})`,
                 "",
                 `**SDK Version:** ${sdkEntry.version}`,
                 `**Trial License:** \`${registry.trial_license}\``,
@@ -289,7 +375,7 @@ export function registerQuickstartTools({
             content: [{
               type: "text",
               text: [
-                "# Quick Start: DCV Core",
+                `# Quick Start: ${isPublicDcvProduct ? publicProductLabel : "DCV Core"}`,
                 "",
                 `**SDK Version:** ${sdkEntry.version}`,
                 "",
@@ -341,7 +427,7 @@ export function registerQuickstartTools({
       if (normalizedProduct === "dbr" && normalizedEdition === "web") {
         const sdkEntry = registry.sdks["dbr-web"];
         const scenarioLower = (scenario || "").toLowerCase();
-        const sampleName = scenarioLower.includes("image") ? "read-an-image" : "hello-world";
+        const sampleName = scenarioLower.includes("hello") ? "hello-world" : "read-an-image";
         const samplePath = getWebSamplePath("root", sampleName);
 
         if (!samplePath || !existsSync(samplePath)) {
@@ -358,6 +444,9 @@ export function registerQuickstartTools({
               "",
               `**SDK Version:** ${sdkEntry.version}`,
               `**Trial License:** \`${registry.trial_license}\``,
+              "**Starter profile:** Foundational-first",
+              "",
+              "Use the foundational web flow first so capture and decoding remain explicit and easier to adapt.",
               "",
               "## Option 1: CDN",
               "```html",
@@ -369,7 +458,7 @@ export function registerQuickstartTools({
               sdkEntry.platforms.web.installation.npm,
               "```",
               "",
-              `## ${sampleName}.html`,
+              `## Foundational sample: ${sampleName}.html`,
               "```html",
               content,
               "```",

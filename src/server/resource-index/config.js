@@ -10,6 +10,8 @@ const SAMPLE_DIRS = {
   dbrFlutter: "dynamsoft-barcode-reader-flutter",
   dbrNodejs: "dynamsoft-capture-vision-nodejs",
   dcvWeb: "dynamsoft-capture-vision-javascript",
+  mrzWeb: "mrz-scanner-javascript",
+  mdsWeb: "document-scanner-javascript",
   dcvMobile: "dynamsoft-capture-vision-mobile",
   dcvPython: "dynamsoft-capture-vision-python",
   dcvDotnet: "dynamsoft-capture-vision-dotnet",
@@ -29,6 +31,8 @@ const DOC_DIRS = {
   dbrMobile: "barcode-reader-docs-mobile",
   dbrServer: "barcode-reader-docs-server",
   dcvWeb: "capture-vision-docs-js",
+  mrzWeb: "mrz-scanner-docs-js",
+  mdsWeb: "mobile-document-scanner-docs-js",
   dcvMobile: "capture-vision-docs-mobile",
   dcvServer: "capture-vision-docs-server",
   dcvCore: "capture-vision-docs",
@@ -54,6 +58,16 @@ const DOCS_CONFIG = {
   },
   dcvWeb: {
     urlBase: "https://www.dynamsoft.com/capture-vision/docs/web/",
+    excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
+    excludeFiles: ["README.md", "search.md", "error.md"]
+  },
+  mrzWeb: {
+    urlBase: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
+    excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
+    excludeFiles: ["README.md", "search.md", "error.md"]
+  },
+  mdsWeb: {
+    urlBase: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
     excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
     excludeFiles: ["README.md", "search.md", "error.md"]
   },
