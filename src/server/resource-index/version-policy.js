@@ -70,10 +70,15 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
   if (!inferredProduct) return { ok: true };
 
   const normalizedEdition = normalizeEdition(edition, platform, inferredProduct);
+  const requestedMajor = parseMajorVersion(version) ?? detectMajorFromQuery(query);
+
+  if (inferredProduct === "mrz" && !normalizedEdition && requestedMajor && requestedMajor === latestMajor.dcv) {
+    return { ok: true, latestMajor: latestMajor.dcv };
+  }
+
   const currentMajor = inferredProduct === "mrz" && normalizedEdition === "mobile"
     ? latestMajor.dcv
     : latestMajor[inferredProduct];
-  const requestedMajor = parseMajorVersion(version) ?? detectMajorFromQuery(query);
 
   if (!requestedMajor || requestedMajor === currentMajor) {
     return { ok: true, latestMajor: currentMajor };

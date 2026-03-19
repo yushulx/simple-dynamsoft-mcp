@@ -107,3 +107,16 @@ test("ensureLatestMajor accepts MRZ mobile resources using the DCV mobile major"
   assert.equal(policy.ok, true);
   assert.equal(policy.latestMajor, 4);
 });
+
+test("ensureLatestMajor accepts edition-agnostic MRZ requests that match the mobile major", () => {
+  const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+
+  assert.equal(
+    ensureLatestMajorWithPolicy({ product: "mrz", version: "4.0.0", latestMajor }).ok,
+    true
+  );
+  assert.equal(
+    ensureLatestMajorWithPolicy({ query: "mrz v4", latestMajor }).ok,
+    true
+  );
+});
