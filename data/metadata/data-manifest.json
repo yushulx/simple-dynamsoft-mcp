@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "597f0da48bee7fc5fb955d90ebef536433eeb9f6",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/597f0da48bee7fc5fb955d90ebef536433eeb9f6"
+      "commit": "e0308b08e0b235093b29af187839835e0e4b7c20",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/e0308b08e0b235093b29af187839835e0e4b7c20"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -28,8 +28,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-server",
-      "commit": "5479d530342edc40d1602addebbb8cd60ed781ce",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/5479d530342edc40d1602addebbb8cd60ed781ce"
+      "commit": "bd73f570f60885da04c883241d282fa3f50b45de",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/bd73f570f60885da04c883241d282fa3f50b45de"
     },
     {
       "name": "data/documentation/capture-vision-docs",
@@ -48,8 +48,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-js",
-      "commit": "3137b83d966e795190a9681e544045a5e526c083",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-js/zip/3137b83d966e795190a9681e544045a5e526c083"
+      "commit": "0e1fbd5338505a8bbfc3310eb3c3fffe6a114cf5",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-js/zip/0e1fbd5338505a8bbfc3310eb3c3fffe6a114cf5"
     },
     {
       "name": "data/documentation/capture-vision-docs-mobile",
@@ -68,8 +68,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-server",
-      "commit": "f20caf7c96383a04659bdffe8ab40b85ba78d39d",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/f20caf7c96383a04659bdffe8ab40b85ba78d39d"
+      "commit": "d097a606f81cc2a3af5c813200715ed943009f5e",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/d097a606f81cc2a3af5c813200715ed943009f5e"
     },
     {
       "name": "data/documentation/document-viewer-docs",
@@ -78,8 +78,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "document-viewer-docs",
-      "commit": "4a49e918d174f4efac927981b81c81024d9ba3dc",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/4a49e918d174f4efac927981b81c81024d9ba3dc"
+      "commit": "b187c4d36884df285d02dfb977e450e53f097d51",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/b187c4d36884df285d02dfb977e450e53f097d51"
     },
     {
       "name": "data/documentation/mobile-document-scanner-docs-js",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "a38d73c583b8379c0d80337e92f291f6c1ab10a8",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/a38d73c583b8379c0d80337e92f291f6c1ab10a8"
+      "commit": "7b8e127b298a2ef9abb7cd870bb742b44a132503",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/7b8e127b298a2ef9abb7cd870bb742b44a132503"
     },
     {
       "name": "data/samples/document-scanner-javascript",
@@ -308,8 +308,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-python-samples",
-      "commit": "8fdf4c63d5e35bdcc4993a068ba4bcade30e91a2",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-python-samples/zip/8fdf4c63d5e35bdcc4993a068ba4bcade30e91a2"
+      "commit": "734203cfe5d7113b6c406e5305db6696bab0792c",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-python-samples/zip/734203cfe5d7113b6c406e5305db6696bab0792c"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-react-native",
