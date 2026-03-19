@@ -8,7 +8,7 @@
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { ensureResourceIndexReady, resourceIndex } from "../src/server/resource-index.js";
+import { ensureResourceIndexReady, LATEST_VERSIONS, resourceIndex } from "../src/server/resource-index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,6 +18,8 @@ let passed = 0;
 let failed = 0;
 const results = [];
 const testFilter = process.env.TEST_FILTER || '';
+const EXPECTED_MRZ_WEB_VERSION = LATEST_VERSIONS.mrz.web;
+const EXPECTED_MDS_WEB_VERSION = LATEST_VERSIONS.mds.web;
 
 async function sendRequest(request) {
     return new Promise((resolve, reject) => {
@@ -728,7 +730,7 @@ await test('resolve_version for MRZ without edition only shows supported public 
     const text = response.result.content[0].text;
     assert(text.includes('MRZ Version Resolution'), 'Should include MRZ resolution');
     assert(text.includes('Web:'), 'Should include supported MRZ web edition');
-    assert(text.includes('Web: 3.1.0'), 'Should use the public MRZ web version from metadata');
+    assert(text.includes(`Web: ${EXPECTED_MRZ_WEB_VERSION}`), 'Should use the public MRZ web version from metadata');
     assert(!text.includes('Mobile:'), 'Should not advertise unsupported MRZ mobile edition');
     assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MRZ server edition');
 });
@@ -747,7 +749,7 @@ await test('resolve_version for MDS without edition only shows supported public 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('MDS Version Resolution'), 'Should include MDS resolution');
-    assert(text.includes('Web: 1.4.2'), 'Should use the public MDS web version from metadata');
+    assert(text.includes(`Web: ${EXPECTED_MDS_WEB_VERSION}`), 'Should use the public MDS web version from metadata');
     assert(!text.includes('Mobile:'), 'Should not advertise unsupported MDS mobile edition');
     assert(!text.includes('Server/Desktop:'), 'Should not advertise unsupported MDS server edition');
 });
@@ -766,7 +768,7 @@ await test('resolve_version for MRZ web uses the public MRZ web version', async 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('MRZ Version Resolution'), 'Should include MRZ resolution');
-    assert(text.includes('Resolved version: 3.1.0'), 'Should resolve to the public MRZ web version from metadata');
+    assert(text.includes(`Resolved version: ${EXPECTED_MRZ_WEB_VERSION}`), 'Should resolve to the public MRZ web version from metadata');
 });
 
 await test('resolve_version for MDS web uses the public MDS web version', async () => {
@@ -783,7 +785,7 @@ await test('resolve_version for MDS web uses the public MDS web version', async 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
     assert(text.includes('MDS Version Resolution'), 'Should include MDS resolution');
-    assert(text.includes('Resolved version: 1.4.2'), 'Should resolve to the public MDS web version from metadata');
+    assert(text.includes(`Resolved version: ${EXPECTED_MDS_WEB_VERSION}`), 'Should resolve to the public MDS web version from metadata');
 });
 
 await test('resolve_version lists supported editions for unsupported MRZ mobile requests', async () => {

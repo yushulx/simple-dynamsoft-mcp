@@ -184,6 +184,25 @@ const dcvFeatureTerms = [
   "crop"
 ];
 
+const mrzFeatureTerms = [
+  "mrz",
+  "machine readable zone",
+  "passport"
+];
+
+const mdsFeatureTerms = [
+  "mds",
+  "document scanner",
+  "document scanning",
+  "document scan",
+  "document normalization",
+  "document normalizer",
+  "auto capture",
+  "auto-capture",
+  "cropping",
+  "crop"
+];
+
 const dwtFeatureTerms = ["dwt", "web twain", "webtwain", "twain", "wia", "ica", "sane"];
 
 let webFrameworkPlatformsGetter = null;
@@ -296,6 +315,10 @@ function inferProductFromQuery(query) {
   const normalized = query.toLowerCase();
   const isDwtQuery = dwtFeatureTerms.some((term) => normalized.includes(term));
   if (isDwtQuery) return "dwt";
+  const isMrzQuery = mrzFeatureTerms.some((term) => normalized.includes(term));
+  if (isMrzQuery) return "mrz";
+  const isMdsQuery = mdsFeatureTerms.some((term) => normalized.includes(term));
+  if (isMdsQuery) return "mds";
   const isDcvQuery = dcvFeatureTerms.some((term) => normalized.includes(term));
   if (isDcvQuery) return "dcv";
   if (normalized.includes("ddv") || normalized.includes("document viewer") || normalized.includes("pdf viewer") || normalized.includes("edit viewer")) {

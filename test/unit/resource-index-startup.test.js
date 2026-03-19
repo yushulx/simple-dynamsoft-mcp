@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { basename } from "node:path";
 import test from "node:test";
-import { normalizeProduct } from "../../src/server/normalizers.js";
+import { inferProductFromQuery, normalizeProduct } from "../../src/server/normalizers.js";
 import { DOC_DIRS, SAMPLE_DIRS } from "../../src/server/resource-index/config.js";
 import { DOC_ROOTS, SAMPLE_ROOTS } from "../../src/server/resource-index/paths.js";
 
@@ -29,6 +29,13 @@ test("resource index is empty until explicitly initialized", async () => {
 test("normalizeProduct returns public MRZ and MDS offerings", () => {
   assert.equal(normalizeProduct("mrz"), "mrz");
   assert.equal(normalizeProduct("mds"), "mds");
+});
+
+test("inferProductFromQuery recognizes MRZ and MDS queries", () => {
+  assert.equal(inferProductFromQuery("mrz v2"), "mrz");
+  assert.equal(inferProductFromQuery("passport scanner"), "mrz");
+  assert.equal(inferProductFromQuery("mds v1"), "mds");
+  assert.equal(inferProductFromQuery("document scanner"), "mds");
 });
 
 test("resource index config routes MRZ and MDS web roots to dedicated repos", async () => {
