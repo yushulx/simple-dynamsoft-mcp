@@ -269,8 +269,8 @@ const dcvMobileSdk = registry.sdks["dcv-mobile"];
 const dcvWebSdk = registry.sdks["dcv-web"];
 const dcvServerSdk = registry.sdks["dcv-server"];
 const dcvCoreSdk = registry.sdks["dcv-core"];
-const mrzWebSdk = registry.sdks["mrz-web"];
-const mdsWebSdk = registry.sdks["mds-web"];
+const mrzWebSdk = registry.sdks["mrz-web"] || dcvWebSdk;
+const mdsWebSdk = registry.sdks["mds-web"] || dcvWebSdk;
 
 const LATEST_VERSIONS = {
   dbr: {
