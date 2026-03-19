@@ -7,6 +7,7 @@ import test from "node:test";
 import { inferProductFromQuery, normalizeProduct } from "../../src/server/normalizers.js";
 import { DOC_DIRS, SAMPLE_DIRS } from "../../src/server/resource-index/config.js";
 import { DOC_ROOTS, SAMPLE_ROOTS } from "../../src/server/resource-index/paths.js";
+import { ensureLatestMajor as ensureLatestMajorWithPolicy } from "../../src/server/resource-index/version-policy.js";
 
 function freshResourceIndexImportUrl() {
   const url = new URL("../../src/server/resource-index.js", import.meta.url);
@@ -90,4 +91,19 @@ test("resource index falls back when mrz-web and mds-web metadata entries are mi
   assert.equal(parsed.mdsWeb, sourceRegistry.sdks["dcv-web"].version);
   assert.equal(parsed.mrzMajor, parsed.dcvMajor);
   assert.equal(parsed.mdsMajor, parsed.dcvMajor);
+});
+
+test("ensureLatestMajor accepts MRZ mobile resources using the DCV mobile major", () => {
+  const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+
+  const policy = ensureLatestMajorWithPolicy({
+    product: "mrz",
+    version: "4.0.0",
+    edition: "mobile",
+    platform: "android",
+    latestMajor
+  });
+
+  assert.equal(policy.ok, true);
+  assert.equal(policy.latestMajor, 4);
 });
