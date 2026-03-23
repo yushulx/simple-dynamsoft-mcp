@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "73e2ec43e875e093367b385f167e021f47f2ee1b",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/73e2ec43e875e093367b385f167e021f47f2ee1b"
+      "commit": "bd4f21c9f4a75f84f4580598895e0486e52dbb4f",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/bd4f21c9f4a75f84f4580598895e0486e52dbb4f"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -318,8 +318,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-react-native-samples",
-      "commit": "e27f4e6708f4eb8570893bf36399cc02b6f7759f",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-react-native-samples/zip/e27f4e6708f4eb8570893bf36399cc02b6f7759f"
+      "commit": "ec0661ee54231699d69b71e141cf40c4ea78f01d",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-react-native-samples/zip/ec0661ee54231699d69b71e141cf40c4ea78f01d"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-spm",
