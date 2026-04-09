@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "29e438ec4606119ae023320f16119a57dd3af067",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/29e438ec4606119ae023320f16119a57dd3af067"
+      "commit": "a6dd4291a56b5b49a3c7d657508ef6d9fc39f1b7",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/a6dd4291a56b5b49a3c7d657508ef6d9fc39f1b7"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -58,8 +58,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-mobile",
-      "commit": "3bfe68a2f685c08cb6d037ea1f6332595822f2d4",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/3bfe68a2f685c08cb6d037ea1f6332595822f2d4"
+      "commit": "250b0f1c39e759a40770fb2c3294615ff460340d",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/250b0f1c39e759a40770fb2c3294615ff460340d"
     },
     {
       "name": "data/documentation/capture-vision-docs-server",
@@ -188,8 +188,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-maui-samples",
-      "commit": "6b1252fffdde08356dc2c2d6e18bc92c99bd9a42",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-maui-samples/zip/6b1252fffdde08356dc2c2d6e18bc92c99bd9a42"
+      "commit": "0c2fde31411d7d66997f58792fbd75b4f1f12379",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-maui-samples/zip/0c2fde31411d7d66997f58792fbd75b4f1f12379"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-mobile",
@@ -278,8 +278,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-maui-samples",
-      "commit": "5b715da9f65569171d830a12c0ba0a68c536176c",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-maui-samples/zip/5b715da9f65569171d830a12c0ba0a68c536176c"
+      "commit": "0fbbdda8938a034505f167fb6e2432483741bbec",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-maui-samples/zip/0fbbdda8938a034505f167fb6e2432483741bbec"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-mobile",
