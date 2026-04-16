@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "b69d55acca1223ee5c0f9e0de75b8e3b6a02a9ef",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/b69d55acca1223ee5c0f9e0de75b8e3b6a02a9ef"
+      "commit": "abf5e11170394e6128f872e00413d94748a18c5d",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/abf5e11170394e6128f872e00413d94748a18c5d"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -58,8 +58,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-mobile",
-      "commit": "2e51721ff9f0af78cb18f89ad7d19f79cf2d2840",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/2e51721ff9f0af78cb18f89ad7d19f79cf2d2840"
+      "commit": "10f1b3dad6e657bb2ba2edff2d9b00d2eb4b883e",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/10f1b3dad6e657bb2ba2edff2d9b00d2eb4b883e"
     },
     {
       "name": "data/documentation/capture-vision-docs-server",
@@ -168,8 +168,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-flutter-samples",
-      "commit": "36c113de476a07c20867eae77fd29f3f92b70d41",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-flutter-samples/zip/36c113de476a07c20867eae77fd29f3f92b70d41"
+      "commit": "39d6854d43509dd6060e5e00be7d58d0001e8d66",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-flutter-samples/zip/39d6854d43509dd6060e5e00be7d58d0001e8d66"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-java",
@@ -248,8 +248,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-flutter-samples",
-      "commit": "7e85ffddaaf2a9b75c21538d60f64fbe733f3227",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-flutter-samples/zip/7e85ffddaaf2a9b75c21538d60f64fbe733f3227"
+      "commit": "7c2e40e2129c0b2ef641f0b1de69b704e1e09ff1",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-flutter-samples/zip/7c2e40e2129c0b2ef641f0b1de69b704e1e09ff1"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-java",
