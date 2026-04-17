@@ -28,8 +28,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-server",
-      "commit": "e4e04d35812a58d80c5bf034885bf0beeb1c3cfe",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/e4e04d35812a58d80c5bf034885bf0beeb1c3cfe"
+      "commit": "a47ac8350404c9fbfb843662a9497f1281b80ca1",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/a47ac8350404c9fbfb843662a9497f1281b80ca1"
     },
     {
       "name": "data/documentation/capture-vision-docs",
@@ -68,8 +68,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-server",
-      "commit": "cfbc072714af40daeb33175cb6b9d2b24ea6331e",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/cfbc072714af40daeb33175cb6b9d2b24ea6331e"
+      "commit": "3791b0c91302f5e871ea386ac9b5eec284fd31a5",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/3791b0c91302f5e871ea386ac9b5eec284fd31a5"
     },
     {
       "name": "data/documentation/document-viewer-docs",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "9d9f7e74f3f14a9afff57318b9cba3b7d0dc2c69",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/9d9f7e74f3f14a9afff57318b9cba3b7d0dc2c69"
+      "commit": "59c45465613c8c0826a91642f76d961343436a86",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/59c45465613c8c0826a91642f76d961343436a86"
     },
     {
       "name": "data/samples/document-scanner-javascript",
@@ -148,8 +148,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-c-cpp-samples",
-      "commit": "3af2b7b60342e97b8f91ef803ea26e777bb4b4dd",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-c-cpp-samples/zip/3af2b7b60342e97b8f91ef803ea26e777bb4b4dd"
+      "commit": "9aaa0d95ec18f5bc86dc7692b2b808f532c1ec82",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-c-cpp-samples/zip/9aaa0d95ec18f5bc86dc7692b2b808f532c1ec82"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-dotnet",
@@ -158,8 +158,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-dotnet-samples",
-      "commit": "e1779bb6996510225bb7e3adac365b3bed688be2",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-dotnet-samples/zip/e1779bb6996510225bb7e3adac365b3bed688be2"
+      "commit": "b26e38efe1db2bb6ba11ead320dea07471d988a3",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-dotnet-samples/zip/b26e38efe1db2bb6ba11ead320dea07471d988a3"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-flutter",
@@ -178,8 +178,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-java-samples",
-      "commit": "c3f164a5eefd795ae2a7bb0cd8dacb70db7450b2",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-java-samples/zip/c3f164a5eefd795ae2a7bb0cd8dacb70db7450b2"
+      "commit": "166770ac21a85e3770fa41f591f4c786c79f19ec",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-java-samples/zip/166770ac21a85e3770fa41f591f4c786c79f19ec"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-maui",
@@ -208,8 +208,8 @@
       "branch": "master",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-python-samples",
-      "commit": "5a3575b5b389d556c728bafe49e5d1e1f4f33997",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-python-samples/zip/5a3575b5b389d556c728bafe49e5d1e1f4f33997"
+      "commit": "a5ad4f243e4855fd376c59de3bd0513e3620a926",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-python-samples/zip/a5ad4f243e4855fd376c59de3bd0513e3620a926"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-react-native",
@@ -228,8 +228,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-cpp-samples",
-      "commit": "dc2f6f21579591b95b6d5251066cb0094fa4ce74",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-cpp-samples/zip/dc2f6f21579591b95b6d5251066cb0094fa4ce74"
+      "commit": "d36f6c0081c004fe976f2d0fb854fc32e8b8a0ef",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-cpp-samples/zip/d36f6c0081c004fe976f2d0fb854fc32e8b8a0ef"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-dotnet",
@@ -238,8 +238,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-dotnet-samples",
-      "commit": "1c6d1f3dbdcc11192b83498f5dca01fd192ee26a",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-dotnet-samples/zip/1c6d1f3dbdcc11192b83498f5dca01fd192ee26a"
+      "commit": "e697701c509cff1b3b3b37b1717e48b8df3486ca",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-dotnet-samples/zip/e697701c509cff1b3b3b37b1717e48b8df3486ca"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-flutter",
@@ -258,8 +258,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-java-samples",
-      "commit": "ad9d5516cdae5d1240966271896f6f13e6ae5476",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-java-samples/zip/ad9d5516cdae5d1240966271896f6f13e6ae5476"
+      "commit": "c9dd286474faf976a6232403b4e1cca4e3b254a6",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-java-samples/zip/c9dd286474faf976a6232403b4e1cca4e3b254a6"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-javascript",

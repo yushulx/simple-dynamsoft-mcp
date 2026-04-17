@@ -120,7 +120,7 @@
     "dbr-server": {
       "name": "Dynamsoft Barcode Reader Server/Desktop SDK",
       "description": "Barcode scanning for server/desktop platforms including Python, .NET, Java, C++, and Node.js.",
-      "version": "11.4.2000",
+      "version": "11.4.2001",
       "default_platform": "python",
       "snippet_path": "dynamsoft-barcode-reader/server",
       "platforms": {
@@ -255,7 +255,7 @@
     "dcv-core": {
       "name": "Dynamsoft Capture Vision Core",
       "description": "Unified architecture documentation for Capture Vision capabilities across barcode, MRZ, document normalization, and parsing workflows.",
-      "version": "3.4.2000",
+      "version": "3.4.2001",
       "default_platform": "core",
       "snippet_path": "dynamsoft-capture-vision/core",
       "platforms": {
@@ -270,7 +270,7 @@
     "dcv-server": {
       "name": "Dynamsoft Capture Vision Server/Desktop SDK",
       "description": "Capture Vision workflows for Python, .NET, Java, C++, and Node.js, including VIN, MRZ, document normalization, and driver license scenarios.",
-      "version": "3.4.2000",
+      "version": "3.4.2001",
       "default_platform": "python",
       "snippet_path": "dynamsoft-capture-vision/server",
       "platforms": {
@@ -455,7 +455,7 @@
     "dwt": {
       "name": "Dynamic Web TWAIN",
       "description": "Document scanning SDK for web applications. Supports TWAIN, WIA, ICA, SANE scanners.",
-      "version": "19.3.2",
+      "version": "19.3.3",
       "default_platform": "web",
       "snippet_path": "dynamic-web-twain",
       "api_docs": "web-twain-api-docs.json",
