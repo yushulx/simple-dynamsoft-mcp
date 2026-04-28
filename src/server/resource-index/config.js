@@ -9,7 +9,6 @@ const SAMPLE_DIRS = {
   dbrReactNative: "dynamsoft-barcode-reader-react-native",
   dbrFlutter: "dynamsoft-barcode-reader-flutter",
   dbrNodejs: "dynamsoft-capture-vision-nodejs",
-  dcvWeb: "__removed-dcv-web-samples__",
   mrzWeb: "mrz-scanner-javascript",
   mdsWeb: "document-scanner-javascript",
   dcvMobile: "dynamsoft-capture-vision-mobile",

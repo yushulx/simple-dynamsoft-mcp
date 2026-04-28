@@ -28,7 +28,6 @@ const SAMPLE_ROOTS = {
   dbrReactNative: join(samplesRoot, SAMPLE_DIRS.dbrReactNative),
   dbrFlutter: join(samplesRoot, SAMPLE_DIRS.dbrFlutter),
   dbrNodejs: join(samplesRoot, SAMPLE_DIRS.dbrNodejs),
-  dcvWeb: join(samplesRoot, SAMPLE_DIRS.dcvWeb),
   mrzWeb: join(samplesRoot, SAMPLE_DIRS.mrzWeb),
   mdsWeb: join(samplesRoot, SAMPLE_DIRS.mdsWeb),
   dcvMobile: join(samplesRoot, SAMPLE_DIRS.dcvMobile),

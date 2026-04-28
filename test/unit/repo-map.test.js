@@ -9,7 +9,6 @@ const manifest = {
     { path: "documentation/mobile-document-scanner-docs-js" },
     { path: "documentation/mrz-scanner-docs-js" },
     { path: "samples/dynamsoft-barcode-reader" },
-    { path: ["samples", ["dynamsoft", "capture", "vision", "javascript"].join("-")].join("/") },
     { path: "samples/dynamsoft-capture-vision-mobile" },
     { path: "samples/dynamsoft-capture-vision-react-native" },
     { path: "samples/dynamsoft-capture-vision-flutter" },
