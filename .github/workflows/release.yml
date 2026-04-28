@@ -350,6 +350,10 @@ jobs:
   deploy_azure:
     needs: [detect, publish_npm, build_prebuilt_rag]
     if: needs.detect.outputs.release_needed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+      actions: write
     uses: ./.github/workflows/deploy-aca.yml
     with:
       version: ${{ needs.detect.outputs.version }}
