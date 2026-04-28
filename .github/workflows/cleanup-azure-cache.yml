@@ -46,10 +46,13 @@ jobs:
         id: vars
         shell: bash
         env:
-          INPUT_CURRENT_VERSION: ${{ inputs.current_version }}
-          INPUT_TARGET_VERSION: ${{ inputs.target_version }}
-          INPUT_STORAGE_ACCOUNT: ${{ inputs.storage_account }}
-          INPUT_CACHE_SHARE: ${{ inputs.cache_share }}
+          # Use github.event.inputs.* (with fallback) instead of inputs.*
+          # so the schedule trigger does not error on context evaluation;
+          # inputs.* is only populated for workflow_dispatch / workflow_call.
+          INPUT_CURRENT_VERSION: ${{ github.event.inputs.current_version || '' }}
+          INPUT_TARGET_VERSION: ${{ github.event.inputs.target_version || '' }}
+          INPUT_STORAGE_ACCOUNT: ${{ github.event.inputs.storage_account || '' }}
+          INPUT_CACHE_SHARE: ${{ github.event.inputs.cache_share || '' }}
           REPO_STORAGE_ACCOUNT: ${{ vars.AZURE_CACHE_STORAGE_ACCOUNT }}
           REPO_CACHE_SHARE: ${{ vars.AZURE_CACHE_FILE_SHARE }}
         run: |
@@ -201,7 +204,7 @@ jobs:
 
           cleanup_failed=0
           cleanup_started_at="$SECONDS"
-          cleanup_deadline_seconds=3000
+          cleanup_deadline_seconds=1800
 
           run_cleanup_command() {
             local label="$1"
