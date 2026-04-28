@@ -120,7 +120,7 @@
     "dbr-server": {
       "name": "Dynamsoft Barcode Reader Server/Desktop SDK",
       "description": "Barcode scanning for server/desktop platforms including Python, .NET, Java, C++, and Node.js.",
-      "version": "11.4.2000",
+      "version": "11.4.2001",
       "default_platform": "python",
       "snippet_path": "dynamsoft-barcode-reader/server",
       "platforms": {
@@ -228,7 +228,7 @@
     "dbr-web": {
       "name": "Dynamsoft Barcode Reader JavaScript SDK",
       "description": "Barcode scanning for web applications using JavaScript/TypeScript.",
-      "version": "11.2.4000",
+      "version": "11.4.2000",
       "default_platform": "web",
       "snippet_path": "dynamsoft-barcode-reader/web",
       "platforms": {
@@ -255,7 +255,7 @@
     "dcv-core": {
       "name": "Dynamsoft Capture Vision Core",
       "description": "Unified architecture documentation for Capture Vision capabilities across barcode, MRZ, document normalization, and parsing workflows.",
-      "version": "3.4.2000",
+      "version": "3.4.2001",
       "default_platform": "core",
       "snippet_path": "dynamsoft-capture-vision/core",
       "platforms": {
@@ -270,7 +270,7 @@
     "dcv-server": {
       "name": "Dynamsoft Capture Vision Server/Desktop SDK",
       "description": "Capture Vision workflows for Python, .NET, Java, C++, and Node.js, including MRZ, document normalization, and driver license scenarios.",
-      "version": "3.4.2000",
+      "version": "3.4.2001",
       "default_platform": "python",
       "snippet_path": "dynamsoft-capture-vision/server",
       "platforms": {
@@ -347,7 +347,7 @@
     "dcv-web": {
       "name": "Dynamsoft Capture Vision JavaScript SDK",
       "description": "Capture Vision workflows for JavaScript web apps, including MRZ processing scenarios.",
-      "version": "3.2.5000",
+      "version": "3.4.2000",
       "default_platform": "web",
       "snippet_path": "dynamsoft-capture-vision/web",
       "platforms": {
@@ -452,7 +452,7 @@
     "dwt": {
       "name": "Dynamic Web TWAIN",
       "description": "Document scanning SDK for web applications. Supports TWAIN, WIA, ICA, SANE scanners.",
-      "version": "19.3.2",
+      "version": "19.3.3",
       "default_platform": "web",
       "snippet_path": "dynamic-web-twain",
       "api_docs": "web-twain-api-docs.json",
@@ -489,7 +489,7 @@
     "ddv": {
       "name": "Dynamsoft Document Viewer",
       "description": "Browser-based JavaScript SDK for viewing, editing, and annotating documents (PDFs and images).",
-      "version": "3.2.1",
+      "version": "4.0",
       "default_platform": "web",
       "snippet_path": "dynamsoft-document-viewer",
       "api_docs": "ddv-api-docs.json",
