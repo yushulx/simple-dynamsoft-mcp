@@ -1266,7 +1266,6 @@ await test('get_quickstart uses MRZ specific web links', async () => {
     assert(text.includes('https://www.dynamsoft.com/mrz-scanner/docs/web/'), 'Should use MRZ specific web docs');
     assert(text.includes('https://github.com/Dynamsoft/mrz-scanner-javascript'), 'Should use MRZ dedicated sample repo');
     assert(!text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should not use DCV web docs for MRZ quickstart');
-    assert(!text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should not use DCV web samples for MRZ quickstart');
 });
 
 await test('get_quickstart uses MDS specific web links', async () => {
@@ -1285,7 +1284,6 @@ await test('get_quickstart uses MDS specific web links', async () => {
     assert(text.includes('https://www.dynamsoft.com/mobile-document-scanner/docs/web/'), 'Should use MDS specific web docs');
     assert(text.includes('https://github.com/Dynamsoft/document-scanner-javascript'), 'Should use MDS dedicated sample repo');
     assert(!text.includes('https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/'), 'Should not use DCV web docs for MDS quickstart');
-    assert(!text.includes('https://github.com/Dynamsoft/capture-vision-javascript-samples'), 'Should not use DCV web samples for MDS quickstart');
 });
 
 await test('Invalid tool call returns error', async () => {

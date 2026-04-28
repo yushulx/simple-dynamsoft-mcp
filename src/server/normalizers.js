@@ -10,7 +10,6 @@ const sdkAliases = {
   "capture-vision": "dcv-mobile",
   "dynamsoft capture vision": "dcv-mobile",
   "mrz scanner": "dcv-mobile",
-  "vin scanner": "dcv-mobile",
   "driver license scanner": "dcv-mobile",
   "document normalization": "dcv-mobile",
   "document normalizer": "dcv-mobile",
@@ -167,8 +166,6 @@ const dcvFeatureTerms = [
   "capture vision",
   "mrz",
   "machine readable zone",
-  "vin",
-  "vehicle identification",
   "driver license",
   "drivers license",
   "id card",
@@ -267,7 +264,6 @@ function normalizeProduct(product) {
       "dynamsoft capture vision",
       "dynamsoft capture vision sdk",
       "capture vision bundle",
-      "vin scanner",
       "driver license scanner"
     ].includes(normalized)
   ) {

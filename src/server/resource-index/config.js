@@ -9,7 +9,6 @@ const SAMPLE_DIRS = {
   dbrReactNative: "dynamsoft-barcode-reader-react-native",
   dbrFlutter: "dynamsoft-barcode-reader-flutter",
   dbrNodejs: "dynamsoft-capture-vision-nodejs",
-  dcvWeb: "dynamsoft-capture-vision-javascript",
   mrzWeb: "mrz-scanner-javascript",
   mdsWeb: "document-scanner-javascript",
   dcvMobile: "dynamsoft-capture-vision-mobile",
@@ -171,7 +170,7 @@ const DCV_SERVER_PREFERRED_FILES = {
   java: ["Main.java", "App.java"],
   cpp: ["main.cpp", "Main.cpp"],
   nodejs: ["index.js", "index.mjs", "app.js", "app.mjs", "server.js", "server.mjs"],
-  python: ["document_scanner.py", "mrz_scanner.py", "vin_scanner.py", "driver_license_scanner.py", "gs1_ai_scanner.py"]
+  python: ["document_scanner.py", "mrz_scanner.py", "driver_license_scanner.py", "gs1_ai_scanner.py"]
 };
 
 const DCV_SERVER_PREFERRED_EXTS = {

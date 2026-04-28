@@ -39,9 +39,6 @@ function getDcvScenarioTags(sampleName) {
   if (normalized.includes("mrz")) {
     tags.push("mrz", "passport", "id-card", "machine-readable-zone");
   }
-  if (normalized.includes("vin")) {
-    tags.push("vin", "vehicle-identification-number", "vehicle", "automotive");
-  }
   if (normalized.includes("driver") || normalized.includes("license")) {
     tags.push("driver-license", "id-card", "dl", "aamva");
   }
@@ -430,7 +427,6 @@ function buildIndexData({
         "Barcode-only workflows where DCV-specific workflows are not required."
       ],
       useDcvWhen: [
-        "VIN scanning",
         "MRZ/passport/ID scanning",
         "Driver license parsing",
         "Document normalization/auto-capture/cropping",

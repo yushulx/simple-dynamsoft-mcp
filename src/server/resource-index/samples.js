@@ -156,7 +156,7 @@ function discoverDirectoryNamesWithFilter(path, matcher) {
 }
 
 function isDcvScenarioSampleName(sampleName) {
-  return /scan|scanner|mrz|vin|driver|license|document|gs1/i.test(sampleName || "");
+  return /scan|scanner|mrz|driver|license|document|gs1/i.test(sampleName || "");
 }
 
 function discoverDbrServerSamples(platform) {
@@ -254,15 +254,7 @@ function getDcvServerPlatforms() {
 }
 
 function discoverDcvWebSamples() {
-  const sampleSet = new Set();
-  if (!existsSync(SAMPLE_ROOTS.dcvWeb)) return [];
-
-  for (const entry of readdirSync(SAMPLE_ROOTS.dcvWeb, { withFileTypes: true })) {
-    if (entry.name.startsWith(".")) continue;
-    if (entry.isDirectory()) sampleSet.add(entry.name);
-    if (entry.isFile() && entry.name.endsWith(".html")) sampleSet.add(entry.name.replace(".html", ""));
-  }
-  return Array.from(sampleSet).sort();
+  return [];
 }
 
 function getDcvWebFrameworkPlatforms() {
@@ -690,21 +682,6 @@ function getDcvServerSamplePath(platform, sampleName) {
 }
 
 function getDcvWebSamplePath(sampleName) {
-  if (!existsSync(SAMPLE_ROOTS.dcvWeb)) return null;
-  const directDir = join(SAMPLE_ROOTS.dcvWeb, sampleName);
-  if (existsSync(directDir) && statSync(directDir).isDirectory()) {
-    const indexPath = join(directDir, "index.html");
-    if (existsSync(indexPath)) return indexPath;
-    const readmePath = join(directDir, "README.md");
-    if (existsSync(readmePath)) return readmePath;
-    for (const entry of readdirSync(directDir, { withFileTypes: true })) {
-      if (entry.isFile() && entry.name.endsWith(".html")) return join(directDir, entry.name);
-    }
-    return directDir;
-  }
-
-  const htmlPath = join(SAMPLE_ROOTS.dcvWeb, `${sampleName}.html`);
-  if (existsSync(htmlPath)) return htmlPath;
   return null;
 }
 

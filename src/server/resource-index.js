@@ -576,7 +576,6 @@ function getRagSignatureData() {
       dbrReactNativeSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrReactNative),
       dbrFlutterSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrFlutter),
       dbrNodejsSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrNodejs),
-      dcvWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvWeb),
       mrzWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mrzWeb),
       mdsWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mdsWeb),
       dcvMobileSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvMobile),

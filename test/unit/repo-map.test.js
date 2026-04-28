@@ -9,7 +9,6 @@ const manifest = {
     { path: "documentation/mobile-document-scanner-docs-js" },
     { path: "documentation/mrz-scanner-docs-js" },
     { path: "samples/dynamsoft-barcode-reader" },
-    { path: "samples/dynamsoft-capture-vision-javascript" },
     { path: "samples/dynamsoft-capture-vision-mobile" },
     { path: "samples/dynamsoft-capture-vision-react-native" },
     { path: "samples/dynamsoft-capture-vision-flutter" },
@@ -39,6 +38,15 @@ test("resolveRepoPathsForScopes respects type filter", () => {
   );
 
   assert.deepEqual(docOnly, ["documentation/capture-vision-docs-js"]);
+});
+
+test("resolveRepoPathsForScopes does not select removed DCV web samples", () => {
+  const paths = resolveRepoPathsForScopes(
+    [{ product: "dcv", edition: "web", type: "sample" }],
+    manifest
+  );
+
+  assert.deepEqual(paths, []);
 });
 
 test("resolveRepoPathsForScopes falls back to all repos when scope empty", () => {

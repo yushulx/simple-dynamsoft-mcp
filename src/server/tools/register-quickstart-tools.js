@@ -112,7 +112,7 @@ export function registerQuickstartTools({
         language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular"),
         version: z.string().optional().describe("Version constraint"),
         api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)"),
-        scenario: z.string().optional().describe("Scenario: camera, image, single, multiple, MRZ, VIN, document scan/normalization, driver license, react, etc.")
+        scenario: z.string().optional().describe("Scenario: camera, image, single, multiple, MRZ, document scan/normalization, driver license, react, etc.")
       },
       annotations: {
         readOnlyHint: true,
@@ -166,7 +166,6 @@ export function registerQuickstartTools({
           const platformName = normalizePlatform(platformHint) || "python";
           if (platformName === "python") {
             if (hint.includes("mrz")) return "mrz_scanner";
-            if (hint.includes("vin")) return "vin_scanner";
             if (hint.includes("driver") || hint.includes("license")) return "driver_license_scanner";
             if (hint.includes("gs1")) return "gs1_ai_scanner";
             return "document_scanner";
@@ -178,7 +177,6 @@ export function registerQuickstartTools({
             return "express";
           }
           if (hint.includes("mrz")) return "MRZScanner";
-          if (hint.includes("vin")) return "VINScanner";
           if (hint.includes("driver") || hint.includes("license")) return "DriverLicenseScanner";
           if (hint.includes("gs1")) return "GS1AIScanner";
           return "DocumentScanner";
@@ -188,11 +186,9 @@ export function registerQuickstartTools({
           const lowerToName = new Map(sampleNames.map((name) => [String(name).toLowerCase(), name]));
           const candidates = hint.includes("mrz")
             ? ["scanmrz", "mrzscanner"]
-            : hint.includes("vin")
-              ? ["scanvin", "vinscanner"]
-              : (hint.includes("driver") || hint.includes("license"))
-                ? ["driverlicensescanner"]
-                : ["scandocument", "documentscanner"];
+            : (hint.includes("driver") || hint.includes("license"))
+              ? ["driverlicensescanner"]
+              : ["scandocument", "documentscanner"];
           for (const candidate of candidates) {
             if (lowerToName.has(candidate)) return lowerToName.get(candidate);
           }
@@ -297,7 +293,7 @@ export function registerQuickstartTools({
           const available = discoverDcvWebSamples();
           const sampleName = isPublicDcvProduct
             ? (normalizedProduct === "mrz" ? "MRZScanner" : "DocumentScanner")
-            : (scenarioLower.includes("vin") ? "VINScanner" : (available[0] || "VINScanner"));
+            : (available[0] || "DocumentScanner");
           const samplePath = getDcvWebSamplePath(sampleName);
           if (!samplePath || !existsSync(samplePath)) {
             return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
