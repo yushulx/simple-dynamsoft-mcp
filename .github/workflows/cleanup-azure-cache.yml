@@ -1,0 +1,378 @@
+name: Cleanup Azure Cache
+
+on:
+  workflow_dispatch:
+    inputs:
+      current_version:
+        description: "Version directory to keep (will not be deleted). The previous semver-sorted version will also be retained. Leave blank when using target_version."
+        required: false
+        type: string
+        default: ""
+      target_version:
+        description: "Optional. When set, delete ONLY this version directory and skip keep-current/keep-previous logic. Must match a versioned directory present on the share. Refuses to delete current_version if both are set."
+        required: false
+        type: string
+        default: ""
+      storage_account:
+        description: "Azure storage account name. Defaults to repo variable AZURE_CACHE_STORAGE_ACCOUNT."
+        required: false
+        type: string
+        default: ""
+      cache_share:
+        description: "Azure Files share name. Defaults to repo variable AZURE_CACHE_FILE_SHARE."
+        required: false
+        type: string
+        default: ""
+  schedule:
+    # Weekly safety net in case dispatched cleanups are skipped or fail.
+    - cron: "37 4 * * 1"
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  # Allow at most one cleanup run at a time, but never cancel an in-progress one.
+  group: cleanup-azure-cache
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    environment: azure-production
+    timeout-minutes: 60
+    steps:
+      - name: Resolve cleanup variables
+        id: vars
+        shell: bash
+        env:
+          # Use github.event.inputs.* (with fallback) instead of inputs.*
+          # so the schedule trigger does not error on context evaluation;
+          # inputs.* is only populated for workflow_dispatch / workflow_call.
+          INPUT_CURRENT_VERSION: ${{ github.event.inputs.current_version || '' }}
+          INPUT_TARGET_VERSION: ${{ github.event.inputs.target_version || '' }}
+          INPUT_STORAGE_ACCOUNT: ${{ github.event.inputs.storage_account || '' }}
+          INPUT_CACHE_SHARE: ${{ github.event.inputs.cache_share || '' }}
+          REPO_STORAGE_ACCOUNT: ${{ vars.AZURE_CACHE_STORAGE_ACCOUNT }}
+          REPO_CACHE_SHARE: ${{ vars.AZURE_CACHE_FILE_SHARE }}
+        run: |
+          set -euo pipefail
+
+          current_version="${INPUT_CURRENT_VERSION:-}"
+          target_version="${INPUT_TARGET_VERSION:-}"
+          storage_account="${INPUT_STORAGE_ACCOUNT:-${REPO_STORAGE_ACCOUNT:-}}"
+          cache_share="${INPUT_CACHE_SHARE:-${REPO_CACHE_SHARE:-}}"
+
+          if [[ -z "$storage_account" ]]; then
+            storage_account="simpledynamsoftmcpsa"
+          fi
+          if [[ -z "$cache_share" ]]; then
+            cache_share="mcp-cache"
+          fi
+
+          version_regex='^[0-9]+(\.[0-9]+){1,3}([.-][0-9A-Za-z]+)*$'
+
+          if [[ -n "$target_version" ]]; then
+            if [[ ! "$target_version" =~ $version_regex ]]; then
+              echo "::error::target_version '$target_version' does not match version pattern; refusing to proceed."
+              exit 1
+            fi
+            if [[ -n "$current_version" && "$target_version" == "$current_version" ]]; then
+              echo "::error::target_version '$target_version' equals current_version; refusing to delete the version that should be kept."
+              exit 1
+            fi
+          fi
+
+          # current_version may be empty when triggered by schedule or when
+          # target_version mode is in use. The cleanup step branches on this.
+          echo "current_version=$current_version" >> "$GITHUB_OUTPUT"
+          echo "target_version=$target_version" >> "$GITHUB_OUTPUT"
+          echo "storage_account=$storage_account" >> "$GITHUB_OUTPUT"
+          echo "cache_share=$cache_share" >> "$GITHUB_OUTPUT"
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Clean up old cache versions in Azure Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account="${{ steps.vars.outputs.storage_account }}"
+          share="${{ steps.vars.outputs.cache_share }}"
+          current_version="${{ steps.vars.outputs.current_version }}"
+          target_version="${{ steps.vars.outputs.target_version }}"
+
+          if ! key="$(timeout -k 30s 180s az storage account keys list \
+            --account-name "$account" \
+            --query "[0].value" \
+            --only-show-errors \
+            -o tsv)"; then
+            echo "::warning::Azure Files cache cleanup skipped because storage account key lookup failed"
+            exit 0
+          fi
+
+          if ! dirs_output="$(timeout -k 30s 180s az storage file list \
+            --account-name "$account" \
+            --account-key "$key" \
+            --share-name "$share" \
+            --num-results "*" \
+            --query "[?properties.contentLength == null].name" \
+            --only-show-errors \
+            -o tsv)"; then
+            echo "::warning::Azure Files cache cleanup skipped because the initial directory scan failed"
+            exit 0
+          fi
+
+          if [[ -n "$dirs_output" ]]; then
+            mapfile -t dirs <<< "$dirs_output"
+          else
+            dirs=()
+          fi
+
+          version_regex='^[0-9]+(\.[0-9]+){1,3}([.-][0-9A-Za-z]+)*$'
+          versioned_dirs=()
+          for dir in "${dirs[@]}"; do
+            if [[ -n "$dir" && "$dir" =~ $version_regex ]]; then
+              versioned_dirs+=("$dir")
+            fi
+          done
+
+          if (( ${#versioned_dirs[@]} == 0 )); then
+            echo "No versioned cache directories found; skipping cleanup"
+            exit 0
+          fi
+
+          mapfile -t sorted_versions < <(printf '%s\n' "${versioned_dirs[@]}" | sort -V)
+
+          keep_versions=()
+          if [[ -n "$target_version" ]]; then
+            # Targeted-deletion mode: restrict the deletion set to just
+            # target_version and bypass keep-versions selection.
+            target_found=0
+            for dir in "${sorted_versions[@]}"; do
+              if [[ "$dir" == "$target_version" ]]; then
+                target_found=1
+                break
+              fi
+            done
+            if (( target_found == 0 )); then
+              echo "::error::target_version '$target_version' was not found among versioned directories on the share: ${sorted_versions[*]}"
+              exit 1
+            fi
+            versioned_dirs=("$target_version")
+            echo "Targeted deletion mode: will delete only '$target_version'."
+          elif [[ -n "$current_version" ]]; then
+            keep_versions+=("$current_version")
+            current_index=-1
+            for i in "${!sorted_versions[@]}"; do
+              if [[ "${sorted_versions[$i]}" == "$current_version" ]]; then
+                current_index="$i"
+                break
+              fi
+            done
+            if (( current_index > 0 )); then
+              keep_versions+=("${sorted_versions[$((current_index - 1))]}")
+            fi
+          else
+            # Schedule path: keep the two newest semver-sorted versions.
+            count=${#sorted_versions[@]}
+            if (( count >= 1 )); then
+              keep_versions+=("${sorted_versions[$((count - 1))]}")
+            fi
+            if (( count >= 2 )); then
+              keep_versions+=("${sorted_versions[$((count - 2))]}")
+            fi
+          fi
+
+          echo "Versioned cache directories on share: ${sorted_versions[*]}"
+          echo "Versions to keep: ${keep_versions[*]:-<none>}"
+
+          should_keep() {
+            local candidate="$1"
+            for keep in "${keep_versions[@]}"; do
+              if [[ "$candidate" == "$keep" ]]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          cleanup_failed=0
+          cleanup_started_at="$SECONDS"
+          cleanup_deadline_seconds=1800
+
+          run_cleanup_command() {
+            local label="$1"
+            local exit_code
+            shift
+
+            if timeout -k 30s 180s "$@"; then
+              return 0
+            else
+              exit_code="$?"
+            fi
+
+            if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 || "$exit_code" -eq 143 ]]; then
+              echo "::warning::Cleanup timed out after up to 210s (180s + 30s grace): ${label}"
+            else
+              echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}"
+            fi
+
+            cleanup_failed=1
+            return "$exit_code"
+          }
+
+          run_cleanup_capture() {
+            local label="$1"
+            local output
+            local exit_code
+            shift
+
+            if output="$(timeout -k 30s 180s "$@" 2>&1)"; then
+              printf '%s' "$output"
+              return 0
+            fi
+
+            exit_code="$?"
+            if [[ "$exit_code" -eq 124 || "$exit_code" -eq 137 || "$exit_code" -eq 143 ]]; then
+              echo "::warning::Cleanup timed out after up to 210s (180s + 30s grace): ${label}" >&2
+            else
+              echo "::warning::Cleanup command failed (exit ${exit_code}): ${label}" >&2
+            fi
+
+            if [[ -n "$output" ]]; then
+              printf '%s\n' "$output" >&2
+            fi
+
+            cleanup_failed=1
+            return "$exit_code"
+          }
+
+          ensure_cleanup_deadline() {
+            local label="$1"
+            local elapsed_seconds
+            elapsed_seconds="$((SECONDS - cleanup_started_at))"
+
+            if (( elapsed_seconds < cleanup_deadline_seconds )); then
+              return 0
+            fi
+
+            echo "::warning::Cleanup exceeded ${cleanup_deadline_seconds}s overall deadline: ${label}" >&2
+            cleanup_failed=1
+            return 1
+          }
+
+          delete_directory_recursive() {
+            local path="$1"
+            local child_path
+            local file
+            local file_output=""
+            local subdir
+            local subdir_output=""
+            local -a files=()
+            local -a subdirs=()
+
+            ensure_cleanup_deadline "$path" || return 1
+
+            if ! subdir_output="$(run_cleanup_capture "az storage file list for directories in ${path}" \
+              az storage file list \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$path" \
+              --num-results "*" \
+              --query "[?properties.contentLength == null].name" \
+              --only-show-errors \
+              -o tsv)"; then
+              cleanup_failed=1
+              return 1
+            fi
+
+            if [[ -n "$subdir_output" ]]; then
+              mapfile -t subdirs <<< "$subdir_output"
+            fi
+
+            for subdir in "${subdirs[@]}"; do
+              if [[ -z "$subdir" ]]; then
+                continue
+              fi
+
+              ensure_cleanup_deadline "$path/$subdir" || return 1
+
+              child_path="${path}/${subdir}"
+              if ! delete_directory_recursive "$child_path"; then
+                cleanup_failed=1
+                continue
+              fi
+            done
+
+            if ! file_output="$(run_cleanup_capture "az storage file list for ${path}" \
+              az storage file list \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --path "$path" \
+              --exclude-dir \
+              --num-results "*" \
+              --query "[].name" \
+              --only-show-errors \
+              -o tsv)"; then
+              cleanup_failed=1
+              return 1
+            fi
+
+            if [[ -n "$file_output" ]]; then
+              mapfile -t files <<< "$file_output"
+            fi
+
+            for file in "${files[@]}"; do
+              if [[ -z "$file" ]]; then
+                continue
+              fi
+
+              ensure_cleanup_deadline "$path/$file" || return 1
+
+              if ! run_cleanup_command "az storage file delete for ${path}/${file}" \
+                az storage file delete \
+                --account-name "$account" \
+                --account-key "$key" \
+                --share-name "$share" \
+                --path "${path}/${file}" \
+                --only-show-errors; then
+                continue
+              fi
+            done
+
+            ensure_cleanup_deadline "$path" || return 1
+
+            if ! run_cleanup_command "az storage directory delete for ${path}" \
+              az storage directory delete \
+              --account-name "$account" \
+              --account-key "$key" \
+              --share-name "$share" \
+              --name "$path" \
+              --fail-not-exist; then
+              return 1
+            fi
+          }
+
+          for dir in "${versioned_dirs[@]}"; do
+            if should_keep "$dir"; then
+              echo "Keeping cache directory: $dir"
+              continue
+            fi
+
+            echo "Cleaning old cache directory: $dir"
+            if ! delete_directory_recursive "$dir"; then
+              echo "::warning::Recursive cleanup did not fully delete ${dir}"
+            fi
+          done
+
+          if [[ "$cleanup_failed" -eq 1 ]]; then
+            echo "::warning::Azure Files cache cleanup completed with one or more failures"
+          fi
