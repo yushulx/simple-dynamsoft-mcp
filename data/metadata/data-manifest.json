@@ -262,16 +262,6 @@
       "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-java-samples/zip/ad9d5516cdae5d1240966271896f6f13e6ae5476"
     },
     {
-      "name": "data/samples/dynamsoft-capture-vision-javascript",
-      "path": "samples/dynamsoft-capture-vision-javascript",
-      "url": "https://github.com/Dynamsoft/capture-vision-javascript-samples.git",
-      "branch": "main",
-      "owner": "Dynamsoft",
-      "repo": "capture-vision-javascript-samples",
-      "commit": "13f8885356247a7d369fd290f0b81b81e976a144",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-javascript-samples/zip/13f8885356247a7d369fd290f0b81b81e976a144"
-    },
-    {
       "name": "data/samples/dynamsoft-capture-vision-maui",
       "path": "samples/dynamsoft-capture-vision-maui",
       "url": "https://github.com/Dynamsoft/capture-vision-maui-samples.git",

@@ -90,10 +90,6 @@
 	path = data/samples/dynamsoft-capture-vision-spm
 	url = https://github.com/Dynamsoft/capture-vision-spm.git
 	branch = main
-[submodule "data/samples/dynamsoft-capture-vision-javascript"]
-	path = data/samples/dynamsoft-capture-vision-javascript
-	url = https://github.com/Dynamsoft/capture-vision-javascript-samples.git
-	branch = main
 [submodule "data/samples/document-scanner-javascript"]
 	path = data/samples/document-scanner-javascript
 	url = https://github.com/Dynamsoft/document-scanner-javascript.git

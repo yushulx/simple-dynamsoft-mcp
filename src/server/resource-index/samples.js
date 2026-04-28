@@ -156,7 +156,7 @@ function discoverDirectoryNamesWithFilter(path, matcher) {
 }
 
 function isDcvScenarioSampleName(sampleName) {
-  return /scan|scanner|mrz|vin|driver|license|document|gs1/i.test(sampleName || "");
+  return /scan|scanner|mrz|driver|license|document|gs1/i.test(sampleName || "");
 }
 
 function discoverDbrServerSamples(platform) {

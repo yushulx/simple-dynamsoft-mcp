@@ -168,11 +168,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Use Node 20
+      - name: Use Node 24
         if: ${{ env.GEMINI_API_KEY != '' }}
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Restore gemini RAG cache

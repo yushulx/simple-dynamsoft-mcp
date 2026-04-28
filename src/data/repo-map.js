@@ -56,7 +56,7 @@ const REPO_MAP = {
       ]
     },
     samples: {
-      web: ["samples/dynamsoft-capture-vision-javascript"],
+      web: [],
       mobile: [
         "samples/dynamsoft-capture-vision-mobile",
         "samples/dynamsoft-capture-vision-maui",
@@ -72,7 +72,6 @@ const REPO_MAP = {
         "samples/dynamsoft-capture-vision-nodejs"
       ],
       any: [
-        "samples/dynamsoft-capture-vision-javascript",
         "samples/dynamsoft-capture-vision-mobile",
         "samples/dynamsoft-capture-vision-python",
         "samples/dynamsoft-capture-vision-dotnet",

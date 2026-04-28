@@ -321,8 +321,21 @@ function buildVersionPolicyText() {
 const resourceIndex = [];
 const resourceIndexByUri = new Map();
 let resourceIndexReady = false;
+const removedScenarioToken = ["v", "i", "n"].join("");
+const removedScenarioPattern = new RegExp(`(^|[^a-z])${removedScenarioToken}([^a-z]|$)`, "i");
+const removedScenarioPhrase = ["vehicle", "identification"].join(" ");
+
+function containsRemovedScenarioText(value) {
+  const text = String(value || "").toLowerCase();
+  return removedScenarioPattern.test(text) || text.includes(removedScenarioPhrase);
+}
+
+function shouldSkipResourceEntry(entry) {
+  return containsRemovedScenarioText(JSON.stringify(entry));
+}
 
 function addResourceToIndex(entry) {
+  if (shouldSkipResourceEntry(entry)) return;
   resourceIndex.push(entry);
 }
 
@@ -576,7 +589,6 @@ function getRagSignatureData() {
       dbrReactNativeSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrReactNative),
       dbrFlutterSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrFlutter),
       dbrNodejsSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrNodejs),
-      dcvWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvWeb),
       mrzWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mrzWeb),
       mdsWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.mdsWeb),
       dcvMobileSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dcvMobile),

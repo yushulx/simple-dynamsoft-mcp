@@ -269,7 +269,7 @@
     },
     "dcv-server": {
       "name": "Dynamsoft Capture Vision Server/Desktop SDK",
-      "description": "Capture Vision workflows for Python, .NET, Java, C++, and Node.js, including VIN, MRZ, document normalization, and driver license scenarios.",
+      "description": "Capture Vision workflows for Python, .NET, Java, C++, and Node.js, including MRZ, document normalization, and driver license scenarios.",
       "version": "3.4.2000",
       "default_platform": "python",
       "snippet_path": "dynamsoft-capture-vision/server",
@@ -346,7 +346,7 @@
     },
     "dcv-web": {
       "name": "Dynamsoft Capture Vision JavaScript SDK",
-      "description": "Capture Vision workflows for JavaScript web apps, including VIN and MRZ processing scenarios.",
+      "description": "Capture Vision workflows for JavaScript web apps, including MRZ processing scenarios.",
       "version": "3.2.5000",
       "default_platform": "web",
       "snippet_path": "dynamsoft-capture-vision/web",
@@ -359,9 +359,6 @@
           "docs": {
             "user-guide": "https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/user-guide/",
             "api-reference": "https://www.dynamsoft.com/capture-vision/docs/web/programming/javascript/api-reference/"
-          },
-          "samples": {
-            "repo": "https://github.com/Dynamsoft/capture-vision-javascript-samples"
           },
           "installation": {
             "npm": "npm install dynamsoft-capture-vision-bundle"

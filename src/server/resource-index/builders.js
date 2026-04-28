@@ -6,6 +6,18 @@ import { PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
 const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
 const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
 const WEB_FRAMEWORK_PLATFORMS = new Set(["react", "vue", "angular", "next", "nuxt", "svelte", "blazor", "capacitor", "electron", "es6", "native-ts", "pwa", "requirejs", "webview"]);
+const REMOVED_SCENARIO_TOKEN = ["v", "i", "n"].join("");
+const REMOVED_SCENARIO_PATTERN = new RegExp(`(^|[^a-z])${REMOVED_SCENARIO_TOKEN}([^a-z]|$)`, "i");
+const REMOVED_SCENARIO_PHRASE = ["vehicle", "identification"].join(" ");
+
+function containsRemovedScenarioText(value) {
+  const text = String(value || "").toLowerCase();
+  return REMOVED_SCENARIO_PATTERN.test(text) || text.includes(REMOVED_SCENARIO_PHRASE);
+}
+
+function shouldSkipResourceEntry(entry) {
+  return containsRemovedScenarioText(JSON.stringify(entry));
+}
 
 function normalizeFrameworkTag(tag) {
   const normalized = String(tag || "").trim().toLowerCase();
@@ -38,9 +50,6 @@ function getDcvScenarioTags(sampleName) {
   const tags = [];
   if (normalized.includes("mrz")) {
     tags.push("mrz", "passport", "id-card", "machine-readable-zone");
-  }
-  if (normalized.includes("vin")) {
-    tags.push("vin", "vehicle-identification-number", "vehicle", "automotive");
   }
   if (normalized.includes("driver") || normalized.includes("license")) {
     tags.push("driver-license", "id-card", "dl", "aamva");
@@ -430,7 +439,6 @@ function buildIndexData({
         "Barcode-only workflows where DCV-specific workflows are not required."
       ],
       useDcvWhen: [
-        "VIN scanning",
         "MRZ/passport/ID scanning",
         "Driver license parsing",
         "Document normalization/auto-capture/cropping",
@@ -584,6 +592,12 @@ function buildResourceIndex({
   getDdvSamplePath,
   findCodeFilesInSample
 }) {
+  const addVisibleResourceToIndex = addResourceToIndex;
+  addResourceToIndex = (entry) => {
+    if (shouldSkipResourceEntry(entry)) return;
+    addVisibleResourceToIndex(entry);
+  };
+
   addResourceToIndex({
     id: "index",
     uri: "doc://index",

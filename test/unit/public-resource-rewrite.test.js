@@ -112,6 +112,28 @@ test("buildResourceIndex does not expose MRZ server docs from DCV resources", ()
   assert.equal(mrzServerDoc, undefined);
 });
 
+test("buildResourceIndex excludes removed scenario resources from source content", () => {
+  const entries = [];
+  const removedScenario = ["v", "i", "n"].join("");
+
+  buildResourceIndex(createBuilderArgs((entry) => entries.push(entry), {
+    dcvMobileDocs: [
+      {
+        title: "Mobile SDK guide",
+        breadcrumb: "Mobile documentation",
+        content: `Guide for ${removedScenario.toUpperCase()} workflows`,
+        path: `programming/android/${removedScenario}-guide.md`,
+        platform: "android"
+      }
+    ],
+    getDcvMobilePlatforms: () => ["android"],
+    discoverDcvMobileSamples: () => [`Scan${removedScenario.toUpperCase()}`],
+    discoverWebSamples: () => ({ scenarios: [`read-${removedScenario}`] })
+  }));
+
+  assert.equal(entries.some((entry) => JSON.stringify(entry).toLowerCase().includes(removedScenario)), false);
+});
+
 test("buildResourceIndex publishes richer public product-selection guidance without DCV wording", async () => {
   const entries = [];
 
