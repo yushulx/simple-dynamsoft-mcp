@@ -37,7 +37,7 @@ jobs:
       params_file: ${{ steps.vars.outputs.params_file }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Resolve input variables
         id: vars
@@ -103,7 +103,7 @@ jobs:
     environment: azure-production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
