@@ -62,7 +62,7 @@ jobs:
     environment: azure-production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Resolve deployment variables
         id: vars
@@ -139,14 +139,14 @@ jobs:
 
       - name: Download hydrated data artifact
         if: ${{ inputs.data_artifact_name != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.data_artifact_name }}
           path: ${{ runner.temp }}/hydrated-data-artifact
 
       - name: Download prebuilt RAG artifact
         if: ${{ inputs.rag_artifact_name != '' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.rag_artifact_name }}
           path: ${{ runner.temp }}/prebuilt-rag-artifact

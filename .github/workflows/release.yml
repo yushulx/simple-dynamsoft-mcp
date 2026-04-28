@@ -34,7 +34,7 @@ jobs:
       tag: ${{ steps.detect.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
@@ -102,12 +102,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
       - name: Use Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -130,10 +130,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -152,7 +152,7 @@ jobs:
           find release-assets/npm -maxdepth 1 -type f -name "*.tgz" -print
 
       - name: Upload npm package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: npm-pack
           path: release-assets/npm/*.tgz
@@ -174,12 +174,12 @@ jobs:
       GEMINI_EMBED_BATCH_SIZE: 16
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
       - name: Use Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -220,7 +220,7 @@ jobs:
           fi
 
       - name: Upload prebuilt RAG artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: prebuilt-rag-index
           path: release-assets/prebuilt-rag/**
@@ -238,7 +238,7 @@ jobs:
           cp -R data/samples "$staged_root/samples"
 
       - name: Upload hydrated release data artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: hydrated-release-data
           path: release-assets/hydrated-data/**
@@ -251,13 +251,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download npm package artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: npm-pack
           path: release-assets/npm
 
       - name: Download prebuilt RAG artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: prebuilt-rag-index
           path: release-assets/prebuilt-rag
@@ -304,10 +304,10 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: 'https://registry.npmjs.org'
