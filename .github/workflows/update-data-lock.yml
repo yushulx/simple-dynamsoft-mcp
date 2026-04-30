@@ -232,7 +232,7 @@ jobs:
 
       - name: Create Pull Request
         id: create_pr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: ${{ steps.pr_meta.outputs.commit_message }}
           title: ${{ steps.pr_meta.outputs.title }}
