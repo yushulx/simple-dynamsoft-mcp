@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "b0b0e542e4a19c63c0dd2cfba6e2118f9631ec77",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/b0b0e542e4a19c63c0dd2cfba6e2118f9631ec77"
+      "commit": "9180d56b5a75c09d8655870c7135c72eb9e8083c",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/9180d56b5a75c09d8655870c7135c72eb9e8083c"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -38,8 +38,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs",
-      "commit": "15d271a394a029667d56c5511c9574ff9a06a43e",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs/zip/15d271a394a029667d56c5511c9574ff9a06a43e"
+      "commit": "2160a60f3a49a2303d97821f34fc9b073949f56b",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs/zip/2160a60f3a49a2303d97821f34fc9b073949f56b"
     },
     {
       "name": "data/documentation/capture-vision-docs-js",
@@ -48,8 +48,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-js",
-      "commit": "bc6b37f5beff905946b1de9eb41814ab402f3b25",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-js/zip/bc6b37f5beff905946b1de9eb41814ab402f3b25"
+      "commit": "581215abd3b2545f19a4fe2becbe14391807aa19",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-js/zip/581215abd3b2545f19a4fe2becbe14391807aa19"
     },
     {
       "name": "data/documentation/capture-vision-docs-mobile",
@@ -58,8 +58,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-mobile",
-      "commit": "780761cc78f0f54929ef4ff7314d8e5dd039ec9e",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/780761cc78f0f54929ef4ff7314d8e5dd039ec9e"
+      "commit": "c489558ee74b0a6c6f88ccf9a1759e73af4cbc19",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/c489558ee74b0a6c6f88ccf9a1759e73af4cbc19"
     },
     {
       "name": "data/documentation/capture-vision-docs-server",
@@ -68,8 +68,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-server",
-      "commit": "49b46f98f5a8d5c59e2eb88f400cd13f952f8b71",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/49b46f98f5a8d5c59e2eb88f400cd13f952f8b71"
+      "commit": "e58e718a1d1e9ec7aab2252e66002da454b65497",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/e58e718a1d1e9ec7aab2252e66002da454b65497"
     },
     {
       "name": "data/documentation/document-viewer-docs",
@@ -78,8 +78,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "document-viewer-docs",
-      "commit": "6cce16d27771eedfd45fe28a56d41f0905c2f900",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/6cce16d27771eedfd45fe28a56d41f0905c2f900"
+      "commit": "1b54f576ce68d1d53137bb42bfe4a9b9e23c0c7f",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/1b54f576ce68d1d53137bb42bfe4a9b9e23c0c7f"
     },
     {
       "name": "data/documentation/mobile-document-scanner-docs-js",
@@ -88,8 +88,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "mobile-document-scanner-docs-js",
-      "commit": "ebef2d269a114ac7763a6c0635d098a09cdcbf59",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/ebef2d269a114ac7763a6c0635d098a09cdcbf59"
+      "commit": "36ee95f72fd5ec7f4f5949ceaec9795e7209b3f5",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/36ee95f72fd5ec7f4f5949ceaec9795e7209b3f5"
     },
     {
       "name": "data/documentation/mrz-scanner-docs-js",
@@ -98,8 +98,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "mrz-scanner-docs-js",
-      "commit": "9a4a8914a3c20f10267e5947c27e33264767f342",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mrz-scanner-docs-js/zip/9a4a8914a3c20f10267e5947c27e33264767f342"
+      "commit": "62af9a01fb37fba17a45ce7d5a85eb26d61d0e6d",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mrz-scanner-docs-js/zip/62af9a01fb37fba17a45ce7d5a85eb26d61d0e6d"
     },
     {
       "name": "data/documentation/web-twain-docs",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "59c45465613c8c0826a91642f76d961343436a86",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/59c45465613c8c0826a91642f76d961343436a86"
+      "commit": "749745bcb64a03db1389e2f22dfe8e8717d98bc6",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/749745bcb64a03db1389e2f22dfe8e8717d98bc6"
     },
     {
       "name": "data/samples/document-scanner-javascript",
