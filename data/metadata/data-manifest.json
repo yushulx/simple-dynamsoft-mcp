@@ -28,8 +28,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-server",
-      "commit": "64c9dd5f5181a1d5a2a19bf355f9e7b460e07456",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/64c9dd5f5181a1d5a2a19bf355f9e7b460e07456"
+      "commit": "58dad1a57ebdd00b6f52fe9160b4466300ba9d90",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/58dad1a57ebdd00b6f52fe9160b4466300ba9d90"
     },
     {
       "name": "data/documentation/capture-vision-docs",
@@ -198,8 +198,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-mobile-samples",
-      "commit": "a8f5b298ec7402a2de84ab0bfa917f03c2537636",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/a8f5b298ec7402a2de84ab0bfa917f03c2537636"
+      "commit": "c9f9b13a636a60f365d06ed76fcb6611e89cc06e",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/c9f9b13a636a60f365d06ed76fcb6611e89cc06e"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-python",
