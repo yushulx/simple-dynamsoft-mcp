@@ -168,8 +168,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-flutter-samples",
-      "commit": "39d6854d43509dd6060e5e00be7d58d0001e8d66",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-flutter-samples/zip/39d6854d43509dd6060e5e00be7d58d0001e8d66"
+      "commit": "fa0f5fa5d152f162434cbf1377cd7e2da1266bfd",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-flutter-samples/zip/fa0f5fa5d152f162434cbf1377cd7e2da1266bfd"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-java",
@@ -188,8 +188,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-maui-samples",
-      "commit": "e18ad17c3bae9010476b5f4f62fc0592338526c3",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-maui-samples/zip/e18ad17c3bae9010476b5f4f62fc0592338526c3"
+      "commit": "e1867899526f945b600a4640a3ed2272a82ad17f",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-maui-samples/zip/e1867899526f945b600a4640a3ed2272a82ad17f"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-mobile",
@@ -198,8 +198,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-mobile-samples",
-      "commit": "c9f9b13a636a60f365d06ed76fcb6611e89cc06e",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/c9f9b13a636a60f365d06ed76fcb6611e89cc06e"
+      "commit": "2c102f74411217034581622457262888b00050af",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/2c102f74411217034581622457262888b00050af"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-python",
@@ -218,8 +218,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-react-native-samples",
-      "commit": "c9ce64ff687fd766a6dfbc0fb06aa236a5ec83f3",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-react-native-samples/zip/c9ce64ff687fd766a6dfbc0fb06aa236a5ec83f3"
+      "commit": "09e7a896c41be67e593426689e9f6013491e0958",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-react-native-samples/zip/09e7a896c41be67e593426689e9f6013491e0958"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-c-cpp",
