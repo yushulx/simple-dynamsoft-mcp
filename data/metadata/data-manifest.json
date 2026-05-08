@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "749745bcb64a03db1389e2f22dfe8e8717d98bc6",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/749745bcb64a03db1389e2f22dfe8e8717d98bc6"
+      "commit": "2f131d8335ae9bbee36554d7947d78a4570ea5e0",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/2f131d8335ae9bbee36554d7947d78a4570ea5e0"
     },
     {
       "name": "data/samples/document-scanner-javascript",
