@@ -1,6 +1,6 @@
 {
   "name": "simple-dynamsoft-mcp",
-  "version": "7.3.26",
+  "version": "7.3.27",
   "description": "MCP server for Dynamsoft SDKs - Capture Vision, Barcode Reader (Mobile/Python/Web), Dynamic Web TWAIN, and Document Viewer. Provides documentation, code snippets, and API guidance.",
   "license": "MIT",
   "repository": {

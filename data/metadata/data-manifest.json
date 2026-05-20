@@ -198,8 +198,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-mobile-samples",
-      "commit": "2c102f74411217034581622457262888b00050af",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/2c102f74411217034581622457262888b00050af"
+      "commit": "ee5ad1187c2e0715e9ac28796ed7f6646ac10ddd",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/ee5ad1187c2e0715e9ac28796ed7f6646ac10ddd"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-python",
@@ -278,8 +278,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-mobile-samples",
-      "commit": "c4d05d63fa8d92dfe875a0b4bc5f8219056d2b7b",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-mobile-samples/zip/c4d05d63fa8d92dfe875a0b4bc5f8219056d2b7b"
+      "commit": "fc873683d591c6f7eb6512017c87da1bcde62f02",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-mobile-samples/zip/fc873683d591c6f7eb6512017c87da1bcde62f02"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-nodejs",
