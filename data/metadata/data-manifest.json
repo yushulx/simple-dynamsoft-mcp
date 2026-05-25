@@ -8,8 +8,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-js",
-      "commit": "b5103a2349e3c956ce09b6553eafab662f0a3960",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/b5103a2349e3c956ce09b6553eafab662f0a3960"
+      "commit": "2b35ae6ee73fe1e0ece138591f6f84ff09bb875b",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/2b35ae6ee73fe1e0ece138591f6f84ff09bb875b"
     },
     {
       "name": "data/documentation/barcode-reader-docs-mobile",
@@ -78,8 +78,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "document-viewer-docs",
-      "commit": "1b54f576ce68d1d53137bb42bfe4a9b9e23c0c7f",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/1b54f576ce68d1d53137bb42bfe4a9b9e23c0c7f"
+      "commit": "794b10f28edc07e4893f4e9a3b0eeb637b9cc77e",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/794b10f28edc07e4893f4e9a3b0eeb637b9cc77e"
     },
     {
       "name": "data/documentation/mobile-document-scanner-docs-js",
