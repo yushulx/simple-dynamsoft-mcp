@@ -98,8 +98,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "mrz-scanner-docs-js",
-      "commit": "34dda723bc55b9bf883ba274dd822418370ac6ce",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mrz-scanner-docs-js/zip/34dda723bc55b9bf883ba274dd822418370ac6ce"
+      "commit": "1fb6b93bd7f697def2d3f3183f0aef3c46a6dff9",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mrz-scanner-docs-js/zip/1fb6b93bd7f697def2d3f3183f0aef3c46a6dff9"
     },
     {
       "name": "data/documentation/web-twain-docs",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "2f131d8335ae9bbee36554d7947d78a4570ea5e0",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/2f131d8335ae9bbee36554d7947d78a4570ea5e0"
+      "commit": "e7dc27574a07e62249c91869a5217bf8ba9622c6",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/e7dc27574a07e62249c91869a5217bf8ba9622c6"
     },
     {
       "name": "data/samples/document-scanner-javascript",
