@@ -8,8 +8,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-js",
-      "commit": "ba920e513d401b48583c9a0dc43535388e860e1b",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/ba920e513d401b48583c9a0dc43535388e860e1b"
+      "commit": "7b2dc0a27e7a037486fccdd74dc95a61a12a45c5",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/7b2dc0a27e7a037486fccdd74dc95a61a12a45c5"
     },
     {
       "name": "data/documentation/barcode-reader-docs-mobile",
@@ -138,8 +138,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-javascript-samples",
-      "commit": "8c035494f2acbe23cff42baf9dd469d7a8faaa63",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/8c035494f2acbe23cff42baf9dd469d7a8faaa63"
+      "commit": "b1d6f0ef5dea4e8afb230f6a69c052907e174ce6",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/b1d6f0ef5dea4e8afb230f6a69c052907e174ce6"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-c-cpp",
