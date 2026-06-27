@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "bb7904c624301baccf27714338e1e6e8a8df945a",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/bb7904c624301baccf27714338e1e6e8a8df945a"
+      "commit": "9422f55b450bf2c74dda8870f84e342b6f317cdc",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/9422f55b450bf2c74dda8870f84e342b6f317cdc"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -88,8 +88,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "mobile-document-scanner-docs-js",
-      "commit": "36ee95f72fd5ec7f4f5949ceaec9795e7209b3f5",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/36ee95f72fd5ec7f4f5949ceaec9795e7209b3f5"
+      "commit": "bc77ebad93d9e18130b386f127a648558a1ef967",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/bc77ebad93d9e18130b386f127a648558a1ef967"
     },
     {
       "name": "data/documentation/mrz-scanner-docs-js",
@@ -118,8 +118,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "document-scanner-javascript",
-      "commit": "af8d65b104ffef6f846b64fc2598baaa2a6ff6ea",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/document-scanner-javascript/zip/af8d65b104ffef6f846b64fc2598baaa2a6ff6ea"
+      "commit": "1162a9fc7a99d0d9d551cadb40ec9901a163dcb2",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/document-scanner-javascript/zip/1162a9fc7a99d0d9d551cadb40ec9901a163dcb2"
     },
     {
       "name": "data/samples/dynamic-web-twain",

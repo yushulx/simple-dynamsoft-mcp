@@ -542,7 +542,7 @@
     "mds-web": {
       "name": "Dynamsoft Document Scanner JavaScript SDK",
       "description": "Document scanning for web applications using JavaScript/TypeScript.",
-      "version": "1.4.2",
+      "version": "1.5.0",
       "default_platform": "web",
       "snippet_path": "dynamsoft-document-scanner/web",
       "platforms": {
