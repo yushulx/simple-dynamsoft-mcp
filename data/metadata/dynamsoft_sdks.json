@@ -228,7 +228,7 @@
     "dbr-web": {
       "name": "Dynamsoft Barcode Reader JavaScript SDK",
       "description": "Barcode scanning for web applications using JavaScript/TypeScript.",
-      "version": "11.4.2001",
+      "version": "11.4.3000",
       "default_platform": "web",
       "snippet_path": "dynamsoft-barcode-reader/web",
       "platforms": {
@@ -347,7 +347,7 @@
     "dcv-web": {
       "name": "Dynamsoft Capture Vision JavaScript SDK",
       "description": "Capture Vision workflows for JavaScript web apps, including MRZ processing scenarios.",
-      "version": "3.4.2001",
+      "version": "3.4.3000",
       "default_platform": "web",
       "snippet_path": "dynamsoft-capture-vision/web",
       "platforms": {
