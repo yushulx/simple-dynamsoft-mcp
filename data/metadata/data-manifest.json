@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "9422f55b450bf2c74dda8870f84e342b6f317cdc",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/9422f55b450bf2c74dda8870f84e342b6f317cdc"
+      "commit": "42941db508a71d1aac1a289647b049efe3382383",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/42941db508a71d1aac1a289647b049efe3382383"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -58,8 +58,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-mobile",
-      "commit": "c32b71ff0b7ee1e38193054bc47c097fb5eb8d7c",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/c32b71ff0b7ee1e38193054bc47c097fb5eb8d7c"
+      "commit": "82659316383be20711865833ca3e5fe889c4d1ef",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/82659316383be20711865833ca3e5fe889c4d1ef"
     },
     {
       "name": "data/documentation/capture-vision-docs-server",
@@ -88,8 +88,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "mobile-document-scanner-docs-js",
-      "commit": "bc77ebad93d9e18130b386f127a648558a1ef967",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/bc77ebad93d9e18130b386f127a648558a1ef967"
+      "commit": "fb82c2d97d79f219d1d7c94b4c5ced32dce4df9d",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/fb82c2d97d79f219d1d7c94b4c5ced32dce4df9d"
     },
     {
       "name": "data/documentation/mrz-scanner-docs-js",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "d79050c479be538c276d6596a577ec38159d320f",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/d79050c479be538c276d6596a577ec38159d320f"
+      "commit": "7c7fa64aebed52d9e4d7d8b07f7b5c9f382fc736",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/7c7fa64aebed52d9e4d7d8b07f7b5c9f382fc736"
     },
     {
       "name": "data/samples/document-scanner-javascript",
@@ -198,8 +198,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-mobile-samples",
-      "commit": "ee5ad1187c2e0715e9ac28796ed7f6646ac10ddd",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/ee5ad1187c2e0715e9ac28796ed7f6646ac10ddd"
+      "commit": "933e3c701ec7e9b1a9292f36a48d21b390235a9b",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/933e3c701ec7e9b1a9292f36a48d21b390235a9b"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-python",
@@ -278,8 +278,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-mobile-samples",
-      "commit": "fc873683d591c6f7eb6512017c87da1bcde62f02",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-mobile-samples/zip/fc873683d591c6f7eb6512017c87da1bcde62f02"
+      "commit": "6ad815bdf32e690e8335186453ddcc5fa5dd3cc5",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-mobile-samples/zip/6ad815bdf32e690e8335186453ddcc5fa5dd3cc5"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-nodejs",
@@ -318,8 +318,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-spm",
-      "commit": "aff21665d9c6f0dfccebb845e821aee227e567dc",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-spm/zip/aff21665d9c6f0dfccebb845e821aee227e567dc"
+      "commit": "456951a8d769b8d3ba438d917e761c5317e0faa4",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-spm/zip/456951a8d769b8d3ba438d917e761c5317e0faa4"
     },
     {
       "name": "data/samples/dynamsoft-document-viewer",
