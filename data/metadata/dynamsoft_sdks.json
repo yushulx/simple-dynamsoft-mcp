@@ -6,7 +6,7 @@
     "dbr-mobile": {
       "name": "Dynamsoft Barcode Reader Mobile SDK",
       "description": "Barcode scanning for mobile platforms (Android/iOS) using Dynamsoft Barcode Reader.",
-      "version": "11.4.3000",
+      "version": "11.4.3010",
       "default_platform": "android",
       "default_api_level": "high-level",
       "snippet_path": "dynamsoft-barcode-reader",
@@ -255,7 +255,7 @@
     "dcv-core": {
       "name": "Dynamsoft Capture Vision Core",
       "description": "Unified architecture documentation for Capture Vision capabilities across barcode, MRZ, document normalization, and parsing workflows.",
-      "version": "3.4.3000",
+      "version": "3.4.3010",
       "default_platform": "core",
       "snippet_path": "dynamsoft-capture-vision/core",
       "platforms": {
@@ -369,7 +369,7 @@
     "dcv-mobile": {
       "name": "Dynamsoft Capture Vision Mobile SDK",
       "description": "Capture Vision workflows for mobile platforms including Android, iOS, Flutter, React Native, and .NET MAUI.",
-      "version": "3.4.3000",
+      "version": "3.4.3010",
       "default_platform": "android",
       "snippet_path": "dynamsoft-capture-vision/mobile",
       "platforms": {

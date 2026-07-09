@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "42941db508a71d1aac1a289647b049efe3382383",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/42941db508a71d1aac1a289647b049efe3382383"
+      "commit": "32ada6900dda7152df8e89314acbf0d6138ac046",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/32ada6900dda7152df8e89314acbf0d6138ac046"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -58,8 +58,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-mobile",
-      "commit": "82659316383be20711865833ca3e5fe889c4d1ef",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/82659316383be20711865833ca3e5fe889c4d1ef"
+      "commit": "64d22b1dd97ed078d69684e36957d7e4cb9a4e78",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/64d22b1dd97ed078d69684e36957d7e4cb9a4e78"
     },
     {
       "name": "data/documentation/capture-vision-docs-server",
@@ -218,8 +218,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-react-native-samples",
-      "commit": "acf60ef9d1e8fcbc8e215ad5ea2f114102749628",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-react-native-samples/zip/acf60ef9d1e8fcbc8e215ad5ea2f114102749628"
+      "commit": "a612480ccce9af6032c0092c4f45c8d8243a8276",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-react-native-samples/zip/a612480ccce9af6032c0092c4f45c8d8243a8276"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-c-cpp",
@@ -308,8 +308,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-react-native-samples",
-      "commit": "4e1a48c0b12466a37f354029b725e7cd21a690a7",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-react-native-samples/zip/4e1a48c0b12466a37f354029b725e7cd21a690a7"
+      "commit": "f18859ba81f17a8c36a8dbc7200f6abe22f635b8",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-react-native-samples/zip/f18859ba81f17a8c36a8dbc7200f6abe22f635b8"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-spm",
