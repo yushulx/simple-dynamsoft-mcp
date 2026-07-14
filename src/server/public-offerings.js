@@ -35,6 +35,14 @@ const HYDRATION_PRODUCT_MAP = {
 
 const PUBLIC_OFFERINGS_TEXT = "dbr, dwt, ddv, mrz, or mds";
 
+// Shared lineup-policy wording for tool descriptions and input-schema notes.
+// Single source: when the lineup changes (e.g. a product gains an edition),
+// edit here and the long-form server `instructions` in create-server.js.
+const WEB_ONLY_OMIT_NOTE = "DWT/DDV/MRZ/MDS are web/JS-only (omit for them).";
+const DBR_ONLY_EDITIONS_NOTE = `Only DBR has multiple editions; ${WEB_ONLY_OMIT_NOTE}`;
+const API_LEVEL_NOTE = "high-level or low-level. DBR mobile ONLY; ignored for web/server/other products.";
+const PRODUCT_SELECTION_GUIDANCE = "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.";
+
 function normalizePublicOffering(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
@@ -64,6 +72,10 @@ function buildUnknownPublicProductResponse(requestedProduct) {
 export {
   PUBLIC_OFFERING_PRODUCTS,
   PUBLIC_OFFERINGS_TEXT,
+  WEB_ONLY_OMIT_NOTE,
+  DBR_ONLY_EDITIONS_NOTE,
+  API_LEVEL_NOTE,
+  PRODUCT_SELECTION_GUIDANCE,
   normalizePublicOffering,
   getHydrationProduct,
   isKnownPublicOffering,

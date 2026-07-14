@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
-import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
+import {
+  buildUnknownPublicProductResponse,
+  isKnownPublicOffering,
+  DBR_ONLY_EDITIONS_NOTE,
+  PRODUCT_SELECTION_GUIDANCE,
+  WEB_ONLY_OMIT_NOTE
+} from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerIndexTools({
@@ -33,7 +39,7 @@ export function registerIndexTools({
         "",
         "WHEN TO USE:",
         "- As the first call in any conversation to discover what is available.",
-        "- To determine valid product/edition/platform combinations before calling other tools. Note: DBR is the only product with multiple editions (mobile/web/server); DWT, DDV, MRZ, and MDS are web/JavaScript-only, so never ask the user for a platform or language for them.",
+        `- To determine valid product/edition/platform combinations before calling other tools. Note: ${PRODUCT_SELECTION_GUIDANCE}`,
         "- To get public product-selection guidance (DBR for barcode-only; MRZ for machine-readable-zone workflows; MDS for document scan and normalization workflows).",
         "",
         "WHEN NOT TO USE:",
@@ -84,8 +90,8 @@ export function registerIndexTools({
         "PARAMETERS:",
         "- query (required): Keywords or exact sample ID. Examples: 'barcode scanning from camera', 'MRZ passport reader', 'hello-world'.",
         "- product: dbr, dwt, ddv, mrz, or mds. Use DBR for barcode-only, MRZ for passport/machine-readable-zone workflows, and MDS for document scan or normalization workflows.",
-        "- edition: core, mobile, web, or server. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit for them).",
-        "- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). DWT/DDV/MRZ/MDS are web/JS-only (omit for them).",
+        `- edition: core, mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE}`,
+        `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- version: Version constraint (e.g. '10', '11.x'). Only latest major is served by default.",
         "- type: 'doc', 'sample', 'index', 'policy', or 'any' (default). Use 'sample' to restrict to sample results.",
         "- limit: 1-10 (default 5). Max number of results.",
@@ -97,8 +103,8 @@ export function registerIndexTools({
       inputSchema: {
         query: z.string().trim().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
         product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
-        platform: z.string().optional().describe("Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
+        edition: z.string().optional().describe(`Edition: core, mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
+        platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint (major or full version)"),
         type: z.enum(["doc", "sample", "index", "policy", "any"]).optional(),
         limit: z.number().int().min(1).max(10).optional().describe("Max results (default 5)")

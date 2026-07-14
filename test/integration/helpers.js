@@ -217,8 +217,8 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
   );
   assert.equal(cameraQuickstart.isError, undefined, "DBR web camera quickstart should not error");
   const cameraText = cameraQuickstart.content.map((item) => item.text || "").join("\n");
-  assert.match(cameraText, /scan-a-single-barcode/, "camera scenario should return the camera starter sample");
-  assert.doesNotMatch(cameraText, /read-an-image/, "camera scenario should not fall back to the image-file sample");
+  assert.match(cameraText, /## Foundational sample: scan-a-single-barcode/, "camera scenario should return the camera starter sample");
+  assert.doesNotMatch(cameraText, /sample: read-an-image/i, "camera scenario should not serve the image-file sample");
 
   const imageQuickstart = await client.callTool(
     {
@@ -230,7 +230,7 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
   );
   assert.equal(imageQuickstart.isError, undefined, "DBR web image quickstart should not error");
   const imageText = imageQuickstart.content.map((item) => item.text || "").join("\n");
-  assert.match(imageText, /read-an-image/, "image scenario should return the image-file sample");
+  assert.match(imageText, /## Foundational sample: read-an-image/, "image scenario should return the image-file sample");
 
   const resources = await client.listResources(undefined, requestOptions);
   assert.ok(resources.resources.length > 0, "resources/list should return pinned resources");

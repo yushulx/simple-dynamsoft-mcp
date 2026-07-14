@@ -1,7 +1,13 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { z } from "zod";
-import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
+import {
+  buildUnknownPublicProductResponse,
+  isKnownPublicOffering,
+  API_LEVEL_NOTE,
+  DBR_ONLY_EDITIONS_NOTE,
+  WEB_ONLY_OMIT_NOTE
+} from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerProjectTools({
@@ -82,12 +88,12 @@ export function registerProjectTools({
         "",
         "PARAMETERS:",
         "- product (required): dbr, dwt, ddv, mrz, or mds.",
-        "- edition: mobile, web, or server. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit).",
-        "- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). DWT/DDV/MRZ/MDS are web/JS-only (omit).",
+        `- edition: mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE}`,
+        `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- version: Version constraint. Latest major is used by default.",
         "- sample_id: Sample identifier as returned by list_samples (e.g. 'hello-world', 'ScanSingleBarcode'). Requires product/edition.",
         "- resource_uri: A sample:// URI as returned by search (e.g. 'sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' or 'sample://mrz/server/python/3/mrz_scanner'). Preferred over sample_id when available.",
-        "- api_level: 'high-level' or 'low-level'. DBR mobile ONLY; ignored for web/server/other products.",
+        `- api_level: ${API_LEVEL_NOTE}`,
         "",
         "RETURNS: A text block containing all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No zip file is created.",
         "",
@@ -97,12 +103,12 @@ export function registerProjectTools({
       ].join("\n"),
       inputSchema: {
         product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: mobile, web, server/desktop. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
-        platform: z.string().optional().describe("Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview. DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
+        edition: z.string().optional().describe(`Edition: mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
+        platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint"),
         sample_id: z.string().optional().describe("Sample identifier (name or path)"),
         resource_uri: z.string().optional().describe("Resource URI returned by search"),
-        api_level: z.string().optional().describe("API level: high-level or low-level. DBR mobile ONLY; ignored for web/server/other products")
+        api_level: z.string().optional().describe(`API level: ${API_LEVEL_NOTE}`)
       },
       annotations: {
         readOnlyHint: true,
