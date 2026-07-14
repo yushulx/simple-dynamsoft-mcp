@@ -428,18 +428,20 @@ export function registerQuickstartTools({
         // vs low-level API split (api_level is a mobile-only concept), so it is
         // intentionally not consulted here.
         let sampleName;
-        // The only foundational image-file sample is read-an-image; every
-        // scenarios/* sample is camera-based. So a camera fallback is only
-        // intent-appropriate for camera/single/default requests — never for
-        // image/file, which must not silently degrade to camera code.
-        let allowCameraFallback = true;
+        // The camera scenario fallback below substitutes a differently-named
+        // scenarios/* sample, so it is only appropriate for the generic
+        // camera/single/default request — not for requests that named a
+        // specific starter (hello) or a different intent (image/file, which is
+        // camera-based nowhere in scenarios/*). Those hard-error honestly when
+        // their sample is absent.
+        let allowCameraFallback = false;
         if (scenarioLower.includes("hello")) {
           sampleName = "hello-world";
         } else if (scenarioLower.includes("image") || scenarioLower.includes("file")) {
           sampleName = "read-an-image";
-          allowCameraFallback = false;
         } else {
           sampleName = "scan-a-single-barcode"; // camera / single / default
+          allowCameraFallback = true;
         }
 
         let samplePath = getWebSamplePath("root", sampleName);
@@ -466,6 +468,9 @@ export function registerQuickstartTools({
 
         const content = readCodeFile(samplePath);
         const displaySample = fallbackSample || sampleName;
+        const sampleHeading = fallbackSample
+          ? `## Sample: ${displaySample} (camera scenario fallback)`
+          : `## Foundational sample: ${displaySample}`;
         const fallbackNote = fallbackSample
           ? `> Note: \`${sampleName}\` was not available in the served sample set; showing the \`${fallbackSample}\` camera scenario instead.\n\n`
           : "";
@@ -493,7 +498,7 @@ export function registerQuickstartTools({
               sdkEntry.platforms.web.installation.npm,
               "```",
               "",
-              `## Foundational sample: ${displaySample}`,
+              sampleHeading,
               "```html",
               content,
               "```",
