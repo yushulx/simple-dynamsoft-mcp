@@ -423,14 +423,57 @@ export function registerQuickstartTools({
       if (normalizedProduct === "dbr" && normalizedEdition === "web") {
         const sdkEntry = registry.sdks["dbr-web"];
         const scenarioLower = (scenario || "").toLowerCase();
-        const sampleName = scenarioLower.includes("hello") ? "hello-world" : "read-an-image";
-        const samplePath = getWebSamplePath("root", sampleName);
+
+        // Map the scenario to a foundational root sample. Web has no high-level
+        // vs low-level API split (api_level is a mobile-only concept), so it is
+        // intentionally not consulted here.
+        let sampleName;
+        // The camera scenario fallback below substitutes a differently-named
+        // scenarios/* sample, so it is only appropriate for the generic
+        // camera/single/default request — not for requests that named a
+        // specific starter (hello) or a different intent (image/file, which is
+        // camera-based nowhere in scenarios/*). Those hard-error honestly when
+        // their sample is absent.
+        let allowCameraFallback = false;
+        if (scenarioLower.includes("hello")) {
+          sampleName = "hello-world";
+        } else if (scenarioLower.includes("image") || scenarioLower.includes("file")) {
+          sampleName = "read-an-image";
+        } else {
+          sampleName = "scan-a-single-barcode"; // camera / single / default
+          allowCameraFallback = true;
+        }
+
+        let samplePath = getWebSamplePath("root", sampleName);
+        let fallbackSample = null;
+
+        // Graceful degradation: a deployment may serve an older sample data set
+        // that predates the foundational root files. Rather than hard-erroring,
+        // fall back to a reliably-present camera scenario sample — but only when
+        // the request is camera-intent (see allowCameraFallback above).
+        if ((!samplePath || !existsSync(samplePath)) && allowCameraFallback) {
+          for (const candidate of ["scan-common-1D-and-2D", "scan-qr-code"]) {
+            const candidatePath = getWebSamplePath("scenarios", candidate);
+            if (candidatePath && existsSync(candidatePath)) {
+              samplePath = candidatePath;
+              fallbackSample = candidate;
+              break;
+            }
+          }
+        }
 
         if (!samplePath || !existsSync(samplePath)) {
           return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
         }
 
         const content = readCodeFile(samplePath);
+        const displaySample = fallbackSample || sampleName;
+        const sampleHeading = fallbackSample
+          ? `## Sample: ${displaySample} (camera scenario fallback)`
+          : `## Foundational sample: ${displaySample}`;
+        const fallbackNote = fallbackSample
+          ? `> Note: \`${sampleName}\` was not available in the served sample set; showing the \`${fallbackSample}\` camera scenario instead.\n\n`
+          : "";
 
         return {
           content: [{
@@ -443,8 +486,9 @@ export function registerQuickstartTools({
               "**Starter profile:** Foundational-first",
               "",
               "Use the foundational web flow first so capture and decoding remain explicit and easier to adapt.",
+              "api_level does not apply to DBR web (it is a mobile-only distinction).",
               "",
-              "## Option 1: CDN",
+              fallbackNote + "## Option 1: CDN",
               "```html",
               `<script src="${sdkEntry.platforms.web.installation.cdn}"></script>`,
               "```",
@@ -454,7 +498,7 @@ export function registerQuickstartTools({
               sdkEntry.platforms.web.installation.npm,
               "```",
               "",
-              `## Foundational sample: ${sampleName}.html`,
+              sampleHeading,
               "```html",
               content,
               "```",
