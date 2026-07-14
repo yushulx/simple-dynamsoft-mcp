@@ -423,9 +423,11 @@ export function registerQuickstartTools({
       if (normalizedProduct === "dbr" && normalizedEdition === "web") {
         const sdkEntry = registry.sdks["dbr-web"];
         const scenarioLower = (scenario || "").toLowerCase();
-        let sampleName = "hello-world";
-        if (scenarioLower.includes("image") || scenarioLower.includes("file") || scenarioLower.includes("upload")) {
-          sampleName = "read-an-image";
+        // No-scenario default stays the foundational flow (read-an-image); only an
+        // explicit hello request selects the minimal hello-world sample.
+        let sampleName = "read-an-image";
+        if (scenarioLower.includes("hello")) {
+          sampleName = "hello-world";
         } else if (
           scenarioLower.includes("camera") ||
           scenarioLower.includes("scan") ||
@@ -434,7 +436,10 @@ export function registerQuickstartTools({
           scenarioLower.includes("live")
         ) {
           sampleName = "scan-a-single-barcode";
+        } else if (scenarioLower.includes("image") || scenarioLower.includes("file") || scenarioLower.includes("upload")) {
+          sampleName = "read-an-image";
         }
+        const isFoundationalSample = sampleName === "read-an-image";
         const samplePath = getWebSamplePath("root", sampleName);
 
         if (!samplePath || !existsSync(samplePath)) {
@@ -444,7 +449,7 @@ export function registerQuickstartTools({
               type: "text",
               text: [
                 `Sample "${sampleName}" not found for DBR web.`,
-                "Available DBR web quickstart scenarios: hello-world (default), scan/camera (scan-a-single-barcode), image/file (read-an-image).",
+                "Available DBR web quickstart scenarios: default/image/file (read-an-image, foundational), scan/camera (scan-a-single-barcode), hello (hello-world).",
                 "For other DBR web samples (frameworks, scenario demos), use list_samples with product='dbr', edition='web', or search."
               ].join("\n")
             }]
@@ -461,9 +466,11 @@ export function registerQuickstartTools({
               "",
               `**SDK Version:** ${sdkEntry.version}`,
               `**Trial License:** \`${registry.trial_license}\``,
-              "**Starter profile:** Foundational-first",
+              isFoundationalSample ? "**Starter profile:** Foundational-first" : "**Starter profile:** Ready-to-use BarcodeScanner",
               "",
-              "Use the foundational web flow first so capture and decoding remain explicit and easier to adapt.",
+              isFoundationalSample
+                ? "Use the foundational web flow first so capture and decoding remain explicit and easier to adapt."
+                : "This uses the ready-to-use BarcodeScanner API for camera scanning; switch to the foundational flow (scenario='image' or omit scenario) when you need explicit capture/decode control.",
               "",
               "## Option 1: CDN",
               "```html",
