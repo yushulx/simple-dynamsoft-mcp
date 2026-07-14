@@ -65,6 +65,23 @@ const server = new McpServer({
   name: "simple-dynamsoft-mcp",
   version: pkgVersion,
   description: "MCP server for the public Dynamsoft offerings: Barcode Reader, Dynamic Web TWAIN, Document Viewer, MRZ, and MDS. Includes guidance for choosing the right public product by workflow."
+}, {
+  instructions: [
+    "This server answers questions about five public Dynamsoft offerings: DBR, DWT, DDV, MRZ, MDS.",
+    "",
+    "How to use it:",
+    "- Call get_index first to see valid product/edition/platform combinations before asking the user anything.",
+    "- Only ask the user to disambiguate dimensions that actually vary for the chosen product. Do NOT ask about dimensions that don't apply.",
+    "",
+    "Platform/edition rules (important):",
+    "- DBR (Dynamsoft Barcode Reader) is the ONLY product with multiple editions: mobile, web, and server/desktop. Ask which one when it is unclear.",
+    "- DWT (Dynamic Web TWAIN), DDV (Document Viewer), MRZ (MRZ Scanner), and MDS (Mobile Document Scanner) are web/JavaScript-only in this MCP. NEVER ask the user which platform or language for these — there is no .NET/Java/C++/mobile option here. Go straight to the web quickstart or samples.",
+    "",
+    "api_level rule:",
+    "- api_level (high-level / low-level) applies ONLY to DBR mobile. Never ask about it, or pass it, for web, server, or any product other than DBR mobile.",
+    "",
+    "For scopes this MCP does not index (e.g. MRZ/MDS on mobile or server), tools return official documentation and sample links — pass those on rather than inventing code."
+  ].join("\n")
 });
 
 registerIndexTools({

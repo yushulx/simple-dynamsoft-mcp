@@ -94,11 +94,11 @@ export function registerQuickstartTools({
         "",
         "PARAMETERS:",
         "- product (required): dbr, dwt, ddv, mrz, or mds.",
-        "- edition: core, mobile, web, or server. Inferred from platform if omitted.",
-        "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
+        "- edition: core, mobile, web, or server. Only DBR has multiple editions; DWT, DDV, MRZ, and MDS are web/JS-only, so omit edition for them. Inferred from platform if omitted.",
+        "- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). DWT, DDV, MRZ, and MDS are web/JS-only, so omit platform for them.",
         "- language: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular. Helps select the best sample variant.",
         "- version: Version constraint. Latest major is used by default.",
-        "- api_level: 'high-level' or 'low-level' (mobile only). Controls API abstraction level in generated code.",
+        "- api_level: 'high-level' or 'low-level'. DBR mobile ONLY — do not set for web, server, or any other product; it is ignored there.",
         "- scenario: MRZ, document scan, camera, image, single, multiple, react, vue, angular, etc. DBR web defaults to foundational guidance; MRZ and MDS return public workflow guidance where available.",
         "",
         "RETURNS: A formatted text block with SDK version, trial license key, install commands, and sample code. Ready to copy-paste.",
@@ -107,11 +107,11 @@ export function registerQuickstartTools({
       ].join("\n"),
       inputSchema: {
         product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
-        platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
+        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
+        platform: z.string().optional().describe("Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
         language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular"),
         version: z.string().optional().describe("Version constraint"),
-        api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)"),
+        api_level: z.string().optional().describe("API level: high-level or low-level. DBR mobile ONLY; ignored for web/server/other products"),
         scenario: z.string().optional().describe("Scenario: camera, image, single, multiple, MRZ, document scan/normalization, driver license, react, etc.")
       },
       annotations: {
@@ -423,11 +423,32 @@ export function registerQuickstartTools({
       if (normalizedProduct === "dbr" && normalizedEdition === "web") {
         const sdkEntry = registry.sdks["dbr-web"];
         const scenarioLower = (scenario || "").toLowerCase();
-        const sampleName = scenarioLower.includes("hello") ? "hello-world" : "read-an-image";
+        let sampleName = "hello-world";
+        if (scenarioLower.includes("image") || scenarioLower.includes("file") || scenarioLower.includes("upload")) {
+          sampleName = "read-an-image";
+        } else if (
+          scenarioLower.includes("camera") ||
+          scenarioLower.includes("scan") ||
+          scenarioLower.includes("single") ||
+          scenarioLower.includes("video") ||
+          scenarioLower.includes("live")
+        ) {
+          sampleName = "scan-a-single-barcode";
+        }
         const samplePath = getWebSamplePath("root", sampleName);
 
         if (!samplePath || !existsSync(samplePath)) {
-          return { isError: true, content: [{ type: "text", text: `Sample not found: ${sampleName}.` }] };
+          return {
+            isError: true,
+            content: [{
+              type: "text",
+              text: [
+                `Sample "${sampleName}" not found for DBR web.`,
+                "Available DBR web quickstart scenarios: hello-world (default), scan/camera (scan-a-single-barcode), image/file (read-an-image).",
+                "For other DBR web samples (frameworks, scenario demos), use list_samples with product='dbr', edition='web', or search."
+              ].join("\n")
+            }]
+          };
         }
 
         const content = readCodeFile(samplePath);
@@ -454,7 +475,7 @@ export function registerQuickstartTools({
               sdkEntry.platforms.web.installation.npm,
               "```",
               "",
-              `## Foundational sample: ${sampleName}.html`,
+              `## Sample: ${sampleName}.html`,
               "```html",
               content,
               "```",

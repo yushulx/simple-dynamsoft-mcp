@@ -356,35 +356,47 @@ function buildIndexData({
 
     return {
       productSelection: {
+        guidance: "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.",
         publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
         offerings: {
           dwt: {
             name: "Dynamic Web TWAIN",
             abbreviation: "DWT",
-            whenToUse: ["Browser-based document acquisition and scanner control."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Browser-based document acquisition and scanner control. Web/JavaScript only."]
           },
           ddv: {
             name: "Dynamsoft Document Viewer",
             abbreviation: "DDV",
-            whenToUse: ["Standalone viewing plus extension paths for mobile, annotation, multi-page handling, and PDF output."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Standalone viewing plus annotation, multi-page handling, and PDF output. Web/JavaScript only."]
           },
           dbr: {
             name: "Dynamsoft Barcode Reader",
             abbreviation: "DBR",
+            webOnly: false,
+            editions: ["mobile", "web", "server"],
             whenToUse: [
-              "Barcode workflows across server/desktop, web, and mobile.",
-              "Use the foundational API by default on web; BarcodeScanner RTU is a minimal-simplicity option; mobile supports both foundational API and BarcodeScanner RTU."
+              "Barcode workflows across server/desktop, web, and mobile. The only product with multiple editions.",
+              "Web uses a foundational-first flow (BarcodeScanner RTU also available); this is not selected via api_level.",
+              "api_level (high-level = BarcodeScanner RTU, low-level = foundational) applies only to DBR mobile."
             ]
           },
           mrz: {
             name: "MRZ Scanner",
             abbreviation: "MRZ",
-            whenToUse: ["Passport and machine-readable-zone workflows on public web/mobile solution or RTU paths."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Passport and machine-readable-zone workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
           },
           mds: {
             name: "Mobile Document Scanner",
             abbreviation: "MDS",
-            whenToUse: ["Document scan and normalization workflows on the public web-only solution or RTU path."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Document scan and normalization workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
           }
         }
       },
@@ -422,7 +434,9 @@ function buildIndexData({
 
   return {
     productSelection: {
-      dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline.",
+      guidance: "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.",
+      publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
+      dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline. DCV is internal only and is not a selectable public product.",
       useDbrWhen: [
         "Barcode-only workflows where DCV-specific workflows are not required."
       ],

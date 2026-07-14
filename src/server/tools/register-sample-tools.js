@@ -34,8 +34,8 @@ export function registerSampleTools({
         "",
         "PARAMETERS:",
         "- product: dbr, dwt, ddv, mrz, or mds. Omit to list across all public offerings.",
-        "- edition: core, mobile, web, or server. Omit to list across all editions.",
-        "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
+        "- edition: core, mobile, web, or server. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit for them). Omit to list across all editions.",
+        "- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). DWT/DDV/MRZ/MDS are web/JS-only (omit for them).",
         "- limit: 1-200 (default 50). Max number of results.",
         "",
         "RETURNS: A single text content item that starts with totals and plain URIs, then appends 'JSON:' followed by a JSON object with total count and sample entries. Each entry includes sample_id, uri (sample:// URI), product, edition, platform, version, title, and summary. Use sample_id or uri with get_sample_files to retrieve full project files.",
@@ -46,8 +46,8 @@ export function registerSampleTools({
       ].join("\n"),
       inputSchema: {
         product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
-        platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
+        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
+        platform: z.string().optional().describe("Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
         limit: z.number().int().min(1).max(200).optional().describe("Max results (default 50)")
       },
       annotations: {
