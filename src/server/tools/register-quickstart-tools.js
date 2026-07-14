@@ -428,17 +428,28 @@ export function registerQuickstartTools({
         // vs low-level API split (api_level is a mobile-only concept), so it is
         // intentionally not consulted here.
         let sampleName;
-        if (scenarioLower.includes("hello")) sampleName = "hello-world";
-        else if (scenarioLower.includes("image") || scenarioLower.includes("file")) sampleName = "read-an-image";
-        else sampleName = "scan-a-single-barcode"; // camera / single / default
+        // The only foundational image-file sample is read-an-image; every
+        // scenarios/* sample is camera-based. So a camera fallback is only
+        // intent-appropriate for camera/single/default requests — never for
+        // image/file, which must not silently degrade to camera code.
+        let allowCameraFallback = true;
+        if (scenarioLower.includes("hello")) {
+          sampleName = "hello-world";
+        } else if (scenarioLower.includes("image") || scenarioLower.includes("file")) {
+          sampleName = "read-an-image";
+          allowCameraFallback = false;
+        } else {
+          sampleName = "scan-a-single-barcode"; // camera / single / default
+        }
 
         let samplePath = getWebSamplePath("root", sampleName);
         let fallbackSample = null;
 
         // Graceful degradation: a deployment may serve an older sample data set
         // that predates the foundational root files. Rather than hard-erroring,
-        // fall back to a reliably-present camera scenario sample.
-        if (!samplePath || !existsSync(samplePath)) {
+        // fall back to a reliably-present camera scenario sample — but only when
+        // the request is camera-intent (see allowCameraFallback above).
+        if ((!samplePath || !existsSync(samplePath)) && allowCameraFallback) {
           for (const candidate of ["scan-common-1D-and-2D", "scan-qr-code"]) {
             const candidatePath = getWebSamplePath("scenarios", candidate);
             if (candidatePath && existsSync(candidatePath)) {
