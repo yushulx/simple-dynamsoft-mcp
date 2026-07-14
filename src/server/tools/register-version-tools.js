@@ -64,8 +64,8 @@ export function registerVersionTools({
         "",
         "PARAMETERS:",
         "- product (required): dbr, dwt, ddv, mrz, or mds.",
-        "- edition: core, mobile, web, or server. Omit to see all editions for the product.",
-        "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, etc. Helps narrow edition when ambiguous.",
+        "- edition: core, mobile, web, or server. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit). Omit to see all editions for the product.",
+        "- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, etc.). DWT/DDV/MRZ/MDS are web/JS-only (omit). Helps narrow edition when ambiguous.",
         "- constraint: Version constraint like 'latest', '11.x', '10'. Only latest major version is served; legacy versions (e.g. DBR v9) return an error with migration guidance.",
         "- feature: Optional feature hint for version policy checks.",
         "",
@@ -77,8 +77,8 @@ export function registerVersionTools({
       ].join("\n"),
       inputSchema: {
         product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
-        platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
+        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop. Only DBR has multiple editions; DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
+        platform: z.string().optional().describe("Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. DWT/DDV/MRZ/MDS are web/JS-only (omit)"),
         constraint: z.string().optional().describe("Version constraint, e.g., latest, 11.x, 10"),
         feature: z.string().optional().describe("Optional feature hint")
       },
