@@ -6,6 +6,7 @@ import { PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
 const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
 const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
 const WEB_FRAMEWORK_PLATFORMS = new Set(["react", "vue", "angular", "next", "nuxt", "svelte", "blazor", "capacitor", "electron", "es6", "native-ts", "pwa", "requirejs", "webview"]);
+const PRODUCT_SELECTION_GUIDANCE = "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.";
 
 function normalizeFrameworkTag(tag) {
   const normalized = String(tag || "").trim().toLowerCase();
@@ -356,7 +357,7 @@ function buildIndexData({
 
     return {
       productSelection: {
-        guidance: "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.",
+        guidance: PRODUCT_SELECTION_GUIDANCE,
         publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
         offerings: {
           dwt: {
@@ -434,7 +435,7 @@ function buildIndexData({
 
   return {
     productSelection: {
-      guidance: "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.",
+      guidance: PRODUCT_SELECTION_GUIDANCE,
       publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
       dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline. DCV is internal only and is not a selectable public product.",
       useDbrWhen: [
