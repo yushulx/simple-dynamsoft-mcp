@@ -424,9 +424,9 @@ export function registerQuickstartTools({
         const sdkEntry = registry.sdks["dbr-web"];
         const scenarioLower = (scenario || "").toLowerCase();
 
-        // Map the scenario to a foundational root sample. Web has no high-level
-        // vs low-level API split (api_level is a mobile-only concept), so it is
-        // intentionally not consulted here.
+        // Map the scenario to a foundational sample under basics/. Web has no
+        // high-level vs low-level API split (api_level is a mobile-only concept),
+        // so it is intentionally not consulted here.
         let sampleName;
         // The camera scenario fallback below substitutes a differently-named
         // scenarios/* sample, so it is only appropriate for the generic
@@ -444,11 +444,14 @@ export function registerQuickstartTools({
           allowCameraFallback = true;
         }
 
-        let samplePath = getWebSamplePath("root", sampleName);
+        // Foundational samples now live under basics/ upstream; getWebSamplePath
+        // falls back to the repo root when basics/ is absent, so this stays
+        // compatible with older sample sets that kept them at the root.
+        let samplePath = getWebSamplePath("basics", sampleName);
         let fallbackSample = null;
 
         // Graceful degradation: a deployment may serve an older sample data set
-        // that predates the foundational root files. Rather than hard-erroring,
+        // that predates the foundational samples. Rather than hard-erroring,
         // fall back to a reliably-present camera scenario sample — but only when
         // the request is camera-intent (see allowCameraFallback above).
         if ((!samplePath || !existsSync(samplePath)) && allowCameraFallback) {
