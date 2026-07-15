@@ -265,17 +265,19 @@ function getDcvWebFrameworkPlatforms() {
 }
 
 function discoverWebSamples() {
-  const categories = { root: [], frameworks: [], scenarios: [] };
+  const categories = { root: [], basics: [], frameworks: [], scenarios: [] };
   const webPath = getDbrWebSamplesRoot();
   if (!webPath || !existsSync(webPath)) return categories;
 
   for (const entry of readdirSync(webPath, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith(".html")) {
+    // README.html / index.html at the repo root are navigation shells, not
+    // samples — indexing them wastes result slots and a fetch (issue #140).
+    if (entry.isFile() && entry.name.endsWith(".html") && entry.name !== "index.html" && entry.name.toLowerCase() !== "readme.html") {
       categories.root.push(entry.name.replace(".html", ""));
     }
   }
 
-  for (const subdir of ["frameworks", "scenarios"]) {
+  for (const subdir of ["basics", "frameworks", "scenarios"]) {
     const subdirPath = join(webPath, subdir);
     if (!existsSync(subdirPath)) continue;
     for (const entry of readdirSync(subdirPath, { withFileTypes: true })) {
@@ -363,6 +365,10 @@ function getWebSamplePath(category, sampleName) {
       for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
         if (entry.isFile() && entry.name.endsWith(".html")) return join(dirPath, entry.name);
       }
+      // Full-project sample (e.g. frameworks/react, a Vite app) with no
+      // top-level html: return the directory so get_sample_files can walk it,
+      // making the URI search emits actually fetchable (issue #130).
+      return dirPath;
     }
     const htmlPath = join(webPath, category, `${sampleName}.html`);
     if (existsSync(htmlPath)) return htmlPath;
@@ -414,6 +420,16 @@ function discoverMdsWebSamples() {
 function discoverDwtSamples() {
   const categories = {};
   if (!existsSync(SAMPLE_ROOTS.dwt)) return categories;
+
+  // Root-level *.html samples (e.g. edit-image.html, localstorage.html) were
+  // previously skipped because only directories were scanned (issue #140).
+  const rootSamples = [];
+  for (const entry of readdirSync(SAMPLE_ROOTS.dwt, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith(".html") && entry.name !== "index.html" && entry.name.toLowerCase() !== "readme.html") {
+      rootSamples.push(entry.name.replace(".html", ""));
+    }
+  }
+  if (rootSamples.length > 0) categories.root = rootSamples;
 
   for (const entry of readdirSync(SAMPLE_ROOTS.dwt, { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
@@ -594,6 +610,11 @@ function getDbrServerSamplePath(platform, sampleName) {
 
 function getDwtSamplePath(category, sampleName) {
   const fileName = sampleName.endsWith(".html") ? sampleName : `${sampleName}.html`;
+  // "root" maps to a top-level *.html directly under the DWT samples root.
+  if (category === "root") {
+    const rootFile = getExistingPath(join(SAMPLE_ROOTS.dwt, fileName));
+    return rootFile || null;
+  }
   const categoryPath = getExistingPath(join(SAMPLE_ROOTS.dwt, category));
   if (!categoryPath) return null;
 

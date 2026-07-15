@@ -1004,7 +1004,14 @@ function buildResourceIndex({
         tags: ["sample", "dbr", "web", category, sampleName],
         loadContent: async () => {
           const samplePath = getWebSamplePath(category, sampleName);
-          const content = samplePath && existsSync(samplePath) ? readCodeFile(samplePath) : "Sample not found";
+          let content = "Sample not found";
+          if (samplePath && existsSync(samplePath)) {
+            // Full-project samples (frameworks/*) resolve to a directory; point
+            // to get_sample_files rather than reading a directory as a file.
+            content = statSync(samplePath).isDirectory()
+              ? `This is a multi-file ${category} project. Use get_sample_files with sample_id ${category}/${sampleName} to retrieve all files.`
+              : readCodeFile(samplePath);
+          }
           return { text: content, mimeType: "text/html" };
         }
       });
