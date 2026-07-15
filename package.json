@@ -24,7 +24,7 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "npm run test:lite",
-    "test:unit": "node --test test/unit/gemini-retry.test.js test/unit/profile-config.test.js test/unit/lexical-provider.test.js test/unit/hydration-mode.test.js test/unit/hydration-policy.test.js test/unit/repo-map.test.js test/unit/download-utils.test.js test/unit/logging.test.js test/unit/rag-signature-manifest.test.js test/unit/startup-timing.test.js test/unit/http-startup-readiness.test.js test/unit/resource-index-startup.test.js test/unit/create-server.test.js test/unit/server-helpers.test.js test/unit/update-sdk-versions.test.js test/unit/version-policy.test.js test/unit/query-expansion.test.js",
+    "test:unit": "node --test test/unit/gemini-retry.test.js test/unit/profile-config.test.js test/unit/lexical-provider.test.js test/unit/hydration-mode.test.js test/unit/hydration-policy.test.js test/unit/repo-map.test.js test/unit/download-utils.test.js test/unit/logging.test.js test/unit/rag-signature-manifest.test.js test/unit/startup-timing.test.js test/unit/http-startup-readiness.test.js test/unit/resource-index-startup.test.js test/unit/create-server.test.js test/unit/server-helpers.test.js test/unit/update-sdk-versions.test.js test/unit/version-policy.test.js test/unit/query-expansion.test.js test/unit/docs-loader-enrich.test.js",
     "test:lite": "npm run test:stdio && npm run test:http && npm run test:package",
     "test:lexical": "node --test test/integration/stdio.test.js test/integration/http.test.js",
     "test:gemini": "node scripts/run-gemini-tests.mjs",

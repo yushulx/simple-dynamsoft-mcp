@@ -59,8 +59,19 @@ function buildBreadcrumbFromPath(relativePath) {
 function collectMarkdownFiles(rootDir, options = {}) {
   const files = [];
   const excludeDirs = new Set(options.excludeDirs || []);
-  const excludeFiles = new Set(options.excludeFiles || []);
+  const rawExcludeFiles = options.excludeFiles || [];
+  // Exact names go in a Set; entries containing '*' become glob regexes so
+  // configs can exclude stale/internal docs like '*-v1.1.md' or '*private*' (#144).
+  const excludeFiles = new Set(rawExcludeFiles.filter((f) => !f.includes("*")));
+  const excludePatterns = rawExcludeFiles
+    .filter((f) => f.includes("*"))
+    .map((f) => new RegExp("^" + f.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") + "$", "i"));
   const includeDirNames = new Set(options.includeDirNames || []);
+
+  function isExcludedFile(name) {
+    if (excludeFiles.has(name)) return true;
+    return excludePatterns.some((re) => re.test(name));
+  }
 
   function walk(dir) {
     if (!existsSync(dir)) return;
@@ -72,7 +83,7 @@ function collectMarkdownFiles(rootDir, options = {}) {
         continue;
       }
       if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-        if (excludeFiles.has(entry.name)) continue;
+        if (isExcludedFile(entry.name)) continue;
         files.push(join(dir, entry.name));
       }
     }
@@ -100,11 +111,20 @@ function loadMarkdownDocs({ rootDir, urlBase, includeDirNames = [], excludeDirs 
     const title = parsed.meta.title || getHeadingTitle(parsed.body) || formatSegmentLabel(relativePath.replace(/\.md$/i, "").split("/").pop());
     if (!title) continue;
     const breadcrumb = parsed.meta.breadcrumbText || buildBreadcrumbFromPath(relativePath) || title;
+    // Frontmatter description/keywords are the docs' own human summaries and
+    // search vocabulary — previously parsed and discarded (issue #142).
+    const description = typeof parsed.meta.description === "string" ? parsed.meta.description.trim() : "";
+    const keywordsRaw = parsed.meta.keywords;
+    const keywords = Array.isArray(keywordsRaw)
+      ? keywordsRaw.map((k) => String(k).trim()).filter(Boolean)
+      : (typeof keywordsRaw === "string" ? keywordsRaw.split(",").map((k) => k.trim()).filter(Boolean) : []);
     articles.push({
       title,
       url: markdownPathToUrl(urlBase, relativePath),
       content: parsed.body.trim(),
       breadcrumb,
+      description,
+      keywords,
       path: relativePath
     });
   }

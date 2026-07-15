@@ -36,17 +36,44 @@ function countDiscoveredSamplesByPlatforms(platforms, discoverSamplesForPlatform
 function getDcvScenarioTags(sampleName) {
   const normalized = String(sampleName || "").toLowerCase();
   const tags = [];
-  if (normalized.includes("mrz")) {
+  if (normalized.includes("mrz") || normalized.includes("passport")) {
     tags.push("mrz", "passport", "id-card", "machine-readable-zone");
   }
-  if (normalized.includes("driver") || normalized.includes("license")) {
+  if (normalized.includes("driver") || normalized.includes("license") || normalized.includes("licence") || normalized.includes("dl")) {
     tags.push("driver-license", "id-card", "dl", "aamva");
   }
-  if (normalized.includes("document")) {
+  if (normalized.includes("document") || normalized.includes("normaliz") || normalized.includes("deskew") || normalized.includes("scan-a-document")) {
     tags.push("document-scan", "document-normalization", "auto-capture", "cropping", "deskew");
   }
   if (normalized.includes("gs1")) {
     tags.push("gs1", "application-identifiers", "ai");
+  }
+  if (normalized.includes("qr")) {
+    tags.push("qr", "qrcode", "qr-code");
+  }
+  if (normalized.includes("pdf417") || normalized.includes("pdf-417")) {
+    tags.push("pdf417");
+  }
+  if (normalized.includes("datamatrix") || normalized.includes("data-matrix")) {
+    tags.push("datamatrix", "data-matrix");
+  }
+  if (normalized.includes("vin")) {
+    tags.push("vin", "vehicle-identification");
+  }
+  if (normalized.includes("pdf")) {
+    tags.push("pdf", "multi-page");
+  }
+  if (normalized.includes("image") || normalized.includes("file")) {
+    tags.push("image", "still-image", "file", "upload");
+  }
+  if (normalized.includes("camera") || normalized.includes("video") || normalized.includes("webcam") || normalized.includes("scan-a-single") || normalized.includes("scan-single")) {
+    tags.push("camera", "webcam", "video", "live");
+  }
+  if (normalized.includes("hello") || normalized.includes("getting-started") || normalized.includes("quickstart")) {
+    tags.push("hello-world", "getting-started", "quickstart");
+  }
+  if (normalized.includes("multiple") || normalized.includes("batch")) {
+    tags.push("multiple", "batch");
   }
   return Array.from(new Set(tags));
 }
@@ -194,6 +221,16 @@ function addMarkdownDocResources({
     const platform = article.platform || defaultPlatform;
     const tags = [...baseTags, platform];
     if (article.breadcrumb) tags.push(...article.breadcrumb.toLowerCase().split(/\s*>\s*/));
+    // Fold frontmatter keywords into tags so domain-vocabulary search hits (#142).
+    if (Array.isArray(article.keywords)) {
+      for (const kw of article.keywords) {
+        const norm = String(kw).toLowerCase().trim();
+        if (norm && !tags.includes(norm)) tags.push(norm);
+      }
+    }
+    // Prefer the frontmatter description as the summary (distinct per doc) over
+    // the breadcrumb (identical across sibling docs) (#142).
+    const baseSummary = article.description || article.breadcrumb || defaultSummary;
 
     addPublicResourceToIndex(addResourceToIndex, {
       id: `${idPrefix}-${i}`,
@@ -208,8 +245,8 @@ function addMarkdownDocResources({
         ? rewritePublicTitle(article.title, product)
         : article.title,
       summary: product === "mrz" || product === "mds"
-        ? rewritePublicSummary(article.breadcrumb || defaultSummary, product)
-        : (article.breadcrumb || defaultSummary),
+        ? rewritePublicSummary(baseSummary, product)
+        : baseSummary,
       embedText: article.content,
       mimeType: "text/markdown",
       tags,
@@ -999,9 +1036,10 @@ function buildResourceIndex({
         version: dbrWebVersion,
         majorVersion: LATEST_MAJOR.dbr,
         title: `Web sample: ${sampleName} (${category})`,
-        summary: `DBR web sample ${category}/${sampleName}.`,
+        summary: `DBR web ${category} sample: ${sampleName.replace(/[-_]/g, " ")}.`,
         mimeType: "text/html",
-        tags: ["sample", "dbr", "web", category, sampleName],
+        tags: ["sample", "dbr", "web", category, sampleName, ...getDcvScenarioTags(sampleName)],
+        embedText: `DBR web ${category} sample ${sampleName.replace(/[-_]/g, " ")} ${getDcvScenarioTags(sampleName).join(" ")}`,
         loadContent: async () => {
           const samplePath = getWebSamplePath(category, sampleName);
           let content = "Sample not found";
