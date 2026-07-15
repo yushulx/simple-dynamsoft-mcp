@@ -35,6 +35,27 @@ test("#149: chunkMarkdown splits on headings and prepends heading path", () => {
   assert.match(settingsChunk, /Configure Scan Settings/, "chunk should carry its heading path");
 });
 
+test("#149: chunkMarkdown does not treat '#' comments inside code fences as headings", () => {
+  const doc = [
+    "# Install",
+    "Run the installer.",
+    "```bash",
+    "# set your license key here",
+    "export KEY=abc",
+    "```",
+    "Now initialize the SDK."
+  ].join("\n");
+  const chunks = chunkMarkdown(doc, 1200, 200, 24);
+  // The prose after the fence must stay under 'Install', not the code comment.
+  const proseChunk = chunks.find((c) => c.includes("initialize the SDK"));
+  assert.ok(proseChunk, "post-fence prose should be chunked");
+  // The heading-path prefix is the chunk's first line. It must be the real
+  // heading, never the code comment.
+  const headingPath = proseChunk.split("\n")[0];
+  assert.equal(headingPath, "Install", "heading path must be the real heading");
+  assert.doesNotMatch(headingPath, /set your license key/, "code comment must not become the heading path");
+});
+
 test("#147: doc body text is searchable via the lexical BM25 index", async () => {
   const entries = [
     {

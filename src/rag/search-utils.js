@@ -83,8 +83,17 @@ function chunkMarkdown(text, chunkSize, chunkOverlap, maxChunks) {
     if (body) sections.push({ path: current.path, body });
   };
 
+  let inFence = false;
   for (const line of lines) {
-    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    // Track fenced code blocks so a `# ` comment inside Python/bash/YAML is not
+    // mistaken for a markdown heading (which would fragment the code and hijack
+    // the heading breadcrumb for following prose).
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+      current.lines.push(line);
+      continue;
+    }
+    const heading = inFence ? null : line.match(/^(#{1,6})\s+(.*)$/);
     if (heading) {
       flush();
       const level = heading[1].length;

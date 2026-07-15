@@ -469,12 +469,15 @@ function createProviderOrchestrator({
         // scoring far below it (the fixed absolute floor above is a near no-op for
         // normalized Gemini embeddings). (#149)
         const topScore = ordered.length ? ordered[0].score : 0;
-        const relativeFloor = topScore > 0 ? topScore * 0.85 : 0;
+        // When the top score is non-positive (only reachable with RAG_MIN_SCORE=0
+        // and unrelated content), keep everything rather than dropping the top hit.
+        const relativeFloor = topScore > 0 ? topScore * 0.85 : -Infinity;
         const kept = ordered.filter((item) => item.score >= relativeFloor);
 
+        const snippetTerms = baseQuery.toLowerCase().split(/\s+/).filter(Boolean);
         const results = kept.map((item) => {
           const scored = utils.attachScore(item.entry, item.score);
-          const snippet = utils.extractSnippet ? utils.extractSnippet(item.chunkText || "", [], 240) : "";
+          const snippet = utils.extractSnippet ? utils.extractSnippet(item.chunkText || "", snippetTerms, 240) : "";
           return snippet ? { ...scored, matchedSnippet: snippet } : scored;
         });
 
