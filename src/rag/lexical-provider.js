@@ -1,11 +1,37 @@
 import Fuse from "fuse.js";
+import { expandQueryTokens, extractSnippet } from "./search-utils.js";
 
 const DEFAULT_FUSE_OPTIONS = {
-  keys: ["title", "summary", "tags", "uri"],
+  keys: [
+    { name: "title", weight: 3 },
+    { name: "tags", weight: 2 },
+    { name: "summary", weight: 1 }
+  ],
   threshold: 0.35,
   ignoreLocation: true,
   includeScore: true
 };
+
+const BODY_INDEX_CHARS = 4000;
+
+// Field-weighted BM25 haystack: title/tags outrank summary; doc/sample body text
+// is indexed at low weight so body-only content is findable; the URI's last slug
+// segment is kept (it is often the most descriptive token) while scheme/version
+// noise is dropped (issue #147).
+function buildLexicalHaystack(entry) {
+  const title = entry.title || "";
+  const tags = Array.isArray(entry.tags) ? entry.tags.join(" ") : "";
+  const summary = entry.summary || "";
+  const body = entry.embedText ? String(entry.embedText).slice(0, BODY_INDEX_CHARS) : "";
+  const uriSlug = String(entry.uri || "").split("/").filter(Boolean).pop() || "";
+  return [
+    title, title, title,
+    tags, tags,
+    summary,
+    uriSlug,
+    body
+  ].join(" \n ");
+}
 
 const BM25_K1 = 1.2;
 const BM25_B = 0.75;
@@ -41,12 +67,7 @@ function buildBm25Index(entries) {
   let totalLength = 0;
 
   entries.forEach((entry, index) => {
-    const haystack = [
-      entry.title,
-      entry.summary,
-      Array.isArray(entry.tags) ? entry.tags.join(" ") : "",
-      entry.uri
-    ].join(" \n ");
+    const haystack = buildLexicalHaystack(entry);
 
     const tokens = tokenize(haystack);
     const termFreq = new Map();
@@ -66,7 +87,8 @@ function buildBm25Index(entries) {
       index,
       entry,
       length: tokens.length,
-      termFreq
+      termFreq,
+      snippetText: entry.embedText || entry.summary || entry.title || ""
     });
   });
 
@@ -107,33 +129,40 @@ function createLexicalProvider({
   const fuse = new Fuse(entries, fuseOptions);
   const bm25Index = buildBm25Index(entries);
   const entryByUri = new Map(entries.map((entry) => [entry.uri, entry]));
+  const snippetTextByUri = new Map(bm25Index.documents.map((doc) => [doc.entry.uri, doc.snippetText]));
 
   return {
     name: "lexical",
     search: async (query, filters, limit) => {
-      const terms = [...new Set(tokenize(query))];
+      // Expand with domain synonyms/stems so vocabulary gaps (webcam/camera,
+      // datamatrix/data matrix, scanning/scan) do not zero the BM25 component.
+      const terms = expandQueryTokens([...new Set(tokenize(query))]);
       const fuseHits = fuse.search(query);
       const fuseScoreByUri = new Map();
-      let maxFuse = 0;
 
       for (const hit of fuseHits) {
         const candidateScore = Number.isFinite(hit.score) ? Math.max(0, 1 - hit.score) : 0;
         const current = fuseScoreByUri.get(hit.item.uri) || 0;
         if (candidateScore > current) {
           fuseScoreByUri.set(hit.item.uri, candidateScore);
-          if (candidateScore > maxFuse) maxFuse = candidateScore;
         }
       }
 
       const bm25ScoreByUri = new Map();
       let maxBm25 = 0;
+      // Compute maxFuse over IN-SCOPE hits only. Computing it over all hits let an
+      // out-of-scope fuzzy match deflate every in-scope fuse contribution (issue #147).
+      let maxFuse = 0;
 
       for (const doc of bm25Index.documents) {
         if (!entryMatchesScope(doc.entry, filters)) continue;
         const score = computeBm25Score(bm25Index, doc, terms);
-        if (score <= 0) continue;
-        bm25ScoreByUri.set(doc.entry.uri, score);
-        if (score > maxBm25) maxBm25 = score;
+        if (score > 0) {
+          bm25ScoreByUri.set(doc.entry.uri, score);
+          if (score > maxBm25) maxBm25 = score;
+        }
+        const fuseScore = fuseScoreByUri.get(doc.entry.uri) || 0;
+        if (fuseScore > maxFuse) maxFuse = fuseScore;
       }
 
       const scopedUris = new Set();
@@ -155,7 +184,11 @@ function createLexicalProvider({
       }
 
       merged.sort(compareLexicalResults);
-      const ranked = merged.map((item) => attachScore(item.entry, item.score));
+      const ranked = merged.map((item) => {
+        const scored = attachScore(item.entry, item.score);
+        const snippet = extractSnippet(snippetTextByUri.get(item.entry.uri) || "", terms);
+        return snippet ? { ...scored, matchedSnippet: snippet } : scored;
+      });
       if (limit) return ranked.slice(0, limit);
       return ranked;
     },

@@ -28,7 +28,9 @@ import {
   buildIndexSignature,
   normalizeVector,
   dotProduct,
-  isRateLimitError
+  isRateLimitError,
+  expandQueryTokens,
+  extractSnippet
 } from "./search-utils.js";
 import { createProviderOrchestrator } from "./providers.js";
 import { createVectorCacheHelpers } from "./vector-cache.js";
@@ -43,6 +45,8 @@ const searchUtils = {
   normalizeVector,
   dotProduct,
   isRateLimitError,
+  expandQueryTokens,
+  extractSnippet,
   entryMatchesScope: (entry, filters) => entryMatchesScope(entry, filters, {
     editionMatches,
     platformMatches
