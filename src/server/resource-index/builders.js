@@ -241,6 +241,7 @@ function addMarkdownDocResources({
       platform,
       version,
       majorVersion,
+      url: article.url,
       title: product === "mrz" || product === "mds"
         ? rewritePublicTitle(article.title, product)
         : article.title,

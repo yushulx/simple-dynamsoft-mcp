@@ -8,6 +8,7 @@ import {
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
+import { validatePlatform, validateEdition } from "../normalizers.js";
 
 export function registerIndexTools({
   server,
@@ -24,6 +25,26 @@ export function registerIndexTools({
   getSampleEntries,
   getSampleSuggestions
 }) {
+  // Build a resource_link description that lets an agent choose WITHOUT a
+  // follow-up read: type | scope | version | score - summary, then the matched
+  // snippet and canonical URL when available (issue #146).
+  function buildHitDescription(entry) {
+    const versionLabel = entry.version ? `v${entry.version}` : "n/a";
+    const scopeLabel = formatScopeLabel(entry);
+    const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+    const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
+    const scoreLabel = formatScoreLabel(entry);
+    let desc = `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`;
+    if (entry.matchedSnippet) {
+      const snippet = String(entry.matchedSnippet).replace(/\s+/g, " ").slice(0, 220);
+      desc += ` — "${snippet}"`;
+    }
+    if (entry.type === "doc" && entry.url) {
+      desc += ` | ${entry.url}`;
+    }
+    return desc;
+  }
+
   function looksLikeSampleIdQuery(value) {
     const normalized = String(value || "").trim();
     if (!normalized) return false;
@@ -122,6 +143,17 @@ export function registerIndexTools({
         return buildUnknownPublicProductResponse(product);
       }
 
+      // Validate filter values so a typo names the failing dimension instead of
+      // silently filtering every result to zero (issue #152).
+      const platformCheck = validatePlatform(platform);
+      if (!platformCheck.ok) {
+        return { isError: true, content: [{ type: "text", text: platformCheck.message }] };
+      }
+      const editionCheck = validateEdition(edition);
+      if (!editionCheck.ok) {
+        return { isError: true, content: [{ type: "text", text: editionCheck.message }] };
+      }
+
       const normalizedPlatform = normalizePlatform(platform);
       const normalizedEdition = normalizeEdition(edition, normalizedPlatform, normalizedProduct);
       const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
@@ -180,7 +212,7 @@ export function registerIndexTools({
               type: "resource_link",
               uri: entry.uri,
               name: entry.title,
-              description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+              description: buildHitDescription(entry),
               mimeType: entry.mimeType,
               annotations: {
                 audience: ["assistant"],
@@ -248,7 +280,7 @@ export function registerIndexTools({
                 type: "resource_link",
                 uri: entry.uri,
                 name: entry.title,
-                description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+                description: buildHitDescription(entry),
                 mimeType: entry.mimeType,
                 annotations: {
                   audience: ["assistant"],
@@ -280,10 +312,16 @@ export function registerIndexTools({
         };
       }
 
+      // Capture Vision / DCV is the umbrella framework, not a selectable public
+      // product — steer the agent to the right offering (issue #150).
+      const dcvUmbrella = /\b(capture[\s-]?vision|dcv)\b/i.test(query) && !normalizedProduct;
+      const leadText = dcvUmbrella
+        ? `"Capture Vision" (DCV) is Dynamsoft's umbrella framework — pick the public product for your task: DBR (barcodes), MRZ (passports/IDs), MDS (document capture), DWT (scanner hardware), DDV (document viewer). Results below span the closest matches.\nFound ${topResults.length} result(s) for "${query}".`
+        : `Found ${topResults.length} result(s) for "${query}". Read the links you need with resources/read.`;
       const content = [
         {
           type: "text",
-          text: `Found ${topResults.length} result(s) for "${query}". Read the links you need with resources/read.`
+          text: leadText
         }
       ];
 
@@ -297,7 +335,7 @@ export function registerIndexTools({
           type: "resource_link",
           uri: entry.uri,
           name: entry.title,
-          description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+          description: buildHitDescription(entry),
           mimeType: entry.mimeType,
           annotations: {
             audience: ["assistant"],
