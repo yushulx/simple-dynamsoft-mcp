@@ -343,7 +343,9 @@ export function registerQuickstartTools({
               dedicatedSample = normalizedProduct === "mrz" ? "use-file-input" : "image-file-scanning";
             }
             const dedicatedPath = typeof getDedicated === "function" ? getDedicated("root", dedicatedSample) : "";
-            if (dedicatedPath && existsSync(dedicatedPath)) {
+            // Guard against a directory result (the resolver can return a dir when a
+            // sample lacks a single html entry): readCodeFile would throw EISDIR.
+            if (dedicatedPath && existsSync(dedicatedPath) && statSync(dedicatedPath).isFile()) {
               const dedicatedContent = readCodeFile(dedicatedPath);
               const mrzFields = normalizedProduct === "mrz"
                 ? "\n**Result fields** (`result.data`): firstName, lastName, documentNumber, dateOfExpiry, dateOfBirth, nationality, sex, issuingState.\n"

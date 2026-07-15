@@ -438,28 +438,32 @@ export function registerProjectTools({
         refPattern.lastIndex = 0;
         while ((match = refPattern.exec(file.content)) !== null) {
           const ref = match[1] || match[2] || match[3] || match[4];
-          if (!ref || /^(https?:)?\/\//.test(ref) || ref.startsWith("data:")) continue;
-          if (ref.includes("node_modules")) continue;
-          const resolved = join(fileDir, ref.split(/[?#]/)[0]);
+          if (!ref) continue;
+          // Skip anything that isn't a project-relative path: absolute URLs,
+          // data URIs, node_modules, and — importantly — filesystem-absolute
+          // paths ("/etc/passwd"), which must never be read (Copilot #463).
+          if (/^(https?:)?\/\//.test(ref) || ref.startsWith("data:") || ref.startsWith("/") || ref.includes("node_modules")) continue;
+          const cleanRef = ref.split(/[?#]/)[0];
+          const resolved = join(fileDir, cleanRef);
+          const relPath = relative(rootDir, resolved);
+          // Only follow references that stay INSIDE the sample tree. Out-of-tree
+          // refs (../../CustomTemplates/x.json) can't be represented in the flat
+          // payload and a basename rewrite wouldn't satisfy the original ref, so
+          // we don't chase them (avoids host-file traversal too).
+          if (relPath.startsWith("..") || includedPaths.has(relPath)) continue;
+          // Text assets only — never inline binary content.
+          const ext = extname(resolved).toLowerCase();
+          if (!textExtensions.includes(ext)) continue;
           if (!existsSync(resolved)) continue;
           try {
             if (!statSync(resolved).isFile()) continue;
           } catch { continue; }
-          const relPath = relative(rootDir, resolved);
-          if (relPath.startsWith("..")) {
-            // Out-of-tree reference (e.g. ../../CustomTemplates/x.json): include by
-            // its basename so the delivered project resolves it.
-            if (includedPaths.has(basename(resolved))) continue;
-          } else if (includedPaths.has(relPath)) {
-            continue;
-          }
           try {
             const content = readFileSync(resolved, "utf-8").replace(/\r\n/g, "\n");
-            const outPath = relPath.startsWith("..") ? basename(resolved) : relPath;
-            const added = { path: outPath, content, ext: (extname(resolved).replace(".", "") || "text") };
+            const added = { path: relPath, content, ext: (ext.replace(".", "") || "text") };
             files.push(added);
             pending.push(added);
-            includedPaths.add(outPath);
+            includedPaths.add(relPath);
           } catch { /* skip unreadable */ }
         }
       }

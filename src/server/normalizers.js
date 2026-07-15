@@ -359,7 +359,10 @@ function validateEdition(value) {
   if (value === undefined || value === null || value === "") {
     return { ok: true, normalized: "" };
   }
-  const normalized = String(value).trim().toLowerCase();
+  // Normalize first so documented aliases the tool schema advertises
+  // ("server/desktop", "desktop") and platform-implied editions ("python")
+  // are accepted rather than rejected as unknown.
+  const normalized = normalizeEdition(value);
   if (KNOWN_EDITIONS.has(normalized)) {
     return { ok: true, normalized };
   }
@@ -369,7 +372,7 @@ function validateEdition(value) {
   return {
     ok: false,
     normalized,
-    message: `Unknown edition "${value}". Valid: ${valid.join(", ")}.${suggestionText}`
+    message: `Unknown edition "${value}". Valid: ${valid.join(", ")} (aliases like server/desktop, desktop are accepted).${suggestionText}`
   };
 }
 

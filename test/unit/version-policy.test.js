@@ -70,3 +70,13 @@ test("#152: validateEdition validates the four known editions", () => {
   assert.equal(unknown.ok, false);
   assert.match(unknown.message, /Unknown edition "desktop-ish"/);
 });
+
+test("#152: validateEdition accepts documented aliases (regression: server/desktop)", () => {
+  // The tool schema advertises edition "server/desktop"; it and other aliases
+  // that normalizeEdition accepts must validate, not be rejected as unknown.
+  assert.equal(validateEdition("server/desktop").ok, true);
+  assert.equal(validateEdition("server/desktop").normalized, "server");
+  assert.equal(validateEdition("desktop").ok, true);
+  assert.equal(validateEdition("python").ok, true);
+  assert.equal(validateEdition("python").normalized, "server");
+});
