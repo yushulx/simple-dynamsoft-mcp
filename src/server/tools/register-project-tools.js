@@ -102,7 +102,7 @@ export function registerProjectTools({
         "RELATED TOOLS: list_samples (discover sample IDs), search (find samples by keyword), get_quickstart (quick single-file snippet)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
+        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds. Optional when resource_uri is provided (the URI already encodes it)."),
         edition: z.string().optional().describe(`Edition: mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
         platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint"),
@@ -151,6 +151,13 @@ export function registerProjectTools({
             }]
           };
         }
+      }
+
+      if (!sampleInfo && !product) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Provide a resource_uri (from search) or a product + sample_id. Use search or list_samples to discover one." }]
+        };
       }
 
       const normalizedProduct = normalizeProduct(sampleInfo?.product || product);
@@ -365,7 +372,11 @@ export function registerProjectTools({
       const textExtensions = [
         ".java", ".kt", ".swift", ".m", ".h", ".xml", ".gradle", ".properties",
         ".pro", ".json", ".plist", ".storyboard", ".xib", ".gitignore", ".md",
-        ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".html", ".css", ".py"
+        ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".mjs", ".html", ".css", ".py",
+        // C/C++, .NET, build/project files so server samples aren't returned empty.
+        ".cpp", ".cc", ".cxx", ".c", ".hpp", ".hh", ".cs", ".csproj", ".vcxproj",
+        ".sln", ".txt", ".cmake", ".config", ".yaml", ".yml", ".gradlew", ".dart",
+        ".rb", ".sh", ".bat", ".xaml", ".razor"
       ];
 
       const files = [];

@@ -31,6 +31,8 @@
     "test:stdio": "node --test test/integration/stdio.test.js",
     "test:http": "node --test test/integration/http.test.js",
     "test:package": "node --test test/integration/package-runtime.test.js",
+    "test:contract": "node --test test/contract/contract.test.js",
+    "check:version-drift": "node scripts/check-version-drift.mjs",
     "test:lazy": "node --test test/integration/lazy-hydration.test.js",
     "test:regression:unit": "node --test test/unit/create-server.test.js test/unit/server-helpers.test.js test/unit/profile-config.test.js test/unit/hydration-mode.test.js test/unit/logging.test.js",
     "test:regression:integration": "node --test test/integration/package-runtime.test.js test/integration/lazy-hydration.test.js",
