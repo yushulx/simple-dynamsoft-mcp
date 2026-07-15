@@ -59,7 +59,23 @@ function loadVectorIndexCache(
 
 function saveVectorIndexCache(cacheDir, cacheFile, payload) {
   ensureDirectory(cacheDir);
-  writeFileSync(cacheFile, JSON.stringify(payload));
+  let serialized;
+  try {
+    serialized = JSON.stringify(payload);
+  } catch (error) {
+    // JSON.stringify throws "Invalid string length" once the serialized cache
+    // exceeds V8's ~512MB max string length (reached with a large index of
+    // high-dimensional vectors). Fail with an actionable message instead.
+    if (error instanceof RangeError) {
+      const itemCount = Array.isArray(payload?.items) ? payload.items.length : "unknown";
+      throw new Error(
+        `Vector cache too large to serialize (${itemCount} items) — exceeds the JSON string limit. ` +
+        "Lower RAG_MAX_CHUNKS_PER_DOC or adopt a ceiling-proof cache format."
+      );
+    }
+    throw error;
+  }
+  writeFileSync(cacheFile, serialized);
 }
 
 function loadVectorIndexCheckpoint(checkpointFile, expectedKey, expectedItems) {
