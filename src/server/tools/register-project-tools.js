@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, extname, join, relative } from "node:path";
 import { z } from "zod";
 import {
   buildUnknownPublicProductResponse,
@@ -108,7 +108,9 @@ export function registerProjectTools({
         version: z.string().optional().describe("Version constraint"),
         sample_id: z.string().optional().describe("Sample identifier (name or path)"),
         resource_uri: z.string().optional().describe("Resource URI returned by search"),
-        api_level: z.string().optional().describe(`API level: ${API_LEVEL_NOTE}`)
+        api_level: z.string().optional().describe(`API level: ${API_LEVEL_NOTE}`),
+        files: z.array(z.string()).optional().describe("Optional subset: exact relative paths or *.ext patterns to return (default: all files)"),
+        manifest_only: z.boolean().optional().describe("If true, return only the file list (paths + sizes), not file contents")
       },
       annotations: {
         readOnlyHint: true,
@@ -117,7 +119,7 @@ export function registerProjectTools({
         openWorldHint: false
       }
     },
-    async ({ product, edition, platform, version, sample_id, resource_uri, api_level }) => {
+    async ({ product, edition, platform, version, sample_id, resource_uri, api_level, files: fileFilter, manifest_only }) => {
       let sampleInfo = null;
       if (resource_uri) {
         const parsed = parseResourceUri(resource_uri);
@@ -158,8 +160,14 @@ export function registerProjectTools({
 
       const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
       const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
-      const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
-      if (unsupportedScopeResponse) return unsupportedScopeResponse;
+      // A concrete sample:// URI names a hydrated sample we can serve inline, so
+      // it must bypass the scope-level redirect (which is for scope-only asks).
+      // Without this, search emits mrz/mds mobile/server URIs that this tool then
+      // refuses, and its own serving branches below are unreachable (issue #131).
+      if (!sampleInfo) {
+        const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+        if (unsupportedScopeResponse) return unsupportedScopeResponse;
+      }
 
       await ensureScopeHydrated({
         product: normalizedProduct,
@@ -271,7 +279,20 @@ export function registerProjectTools({
         } else if (normalizedProduct === "dcv" && normalizedEdition === "server") {
           samplePath = getDcvServerSamplePath(normalizedPlatform || "python", sampleName);
         } else if (normalizedProduct === "dbr" && normalizedEdition === "web") {
-          samplePath = getWebSamplePath(undefined, sampleName);
+          // Accept both bare ("hello-world") and category-qualified
+          // ("scenarios/read-a-drivers-license", "frameworks/react") sample ids.
+          if (sampleName.includes("/")) {
+            const slash = sampleName.indexOf("/");
+            const cat = sampleName.slice(0, slash);
+            const name = sampleName.slice(slash + 1);
+            samplePath = getWebSamplePath(cat, name)
+              || getWebSamplePath(undefined, name)
+              || getWebSamplePath(undefined, sampleName);
+          } else {
+            samplePath = getWebSamplePath("basics", sampleName)
+              || getWebSamplePath("scenarios", sampleName)
+              || getWebSamplePath(undefined, sampleName);
+          }
         } else if (normalizedProduct === "dbr" && normalizedEdition === "server") {
           samplePath = getDbrServerSamplePath(normalizedPlatform || "python", sampleName);
         } else if (normalizedProduct === "dwt") {
@@ -392,16 +413,116 @@ export function registerProjectTools({
         addFile(samplePath);
       }
 
-      const validFiles = files.filter((f) => f.content.length < 50000);
+      // Reference closure: single-file web samples (e.g. an index.html that
+      // initSettingsFromFile('./read_dl.json')) are delivered without their
+      // siblings by the walk above. Pull in files the payload references so the
+      // project is runnable as delivered (issue #137).
+      const includedPaths = new Set(files.map((f) => f.path));
+      const refPattern = /(?:src|href)\s*=\s*["']([^"']+)["']|from\s+["']([^"']+)["']|initSettingsFromFile\(\s*["']([^"']+)["']|["'](\.\.?\/[^"']+\.(?:json|css|js|xml))["']/g;
+      const pending = [...files];
+      while (pending.length) {
+        const file = pending.pop();
+        const fileDir = dirname(join(rootDir, file.path));
+        let match;
+        refPattern.lastIndex = 0;
+        while ((match = refPattern.exec(file.content)) !== null) {
+          const ref = match[1] || match[2] || match[3] || match[4];
+          if (!ref || /^(https?:)?\/\//.test(ref) || ref.startsWith("data:")) continue;
+          if (ref.includes("node_modules")) continue;
+          const resolved = join(fileDir, ref.split(/[?#]/)[0]);
+          if (!existsSync(resolved)) continue;
+          try {
+            if (!statSync(resolved).isFile()) continue;
+          } catch { continue; }
+          const relPath = relative(rootDir, resolved);
+          if (relPath.startsWith("..")) {
+            // Out-of-tree reference (e.g. ../../CustomTemplates/x.json): include by
+            // its basename so the delivered project resolves it.
+            if (includedPaths.has(basename(resolved))) continue;
+          } else if (includedPaths.has(relPath)) {
+            continue;
+          }
+          try {
+            const content = readFileSync(resolved, "utf-8").replace(/\r\n/g, "\n");
+            const outPath = relPath.startsWith("..") ? basename(resolved) : relPath;
+            const added = { path: outPath, content, ext: (extname(resolved).replace(".", "") || "text") };
+            files.push(added);
+            pending.push(added);
+            includedPaths.add(outPath);
+          } catch { /* skip unreadable */ }
+        }
+      }
 
+      const MAX_FILE_BYTES = 50000;
+      let selected = files;
+      if (Array.isArray(fileFilter) && fileFilter.length) {
+        const matchers = fileFilter.map((pat) => {
+          if (pat.startsWith("*.")) {
+            const ext = pat.slice(1);
+            return (p) => p.endsWith(ext);
+          }
+          return (p) => p === pat || basename(p) === pat;
+        });
+        selected = files.filter((f) => matchers.some((m) => m(f.path)));
+      }
+
+      // Entry files first, then everything else (stable) (issue #154).
+      const ENTRY_ORDER = ["index.html", "main.tsx", "main.ts", "main.js", "App.tsx", "App.jsx", "App.vue", "MainActivity.kt", "MainActivity.java", "ViewController.swift", "pubspec.yaml", "package.json", "pom.xml"];
+      const entryRank = (p) => {
+        const base = basename(p);
+        const idx = ENTRY_ORDER.indexOf(base);
+        return idx === -1 ? ENTRY_ORDER.length : idx;
+      };
+      selected = [...selected].sort((a, b) => entryRank(a.path) - entryRank(b.path));
+
+      const excluded = selected.filter((f) => f.content.length >= MAX_FILE_BYTES);
+      const validFiles = selected.filter((f) => f.content.length < MAX_FILE_BYTES);
+
+      // Empty payload → actionable miss, never a silent empty success (issue #138).
+      if (files.length === 0 || (validFiles.length === 0 && !manifest_only)) {
+        const suggestions = await getSampleSuggestions({
+          query: sampleQuery,
+          product: normalizedProduct,
+          edition: normalizedEdition,
+          platform: normalizedPlatform,
+          limit: 5
+        });
+        const content = [{
+          type: "text",
+          text: [
+            `No readable files found for "${sampleLabel}".`,
+            suggestions.length ? "Related samples:" : "Try list_samples or search to find a valid sample."
+          ].join("\n")
+        }];
+        for (const entry of suggestions) {
+          const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+          content.push({
+            type: "resource_link",
+            uri: entry.uri,
+            name: entry.title,
+            description: `${entry.type.toUpperCase()} | ${formatScopeLabel(entry)} | ${entry.version ? "v" + entry.version : "n/a"} - ${entry.summary}${sampleId ? " | sample_id: " + sampleId : ""}`,
+            mimeType: entry.mimeType,
+            annotations: { audience: ["assistant"], priority: 0.6 }
+          });
+        }
+        return { isError: true, content };
+      }
+
+      const totalKb = (selected.reduce((sum, f) => sum + f.content.length, 0) / 1024).toFixed(1);
       const output = [
         `# Sample Files: ${sampleLabel}`,
         "",
-        "Below are the retrieved sample project files.",
-        "Note: Files are returned inline and no downloadable zip is created.",
+        `## Files (${validFiles.length}${excluded.length ? ` of ${selected.length}` : ""}, ${totalKb} KB total)`,
+        ...validFiles.map((f) => `- ${f.path} (${(f.content.length / 1024).toFixed(1)} KB)`),
+        excluded.length ? `Excluded (>50KB): ${excluded.map((f) => f.path).join(", ")}` : "",
         ""
-      ];
+      ].filter((line) => line !== "");
 
+      if (manifest_only) {
+        return { content: [{ type: "text", text: output.join("\n") }] };
+      }
+
+      output.push("", "Note: Files are returned inline and no downloadable zip is created.", "");
       for (const file of validFiles) {
         output.push(`## ${file.path}`);
         output.push("```" + (file.ext || "text"));
