@@ -308,7 +308,10 @@ function isWebPlatform(platform) {
 
 // Canonical platform values a caller may pass. Derived from the alias table so
 // this stays in sync automatically as platforms are added (issue #152).
-const KNOWN_PLATFORMS = new Set(Object.values(platformAliases));
+// "core" is a valid (DCV-internal) platform advertised in tool descriptions but
+// isn't an alias value, so add it explicitly to keep the validator consistent
+// with what the schema tells agents to pass.
+const KNOWN_PLATFORMS = new Set([...Object.values(platformAliases), "core"]);
 const KNOWN_EDITIONS = new Set(["core", "mobile", "web", "server"]);
 
 function nearestKnownKey(value, candidates) {

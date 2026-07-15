@@ -63,7 +63,7 @@ const DOCS_CONFIG = {
   mrzWeb: {
     urlBase: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
     excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
-    // Current MRZ is v4; exclude the legacy v1.x/v2.x guides and any private drafts (#144).
+    // Current MRZ docs are v3.x; exclude the legacy v1.x/v2.x guides and any private drafts (#144).
     excludeFiles: ["README.md", "search.md", "error.md", "*-v1.1.md", "*-v2.0.md", "*-v2.1.md", "*private*"]
   },
   mdsWeb: {
