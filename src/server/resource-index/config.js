@@ -63,12 +63,14 @@ const DOCS_CONFIG = {
   mrzWeb: {
     urlBase: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
     excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
-    excludeFiles: ["README.md", "search.md", "error.md"]
+    // Current MRZ docs are v3.x; exclude the legacy v1.x/v2.x guides and any private drafts (#144).
+    excludeFiles: ["README.md", "search.md", "error.md", "*-v1.1.md", "*-v2.0.md", "*-v2.1.md", "*private*"]
   },
   mdsWeb: {
     urlBase: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
     excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "assets"],
-    excludeFiles: ["README.md", "search.md", "error.md"]
+    // Exclude internal "private" draft docs (bodies are HTML comments) (#144).
+    excludeFiles: ["README.md", "search.md", "error.md", "*private*"]
   },
   dcvMobile: {
     urlBase: "https://www.dynamsoft.com/capture-vision/docs/mobile/",

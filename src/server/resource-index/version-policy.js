@@ -65,12 +65,19 @@ function getLegacyLink(product, version, edition, platform) {
   return null;
 }
 
+function retryWithoutVersionHint(currentMajor) {
+  return `Retry without the version parameter to get v${currentMajor} content.`;
+}
+
 function ensureLatestMajor({ product, version, query, edition, platform, latestMajor }) {
   const inferredProduct = product || inferProductFromQuery(query);
   if (!inferredProduct) return { ok: true };
 
   const normalizedEdition = normalizeEdition(edition, platform, inferredProduct);
-  const requestedMajor = parseMajorVersion(version) ?? detectMajorFromQuery(query);
+  // Only an explicit version/constraint parameter may trigger the legacy guard.
+  // Version-like tokens in free-text queries ("I'm on DBR 9.6 and ...") must NOT
+  // block a search for content this server hosts (issue #139).
+  const requestedMajor = parseMajorVersion(version);
 
   if (inferredProduct === "mrz" && !normalizedEdition && requestedMajor && requestedMajor === latestMajor.dcv) {
     return { ok: true, latestMajor: latestMajor.dcv };
@@ -87,35 +94,51 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
   if (inferredProduct === "ddv") {
     return {
       ok: false,
-      message: `This MCP server only serves the latest major version of DDV (v${currentMajor}).`
+      message: [
+        `This MCP server only serves the latest major version of DDV (v${currentMajor}).`,
+        retryWithoutVersionHint(currentMajor)
+      ].join("\n")
     };
   }
 
   if (inferredProduct === "dcv") {
     return {
       ok: false,
-      message: `This MCP server only serves the latest major version of DCV (v${currentMajor}).`
+      message: [
+        `This MCP server only serves the latest major version of DCV (v${currentMajor}).`,
+        retryWithoutVersionHint(currentMajor)
+      ].join("\n")
     };
   }
 
   if (inferredProduct === "mrz" || inferredProduct === "mds") {
     return {
       ok: false,
-      message: `This MCP server only serves the latest major version of ${inferredProduct.toUpperCase()} (v${currentMajor}).`
+      message: [
+        `This MCP server only serves the latest major version of ${inferredProduct.toUpperCase()} (v${currentMajor}).`,
+        retryWithoutVersionHint(currentMajor)
+      ].join("\n")
     };
   }
 
   if (inferredProduct === "dbr" && requestedMajor < 9) {
     return {
       ok: false,
-      message: `This MCP server only serves the latest major version of DBR (v${currentMajor}). DBR versions prior to v9 are not available.`
+      message: [
+        `This MCP server only serves the latest major version of DBR (v${currentMajor}). DBR versions prior to v9 are not available.`,
+        "Note: in v10+ setLicenseKey was replaced by LicenseManager.initLicense.",
+        retryWithoutVersionHint(currentMajor)
+      ].join("\n")
     };
   }
 
   if (inferredProduct === "dwt" && requestedMajor < 16) {
     return {
       ok: false,
-      message: `This MCP server only serves the latest major version of DWT (v${currentMajor}). DWT versions prior to v16 are not available.`
+      message: [
+        `This MCP server only serves the latest major version of DWT (v${currentMajor}). DWT versions prior to v16 are not available.`,
+        retryWithoutVersionHint(currentMajor)
+      ].join("\n")
     };
   }
 
@@ -126,7 +149,9 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
       ok: false,
       message: [
         `This MCP server only serves the latest major version of DBR (v${currentMajor}).`,
-        link ? `Legacy docs: ${link}` : fallback
+        link ? `Legacy docs: ${link}` : fallback,
+        "Note: in v10+ setLicenseKey was replaced by LicenseManager.initLicense.",
+        retryWithoutVersionHint(currentMajor)
       ].join("\n")
     };
   }
@@ -139,7 +164,8 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
       ok: false,
       message: [
         `This MCP server only serves the latest major version of DWT (v${currentMajor}).`,
-        legacyNote
+        legacyNote,
+        retryWithoutVersionHint(currentMajor)
       ].join("\n")
     };
   }

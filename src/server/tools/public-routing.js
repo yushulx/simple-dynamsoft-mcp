@@ -24,6 +24,14 @@ function getPublicMobileSamplesUrl(platform) {
 }
 
 function getUnsupportedPublicScopeRedirect(product, edition, platform) {
+  if (product === "mrz" && edition === "mobile") {
+    return {
+      label: "MRZ",
+      docsUrl: "https://www.dynamsoft.com/capture-vision/docs/mobile/",
+      samplesUrl: getPublicMobileSamplesUrl(platform)
+    };
+  }
+
   if (product === "mrz" && edition === "server") {
     return {
       label: "MRZ",

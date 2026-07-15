@@ -1,7 +1,13 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, extname, join, relative } from "node:path";
 import { z } from "zod";
-import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
+import {
+  buildUnknownPublicProductResponse,
+  isKnownPublicOffering,
+  API_LEVEL_NOTE,
+  DBR_ONLY_EDITIONS_NOTE,
+  WEB_ONLY_OMIT_NOTE
+} from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerProjectTools({
@@ -82,12 +88,12 @@ export function registerProjectTools({
         "",
         "PARAMETERS:",
         "- product (required): dbr, dwt, ddv, mrz, or mds.",
-        "- edition: mobile, web, or server.",
-        "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
+        `- edition: mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE}`,
+        `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- version: Version constraint. Latest major is used by default.",
         "- sample_id: Sample identifier as returned by list_samples (e.g. 'hello-world', 'ScanSingleBarcode'). Requires product/edition.",
         "- resource_uri: A sample:// URI as returned by search (e.g. 'sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' or 'sample://mrz/server/python/3/mrz_scanner'). Preferred over sample_id when available.",
-        "- api_level: 'high-level' or 'low-level' (DBR mobile only).",
+        `- api_level: ${API_LEVEL_NOTE}`,
         "",
         "RETURNS: A text block containing all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No zip file is created.",
         "",
@@ -96,13 +102,15 @@ export function registerProjectTools({
         "RELATED TOOLS: list_samples (discover sample IDs), search (find samples by keyword), get_quickstart (quick single-file snippet)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: mobile, web, server/desktop"),
-        platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview"),
+        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds. Optional when resource_uri is provided (the URI already encodes it)."),
+        edition: z.string().optional().describe(`Edition: mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
+        platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint"),
         sample_id: z.string().optional().describe("Sample identifier (name or path)"),
         resource_uri: z.string().optional().describe("Resource URI returned by search"),
-        api_level: z.string().optional().describe("API level: high-level or low-level (mobile only)")
+        api_level: z.string().optional().describe(`API level: ${API_LEVEL_NOTE}`),
+        files: z.array(z.string()).optional().describe("Optional subset: exact relative paths or *.ext patterns to return (default: all files)"),
+        manifest_only: z.boolean().optional().describe("If true, return only the file list (paths + sizes), not file contents")
       },
       annotations: {
         readOnlyHint: true,
@@ -111,7 +119,7 @@ export function registerProjectTools({
         openWorldHint: false
       }
     },
-    async ({ product, edition, platform, version, sample_id, resource_uri, api_level }) => {
+    async ({ product, edition, platform, version, sample_id, resource_uri, api_level, files: fileFilter, manifest_only }) => {
       let sampleInfo = null;
       if (resource_uri) {
         const parsed = parseResourceUri(resource_uri);
@@ -145,6 +153,13 @@ export function registerProjectTools({
         }
       }
 
+      if (!sampleInfo && !product) {
+        return {
+          isError: true,
+          content: [{ type: "text", text: "Provide a resource_uri (from search) or a product + sample_id. Use search or list_samples to discover one." }]
+        };
+      }
+
       const normalizedProduct = normalizeProduct(sampleInfo?.product || product);
       if ((sampleInfo?.product || product) && !isKnownPublicOffering(normalizedProduct)) {
         return buildUnknownPublicProductResponse(sampleInfo?.product || product);
@@ -152,8 +167,14 @@ export function registerProjectTools({
 
       const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
       const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
-      const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
-      if (unsupportedScopeResponse) return unsupportedScopeResponse;
+      // A concrete sample:// URI names a hydrated sample we can serve inline, so
+      // it must bypass the scope-level redirect (which is for scope-only asks).
+      // Without this, search emits mrz/mds mobile/server URIs that this tool then
+      // refuses, and its own serving branches below are unreachable (issue #131).
+      if (!sampleInfo) {
+        const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
+        if (unsupportedScopeResponse) return unsupportedScopeResponse;
+      }
 
       await ensureScopeHydrated({
         product: normalizedProduct,
@@ -265,7 +286,20 @@ export function registerProjectTools({
         } else if (normalizedProduct === "dcv" && normalizedEdition === "server") {
           samplePath = getDcvServerSamplePath(normalizedPlatform || "python", sampleName);
         } else if (normalizedProduct === "dbr" && normalizedEdition === "web") {
-          samplePath = getWebSamplePath(undefined, sampleName);
+          // Accept both bare ("hello-world") and category-qualified
+          // ("scenarios/read-a-drivers-license", "frameworks/react") sample ids.
+          if (sampleName.includes("/")) {
+            const slash = sampleName.indexOf("/");
+            const cat = sampleName.slice(0, slash);
+            const name = sampleName.slice(slash + 1);
+            samplePath = getWebSamplePath(cat, name)
+              || getWebSamplePath(undefined, name)
+              || getWebSamplePath(undefined, sampleName);
+          } else {
+            samplePath = getWebSamplePath("basics", sampleName)
+              || getWebSamplePath("scenarios", sampleName)
+              || getWebSamplePath(undefined, sampleName);
+          }
         } else if (normalizedProduct === "dbr" && normalizedEdition === "server") {
           samplePath = getDbrServerSamplePath(normalizedPlatform || "python", sampleName);
         } else if (normalizedProduct === "dwt") {
@@ -338,7 +372,11 @@ export function registerProjectTools({
       const textExtensions = [
         ".java", ".kt", ".swift", ".m", ".h", ".xml", ".gradle", ".properties",
         ".pro", ".json", ".plist", ".storyboard", ".xib", ".gitignore", ".md",
-        ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".html", ".css", ".py"
+        ".js", ".jsx", ".ts", ".tsx", ".vue", ".cjs", ".mjs", ".html", ".css", ".py",
+        // C/C++, .NET, build/project files so server samples aren't returned empty.
+        ".cpp", ".cc", ".cxx", ".c", ".hpp", ".hh", ".cs", ".csproj", ".vcxproj",
+        ".sln", ".txt", ".cmake", ".config", ".yaml", ".yml", ".gradlew", ".dart",
+        ".rb", ".sh", ".bat", ".xaml", ".razor"
       ];
 
       const files = [];
@@ -386,16 +424,120 @@ export function registerProjectTools({
         addFile(samplePath);
       }
 
-      const validFiles = files.filter((f) => f.content.length < 50000);
+      // Reference closure: single-file web samples (e.g. an index.html that
+      // initSettingsFromFile('./read_dl.json')) are delivered without their
+      // siblings by the walk above. Pull in files the payload references so the
+      // project is runnable as delivered (issue #137).
+      const includedPaths = new Set(files.map((f) => f.path));
+      const refPattern = /(?:src|href)\s*=\s*["']([^"']+)["']|from\s+["']([^"']+)["']|initSettingsFromFile\(\s*["']([^"']+)["']|["'](\.\.?\/[^"']+\.(?:json|css|js|xml))["']/g;
+      const pending = [...files];
+      while (pending.length) {
+        const file = pending.pop();
+        const fileDir = dirname(join(rootDir, file.path));
+        let match;
+        refPattern.lastIndex = 0;
+        while ((match = refPattern.exec(file.content)) !== null) {
+          const ref = match[1] || match[2] || match[3] || match[4];
+          if (!ref) continue;
+          // Skip anything that isn't a project-relative path: absolute URLs,
+          // data URIs, node_modules, and — importantly — filesystem-absolute
+          // paths ("/etc/passwd"), which must never be read (Copilot #463).
+          if (/^(https?:)?\/\//.test(ref) || ref.startsWith("data:") || ref.startsWith("/") || ref.includes("node_modules")) continue;
+          const cleanRef = ref.split(/[?#]/)[0];
+          const resolved = join(fileDir, cleanRef);
+          const relPath = relative(rootDir, resolved);
+          // Only follow references that stay INSIDE the sample tree. Out-of-tree
+          // refs (../../CustomTemplates/x.json) can't be represented in the flat
+          // payload and a basename rewrite wouldn't satisfy the original ref, so
+          // we don't chase them (avoids host-file traversal too).
+          if (relPath.startsWith("..") || includedPaths.has(relPath)) continue;
+          // Text assets only — never inline binary content.
+          const ext = extname(resolved).toLowerCase();
+          if (!textExtensions.includes(ext)) continue;
+          if (!existsSync(resolved)) continue;
+          try {
+            if (!statSync(resolved).isFile()) continue;
+          } catch { continue; }
+          try {
+            const content = readFileSync(resolved, "utf-8").replace(/\r\n/g, "\n");
+            const added = { path: relPath, content, ext: (ext.replace(".", "") || "text") };
+            files.push(added);
+            pending.push(added);
+            includedPaths.add(relPath);
+          } catch { /* skip unreadable */ }
+        }
+      }
 
+      const MAX_FILE_BYTES = 50000;
+      let selected = files;
+      if (Array.isArray(fileFilter) && fileFilter.length) {
+        const matchers = fileFilter.map((pat) => {
+          if (pat.startsWith("*.")) {
+            const ext = pat.slice(1);
+            return (p) => p.endsWith(ext);
+          }
+          return (p) => p === pat || basename(p) === pat;
+        });
+        selected = files.filter((f) => matchers.some((m) => m(f.path)));
+      }
+
+      // Entry files first, then everything else (stable) (issue #154).
+      const ENTRY_ORDER = ["index.html", "main.tsx", "main.ts", "main.js", "App.tsx", "App.jsx", "App.vue", "MainActivity.kt", "MainActivity.java", "ViewController.swift", "pubspec.yaml", "package.json", "pom.xml"];
+      const entryRank = (p) => {
+        const base = basename(p);
+        const idx = ENTRY_ORDER.indexOf(base);
+        return idx === -1 ? ENTRY_ORDER.length : idx;
+      };
+      selected = [...selected].sort((a, b) => entryRank(a.path) - entryRank(b.path));
+
+      const excluded = selected.filter((f) => f.content.length >= MAX_FILE_BYTES);
+      const validFiles = selected.filter((f) => f.content.length < MAX_FILE_BYTES);
+
+      // Empty payload → actionable miss, never a silent empty success (issue #138).
+      if (files.length === 0 || (validFiles.length === 0 && !manifest_only)) {
+        const suggestions = await getSampleSuggestions({
+          query: sampleQuery,
+          product: normalizedProduct,
+          edition: normalizedEdition,
+          platform: normalizedPlatform,
+          limit: 5
+        });
+        const content = [{
+          type: "text",
+          text: [
+            `No readable files found for "${sampleLabel}".`,
+            suggestions.length ? "Related samples:" : "Try list_samples or search to find a valid sample."
+          ].join("\n")
+        }];
+        for (const entry of suggestions) {
+          const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+          content.push({
+            type: "resource_link",
+            uri: entry.uri,
+            name: entry.title,
+            description: `${entry.type.toUpperCase()} | ${formatScopeLabel(entry)} | ${entry.version ? "v" + entry.version : "n/a"} - ${entry.summary}${sampleId ? " | sample_id: " + sampleId : ""}`,
+            mimeType: entry.mimeType,
+            annotations: { audience: ["assistant"], priority: 0.6 }
+          });
+        }
+        return { isError: true, content };
+      }
+
+      const totalKb = (selected.reduce((sum, f) => sum + f.content.length, 0) / 1024).toFixed(1);
       const output = [
         `# Sample Files: ${sampleLabel}`,
         "",
-        "Below are the retrieved sample project files.",
-        "Note: Files are returned inline and no downloadable zip is created.",
+        `## Files (${validFiles.length}${excluded.length ? ` of ${selected.length}` : ""}, ${totalKb} KB total)`,
+        ...validFiles.map((f) => `- ${f.path} (${(f.content.length / 1024).toFixed(1)} KB)`),
+        excluded.length ? `Excluded (>50KB): ${excluded.map((f) => f.path).join(", ")}` : "",
         ""
-      ];
+      ].filter((line) => line !== "");
 
+      if (manifest_only) {
+        return { content: [{ type: "text", text: output.join("\n") }] };
+      }
+
+      output.push("", "Note: Files are returned inline and no downloadable zip is created.", "");
       for (const file of validFiles) {
         output.push(`## ${file.path}`);
         output.push("```" + (file.ext || "text"));

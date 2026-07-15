@@ -198,6 +198,40 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
   const link = search.content.find((item) => item.type === "resource_link");
   assert.ok(link, "Search should return at least one resource_link");
 
+  // Regression: DBR web quickstart must honor the scenario (camera -> camera
+  // starter) instead of collapsing everything to the image-file sample, must
+  // not read api_level (a mobile-only concept), and must not hard-error.
+  const cameraQuickstart = await client.callTool(
+    {
+      name: "get_quickstart",
+      arguments: {
+        product: "dbr",
+        edition: "web",
+        platform: "js",
+        scenario: "camera",
+        api_level: "high-level"
+      }
+    },
+    undefined,
+    requestOptions
+  );
+  assert.equal(cameraQuickstart.isError, undefined, "DBR web camera quickstart should not error");
+  const cameraText = cameraQuickstart.content.map((item) => item.text || "").join("\n");
+  assert.match(cameraText, /## Foundational sample: scan-a-single-barcode/, "camera scenario should return the camera starter sample");
+  assert.doesNotMatch(cameraText, /sample: read-an-image/i, "camera scenario should not serve the image-file sample");
+
+  const imageQuickstart = await client.callTool(
+    {
+      name: "get_quickstart",
+      arguments: { product: "dbr", edition: "web", platform: "js", scenario: "image" }
+    },
+    undefined,
+    requestOptions
+  );
+  assert.equal(imageQuickstart.isError, undefined, "DBR web image quickstart should not error");
+  const imageText = imageQuickstart.content.map((item) => item.text || "").join("\n");
+  assert.match(imageText, /## Foundational sample: read-an-image/, "image scenario should return the image-file sample");
+
   const resources = await client.listResources(undefined, requestOptions);
   assert.ok(resources.resources.length > 0, "resources/list should return pinned resources");
   const resourceUris = resources.resources.map((resource) => resource.uri);

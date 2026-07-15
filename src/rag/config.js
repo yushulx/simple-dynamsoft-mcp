@@ -63,7 +63,7 @@ const ragConfig = {
   modelCacheDir: readEnvValue("RAG_MODEL_CACHE_DIR", join(dataRoot, ".rag-cache", "models")),
   chunkSize: readIntEnv("RAG_CHUNK_SIZE", 1200),
   chunkOverlap: readIntEnv("RAG_CHUNK_OVERLAP", 200),
-  maxChunksPerDoc: readIntEnv("RAG_MAX_CHUNKS_PER_DOC", 6),
+  maxChunksPerDoc: readIntEnv("RAG_MAX_CHUNKS_PER_DOC", 24),
   maxTextChars: readIntEnv("RAG_MAX_TEXT_CHARS", 4000),
   minScore: readFloatEnv("RAG_MIN_SCORE", 0.2),
   includeScore: readBoolEnv("RAG_INCLUDE_SCORE", false),

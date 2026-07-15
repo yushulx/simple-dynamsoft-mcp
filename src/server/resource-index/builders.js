@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { DDV_PREFERRED_ENTRY_FILES } from "./config.js";
-import { PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
+import { PRODUCT_SELECTION_GUIDANCE, PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
 
 const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
 const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
@@ -36,17 +36,44 @@ function countDiscoveredSamplesByPlatforms(platforms, discoverSamplesForPlatform
 function getDcvScenarioTags(sampleName) {
   const normalized = String(sampleName || "").toLowerCase();
   const tags = [];
-  if (normalized.includes("mrz")) {
+  if (normalized.includes("mrz") || normalized.includes("passport")) {
     tags.push("mrz", "passport", "id-card", "machine-readable-zone");
   }
-  if (normalized.includes("driver") || normalized.includes("license")) {
+  if (normalized.includes("driver") || normalized.includes("license") || normalized.includes("licence") || normalized.includes("dl")) {
     tags.push("driver-license", "id-card", "dl", "aamva");
   }
-  if (normalized.includes("document")) {
+  if (normalized.includes("document") || normalized.includes("normaliz") || normalized.includes("deskew") || normalized.includes("scan-a-document")) {
     tags.push("document-scan", "document-normalization", "auto-capture", "cropping", "deskew");
   }
   if (normalized.includes("gs1")) {
     tags.push("gs1", "application-identifiers", "ai");
+  }
+  if (normalized.includes("qr")) {
+    tags.push("qr", "qrcode", "qr-code");
+  }
+  if (normalized.includes("pdf417") || normalized.includes("pdf-417")) {
+    tags.push("pdf417");
+  }
+  if (normalized.includes("datamatrix") || normalized.includes("data-matrix")) {
+    tags.push("datamatrix", "data-matrix");
+  }
+  if (normalized.includes("vin")) {
+    tags.push("vin", "vehicle-identification");
+  }
+  if (normalized.includes("pdf")) {
+    tags.push("pdf", "multi-page");
+  }
+  if (normalized.includes("image") || normalized.includes("file")) {
+    tags.push("image", "still-image", "file", "upload");
+  }
+  if (normalized.includes("camera") || normalized.includes("video") || normalized.includes("webcam") || normalized.includes("scan-a-single") || normalized.includes("scan-single")) {
+    tags.push("camera", "webcam", "video", "live");
+  }
+  if (normalized.includes("hello") || normalized.includes("getting-started") || normalized.includes("quickstart")) {
+    tags.push("hello-world", "getting-started", "quickstart");
+  }
+  if (normalized.includes("multiple") || normalized.includes("batch")) {
+    tags.push("multiple", "batch");
   }
   return Array.from(new Set(tags));
 }
@@ -194,6 +221,16 @@ function addMarkdownDocResources({
     const platform = article.platform || defaultPlatform;
     const tags = [...baseTags, platform];
     if (article.breadcrumb) tags.push(...article.breadcrumb.toLowerCase().split(/\s*>\s*/));
+    // Fold frontmatter keywords into tags so domain-vocabulary search hits (#142).
+    if (Array.isArray(article.keywords)) {
+      for (const kw of article.keywords) {
+        const norm = String(kw).toLowerCase().trim();
+        if (norm && !tags.includes(norm)) tags.push(norm);
+      }
+    }
+    // Prefer the frontmatter description as the summary (distinct per doc) over
+    // the breadcrumb (identical across sibling docs) (#142).
+    const baseSummary = article.description || article.breadcrumb || defaultSummary;
 
     addPublicResourceToIndex(addResourceToIndex, {
       id: `${idPrefix}-${i}`,
@@ -204,12 +241,13 @@ function addMarkdownDocResources({
       platform,
       version,
       majorVersion,
+      url: article.url,
       title: product === "mrz" || product === "mds"
         ? rewritePublicTitle(article.title, product)
         : article.title,
       summary: product === "mrz" || product === "mds"
-        ? rewritePublicSummary(article.breadcrumb || defaultSummary, product)
-        : (article.breadcrumb || defaultSummary),
+        ? rewritePublicSummary(baseSummary, product)
+        : baseSummary,
       embedText: article.content,
       mimeType: "text/markdown",
       tags,
@@ -356,35 +394,47 @@ function buildIndexData({
 
     return {
       productSelection: {
+        guidance: PRODUCT_SELECTION_GUIDANCE,
         publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
         offerings: {
           dwt: {
             name: "Dynamic Web TWAIN",
             abbreviation: "DWT",
-            whenToUse: ["Browser-based document acquisition and scanner control."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Browser-based document acquisition and scanner control. Web/JavaScript only."]
           },
           ddv: {
             name: "Dynamsoft Document Viewer",
             abbreviation: "DDV",
-            whenToUse: ["Standalone viewing plus extension paths for mobile, annotation, multi-page handling, and PDF output."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Standalone viewing plus annotation, multi-page handling, and PDF output. Web/JavaScript only."]
           },
           dbr: {
             name: "Dynamsoft Barcode Reader",
             abbreviation: "DBR",
+            webOnly: false,
+            editions: ["mobile", "web", "server"],
             whenToUse: [
-              "Barcode workflows across server/desktop, web, and mobile.",
-              "Use the foundational API by default on web; BarcodeScanner RTU is a minimal-simplicity option; mobile supports both foundational API and BarcodeScanner RTU."
+              "Barcode workflows across server/desktop, web, and mobile. The only product with multiple editions.",
+              "Web uses a foundational-first flow (BarcodeScanner RTU also available); this is not selected via api_level.",
+              "api_level (high-level = BarcodeScanner RTU, low-level = foundational) applies only to DBR mobile."
             ]
           },
           mrz: {
             name: "MRZ Scanner",
             abbreviation: "MRZ",
-            whenToUse: ["Passport and machine-readable-zone workflows on public web/mobile solution or RTU paths."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Passport and machine-readable-zone workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
           },
           mds: {
             name: "Mobile Document Scanner",
             abbreviation: "MDS",
-            whenToUse: ["Document scan and normalization workflows on the public web-only solution or RTU path."]
+            webOnly: true,
+            platforms: ["js"],
+            whenToUse: ["Document scan and normalization workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
           }
         }
       },
@@ -422,7 +472,9 @@ function buildIndexData({
 
   return {
     productSelection: {
-      dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline.",
+      guidance: PRODUCT_SELECTION_GUIDANCE,
+      publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
+      dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline. DCV is internal only and is not a selectable public product.",
       useDbrWhen: [
         "Barcode-only workflows where DCV-specific workflows are not required."
       ],
@@ -985,12 +1037,20 @@ function buildResourceIndex({
         version: dbrWebVersion,
         majorVersion: LATEST_MAJOR.dbr,
         title: `Web sample: ${sampleName} (${category})`,
-        summary: `DBR web sample ${category}/${sampleName}.`,
+        summary: `DBR web ${category} sample: ${sampleName.replace(/[-_]/g, " ")}.`,
         mimeType: "text/html",
-        tags: ["sample", "dbr", "web", category, sampleName],
+        tags: ["sample", "dbr", "web", category, sampleName, ...getDcvScenarioTags(sampleName)],
+        embedText: `DBR web ${category} sample ${sampleName.replace(/[-_]/g, " ")} ${getDcvScenarioTags(sampleName).join(" ")}`,
         loadContent: async () => {
           const samplePath = getWebSamplePath(category, sampleName);
-          const content = samplePath && existsSync(samplePath) ? readCodeFile(samplePath) : "Sample not found";
+          let content = "Sample not found";
+          if (samplePath && existsSync(samplePath)) {
+            // Full-project samples (frameworks/*) resolve to a directory; point
+            // to get_sample_files rather than reading a directory as a file.
+            content = statSync(samplePath).isDirectory()
+              ? `This is a multi-file ${category} project. Use get_sample_files with sample_id ${category}/${sampleName} to retrieve all files.`
+              : readCodeFile(samplePath);
+          }
           return { text: content, mimeType: "text/html" };
         }
       });

@@ -33,6 +33,13 @@ jobs:
       - name: Test (lite + package runtime)
         run: npm run test:lite
 
+      - name: Contract tests (URI round-trip + quickstart matrix)
+        run: npm run test:contract
+
+      - name: Version drift report
+        run: npm run check:version-drift
+        continue-on-error: true
+
   test_lexical_provider:
     runs-on: ubuntu-latest
     env:

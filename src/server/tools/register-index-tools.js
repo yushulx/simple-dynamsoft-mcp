@@ -1,7 +1,15 @@
 import { z } from "zod";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
-import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
+import {
+  buildUnknownPublicProductResponse,
+  isKnownPublicOffering,
+  DBR_ONLY_EDITIONS_NOTE,
+  PRODUCT_SELECTION_GUIDANCE,
+  WEB_ONLY_OMIT_NOTE
+} from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
+import { validatePlatform, validateEdition } from "../normalizers.js";
+import { logEvent } from "../../observability/logging.js";
 
 export function registerIndexTools({
   server,
@@ -18,6 +26,26 @@ export function registerIndexTools({
   getSampleEntries,
   getSampleSuggestions
 }) {
+  // Build a resource_link description that lets an agent choose WITHOUT a
+  // follow-up read: type | scope | version | score - summary, then the matched
+  // snippet and canonical URL when available (issue #146).
+  function buildHitDescription(entry) {
+    const versionLabel = entry.version ? `v${entry.version}` : "n/a";
+    const scopeLabel = formatScopeLabel(entry);
+    const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
+    const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
+    const scoreLabel = formatScoreLabel(entry);
+    let desc = `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`;
+    if (entry.matchedSnippet) {
+      const snippet = String(entry.matchedSnippet).replace(/\s+/g, " ").slice(0, 220);
+      desc += ` — "${snippet}"`;
+    }
+    if (entry.type === "doc" && entry.url) {
+      desc += ` | ${entry.url}`;
+    }
+    return desc;
+  }
+
   function looksLikeSampleIdQuery(value) {
     const normalized = String(value || "").trim();
     if (!normalized) return false;
@@ -33,7 +61,7 @@ export function registerIndexTools({
         "",
         "WHEN TO USE:",
         "- As the first call in any conversation to discover what is available.",
-        "- To determine valid product/edition/platform combinations before calling other tools.",
+        `- To determine valid product/edition/platform combinations before calling other tools. Note: ${PRODUCT_SELECTION_GUIDANCE}`,
         "- To get public product-selection guidance (DBR for barcode-only; MRZ for machine-readable-zone workflows; MDS for document scan and normalization workflows).",
         "",
         "WHEN NOT TO USE:",
@@ -84,8 +112,8 @@ export function registerIndexTools({
         "PARAMETERS:",
         "- query (required): Keywords or exact sample ID. Examples: 'barcode scanning from camera', 'MRZ passport reader', 'hello-world'.",
         "- product: dbr, dwt, ddv, mrz, or mds. Use DBR for barcode-only, MRZ for passport/machine-readable-zone workflows, and MDS for document scan or normalization workflows.",
-        "- edition: core, mobile, web, or server.",
-        "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
+        `- edition: core, mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE}`,
+        `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- version: Version constraint (e.g. '10', '11.x'). Only latest major is served by default.",
         "- type: 'doc', 'sample', 'index', 'policy', or 'any' (default). Use 'sample' to restrict to sample results.",
         "- limit: 1-10 (default 5). Max number of results.",
@@ -97,8 +125,8 @@ export function registerIndexTools({
       inputSchema: {
         query: z.string().trim().min(1, "Query is required.").describe("Keywords to search across docs and samples."),
         product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
-        platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
+        edition: z.string().optional().describe(`Edition: core, mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
+        platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint (major or full version)"),
         type: z.enum(["doc", "sample", "index", "policy", "any"]).optional(),
         limit: z.number().int().min(1).max(10).optional().describe("Max results (default 5)")
@@ -114,6 +142,17 @@ export function registerIndexTools({
       const normalizedProduct = normalizeProduct(product);
       if (product && !isKnownPublicOffering(normalizedProduct)) {
         return buildUnknownPublicProductResponse(product);
+      }
+
+      // Validate filter values so a typo names the failing dimension instead of
+      // silently filtering every result to zero (issue #152).
+      const platformCheck = validatePlatform(platform);
+      if (!platformCheck.ok) {
+        return { isError: true, content: [{ type: "text", text: platformCheck.message }] };
+      }
+      const editionCheck = validateEdition(edition);
+      if (!editionCheck.ok) {
+        return { isError: true, content: [{ type: "text", text: editionCheck.message }] };
       }
 
       const normalizedPlatform = normalizePlatform(platform);
@@ -174,7 +213,7 @@ export function registerIndexTools({
               type: "resource_link",
               uri: entry.uri,
               name: entry.title,
-              description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+              description: buildHitDescription(entry),
               mimeType: entry.mimeType,
               annotations: {
                 audience: ["assistant"],
@@ -242,7 +281,7 @@ export function registerIndexTools({
                 type: "resource_link",
                 uri: entry.uri,
                 name: entry.title,
-                description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+                description: buildHitDescription(entry),
                 mimeType: entry.mimeType,
                 annotations: {
                   audience: ["assistant"],
@@ -266,6 +305,15 @@ export function registerIndexTools({
           }
         }
 
+        // Zero-result queries are the highest-value eval/synonym-gap signal — log
+        // them so they can be harvested from production logs (issue #156).
+        logEvent("search", "zero_result_query", {
+          query,
+          product: normalizedProduct || "",
+          edition: normalizedEdition || "",
+          platform: normalizedPlatform || "",
+          type: type || "any"
+        });
         return {
           content: [{
             type: "text",
@@ -274,10 +322,16 @@ export function registerIndexTools({
         };
       }
 
+      // Capture Vision / DCV is the umbrella framework, not a selectable public
+      // product — steer the agent to the right offering (issue #150).
+      const dcvUmbrella = /\b(capture[\s-]?vision|dcv)\b/i.test(query) && !normalizedProduct;
+      const leadText = dcvUmbrella
+        ? `"Capture Vision" (DCV) is Dynamsoft's umbrella framework — pick the public product for your task: DBR (barcodes), MRZ (passports/IDs), MDS (document capture), DWT (scanner hardware), DDV (document viewer). Results below span the closest matches.\nFound ${topResults.length} result(s) for "${query}".`
+        : `Found ${topResults.length} result(s) for "${query}". Read the links you need with resources/read.`;
       const content = [
         {
           type: "text",
-          text: `Found ${topResults.length} result(s) for "${query}". Read the links you need with resources/read.`
+          text: leadText
         }
       ];
 
@@ -291,7 +345,7 @@ export function registerIndexTools({
           type: "resource_link",
           uri: entry.uri,
           name: entry.title,
-          description: `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${scoreLabel} - ${entry.summary}${sampleHint}`,
+          description: buildHitDescription(entry),
           mimeType: entry.mimeType,
           annotations: {
             audience: ["assistant"],

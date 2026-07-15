@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { buildUnknownPublicProductResponse, isKnownPublicOffering } from "../public-offerings.js";
+import {
+  buildUnknownPublicProductResponse,
+  isKnownPublicOffering,
+  DBR_ONLY_EDITIONS_NOTE,
+  WEB_ONLY_OMIT_NOTE
+} from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerSampleTools({
@@ -34,8 +39,8 @@ export function registerSampleTools({
         "",
         "PARAMETERS:",
         "- product: dbr, dwt, ddv, mrz, or mds. Omit to list across all public offerings.",
-        "- edition: core, mobile, web, or server. Omit to list across all editions.",
-        "- platform: android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.",
+        `- edition: core, mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE} Omit to list across all editions.`,
+        `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- limit: 1-200 (default 50). Max number of results.",
         "",
         "RETURNS: A single text content item that starts with totals and plain URIs, then appends 'JSON:' followed by a JSON object with total count and sample entries. Each entry includes sample_id, uri (sample:// URI), product, edition, platform, version, title, and summary. Use sample_id or uri with get_sample_files to retrieve full project files.",
@@ -46,8 +51,8 @@ export function registerSampleTools({
       ].join("\n"),
       inputSchema: {
         product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
-        edition: z.string().optional().describe("Edition: core, mobile, web, server/desktop"),
-        platform: z.string().optional().describe("Platform: android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core"),
+        edition: z.string().optional().describe(`Edition: core, mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
+        platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         limit: z.number().int().min(1).max(200).optional().describe("Max results (default 50)")
       },
       annotations: {

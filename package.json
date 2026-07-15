@@ -1,6 +1,6 @@
 {
   "name": "simple-dynamsoft-mcp",
-  "version": "7.3.54",
+  "version": "7.4.0",
   "description": "MCP server for Dynamsoft SDKs - Capture Vision, Barcode Reader (Mobile/Python/Web), Dynamic Web TWAIN, and Document Viewer. Provides documentation, code snippets, and API guidance.",
   "license": "MIT",
   "repository": {
@@ -24,13 +24,15 @@
   "scripts": {
     "start": "node src/index.js",
     "test": "npm run test:lite",
-    "test:unit": "node --test test/unit/gemini-retry.test.js test/unit/profile-config.test.js test/unit/lexical-provider.test.js test/unit/hydration-mode.test.js test/unit/hydration-policy.test.js test/unit/repo-map.test.js test/unit/download-utils.test.js test/unit/logging.test.js test/unit/rag-signature-manifest.test.js test/unit/startup-timing.test.js test/unit/http-startup-readiness.test.js test/unit/resource-index-startup.test.js test/unit/create-server.test.js test/unit/server-helpers.test.js test/unit/update-sdk-versions.test.js",
+    "test:unit": "node --test test/unit/gemini-retry.test.js test/unit/profile-config.test.js test/unit/lexical-provider.test.js test/unit/hydration-mode.test.js test/unit/hydration-policy.test.js test/unit/repo-map.test.js test/unit/download-utils.test.js test/unit/logging.test.js test/unit/rag-signature-manifest.test.js test/unit/startup-timing.test.js test/unit/http-startup-readiness.test.js test/unit/resource-index-startup.test.js test/unit/create-server.test.js test/unit/server-helpers.test.js test/unit/update-sdk-versions.test.js test/unit/version-policy.test.js test/unit/query-expansion.test.js test/unit/docs-loader-enrich.test.js",
     "test:lite": "npm run test:stdio && npm run test:http && npm run test:package",
     "test:lexical": "node --test test/integration/stdio.test.js test/integration/http.test.js",
     "test:gemini": "node scripts/run-gemini-tests.mjs",
     "test:stdio": "node --test test/integration/stdio.test.js",
     "test:http": "node --test test/integration/http.test.js",
     "test:package": "node --test test/integration/package-runtime.test.js",
+    "test:contract": "node --test test/contract/contract.test.js",
+    "check:version-drift": "node scripts/check-version-drift.mjs",
     "test:lazy": "node --test test/integration/lazy-hydration.test.js",
     "test:regression:unit": "node --test test/unit/create-server.test.js test/unit/server-helpers.test.js test/unit/profile-config.test.js test/unit/hydration-mode.test.js test/unit/logging.test.js",
     "test:regression:integration": "node --test test/integration/package-runtime.test.js test/integration/lazy-hydration.test.js",

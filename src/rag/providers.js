@@ -438,8 +438,16 @@ function createProviderOrchestrator({
     return {
       name,
       search: async (query, filters, limit) => {
-        const prepared = utils.truncateText(utils.normalizeText(query), ragConfig.maxTextChars);
-        if (!prepared) return [];
+        const baseQuery = utils.normalizeText(query);
+        if (!baseQuery) return [];
+        // Lightly append domain synonyms/stems so jargon-heavy queries embed with
+        // the vocabulary the docs use, without letting expansion dominate the
+        // original query (which stays first). (#148)
+        const expanded = utils.expandQueryTokens ? utils.expandQueryTokens(baseQuery.toLowerCase().split(/\s+/)) : [];
+        const baseTokens = new Set(baseQuery.toLowerCase().split(/\s+/));
+        const extraTerms = expanded.filter((t) => !baseTokens.has(t)).slice(0, 8);
+        const enriched = extraTerms.length ? `${baseQuery} ${extraTerms.join(" ")}` : baseQuery;
+        const prepared = utils.truncateText(enriched, ragConfig.maxTextChars);
         const index = await loadIndex();
         const queryVector = utils.normalizeVector(await embedder.embed(prepared));
         const bestByUri = new Map();
@@ -452,13 +460,26 @@ function createProviderOrchestrator({
           if (!entry || !utils.entryMatchesScope(entry, filters)) continue;
           const existing = bestByUri.get(item.uri);
           if (!existing || score > existing.score) {
-            bestByUri.set(item.uri, { entry, score });
+            bestByUri.set(item.uri, { entry, score, chunkText: item.text });
           }
         }
 
-        const results = Array.from(bestByUri.values())
-          .sort((a, b) => b.score - a.score)
-          .map((item) => utils.attachScore(item.entry, item.score));
+        const ordered = Array.from(bestByUri.values()).sort((a, b) => b.score - a.score);
+        // Relative cutoff: once we have a confident top hit, drop tail results
+        // scoring far below it (the fixed absolute floor above is a near no-op for
+        // normalized Gemini embeddings). (#149)
+        const topScore = ordered.length ? ordered[0].score : 0;
+        // When the top score is non-positive (only reachable with RAG_MIN_SCORE=0
+        // and unrelated content), keep everything rather than dropping the top hit.
+        const relativeFloor = topScore > 0 ? topScore * 0.85 : -Infinity;
+        const kept = ordered.filter((item) => item.score >= relativeFloor);
+
+        const snippetTerms = baseQuery.toLowerCase().split(/\s+/).filter(Boolean);
+        const results = kept.map((item) => {
+          const scored = utils.attachScore(item.entry, item.score);
+          const snippet = utils.extractSnippet ? utils.extractSnippet(item.chunkText || "", snippetTerms, 240) : "";
+          return snippet ? { ...scored, matchedSnippet: snippet } : scored;
+        });
 
         if (limit) return results.slice(0, limit);
         return results;

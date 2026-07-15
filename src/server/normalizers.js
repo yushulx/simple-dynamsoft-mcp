@@ -306,6 +306,79 @@ function isWebPlatform(platform) {
   return platform === "web" || isWebFrameworkPlatform(platform);
 }
 
+// Canonical platform values a caller may pass. Derived from the alias table so
+// this stays in sync automatically as platforms are added (issue #152).
+// "core" is a valid (DCV-internal) platform advertised in tool descriptions but
+// isn't an alias value, so add it explicitly to keep the validator consistent
+// with what the schema tells agents to pass.
+const KNOWN_PLATFORMS = new Set([...Object.values(platformAliases), "core"]);
+const KNOWN_EDITIONS = new Set(["core", "mobile", "web", "server"]);
+
+function nearestKnownKey(value, candidates) {
+  const v = String(value || "").toLowerCase();
+  if (!v) return "";
+  // Prefix / substring match first (cheap, catches "reactnative" -> "react-native").
+  let best = "";
+  let bestScore = Infinity;
+  for (const candidate of candidates) {
+    const c = candidate.toLowerCase();
+    if (c === v) return candidate;
+    const stripped = v.replace(/[-_.\s]/g, "");
+    const cStripped = c.replace(/[-_.\s]/g, "");
+    if (cStripped === stripped || cStripped.startsWith(stripped) || stripped.startsWith(cStripped)) {
+      return candidate;
+    }
+    // Fallback: length-difference heuristic as a light distance proxy.
+    if (cStripped.includes(stripped) || stripped.includes(cStripped)) {
+      const score = Math.abs(cStripped.length - stripped.length);
+      if (score < bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+  }
+  return best;
+}
+
+function validatePlatform(value) {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, normalized: "" };
+  }
+  const normalized = normalizePlatform(value);
+  if (KNOWN_PLATFORMS.has(normalized)) {
+    return { ok: true, normalized };
+  }
+  const valid = [...KNOWN_PLATFORMS].sort();
+  const suggestion = nearestKnownKey(value, [...Object.keys(platformAliases), ...KNOWN_PLATFORMS]);
+  const suggestionText = suggestion ? ` Did you mean "${normalizePlatform(suggestion) || suggestion}"?` : "";
+  return {
+    ok: false,
+    normalized,
+    message: `Unknown platform "${value}". Valid: ${valid.join(", ")}.${suggestionText}`
+  };
+}
+
+function validateEdition(value) {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, normalized: "" };
+  }
+  // Normalize first so documented aliases the tool schema advertises
+  // ("server/desktop", "desktop") and platform-implied editions ("python")
+  // are accepted rather than rejected as unknown.
+  const normalized = normalizeEdition(value);
+  if (KNOWN_EDITIONS.has(normalized)) {
+    return { ok: true, normalized };
+  }
+  const valid = [...KNOWN_EDITIONS];
+  const suggestion = nearestKnownKey(value, valid);
+  const suggestionText = suggestion ? ` Did you mean "${suggestion}"?` : "";
+  return {
+    ok: false,
+    normalized,
+    message: `Unknown edition "${value}". Valid: ${valid.join(", ")} (aliases like server/desktop, desktop are accepted).${suggestionText}`
+  };
+}
+
 function inferProductFromQuery(query) {
   if (!query) return "";
   const normalized = query.toLowerCase();
@@ -347,5 +420,9 @@ export {
   isServerPlatform,
   isWebFrameworkPlatform,
   isWebPlatform,
-  inferProductFromQuery
+  inferProductFromQuery,
+  KNOWN_PLATFORMS,
+  KNOWN_EDITIONS,
+  validatePlatform,
+  validateEdition
 };
