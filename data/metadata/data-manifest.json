@@ -78,8 +78,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "document-viewer-docs",
-      "commit": "794b10f28edc07e4893f4e9a3b0eeb637b9cc77e",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/794b10f28edc07e4893f4e9a3b0eeb637b9cc77e"
+      "commit": "76dbcfbaa4bb772e2eb3a24d87544d8ce1f26d25",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/76dbcfbaa4bb772e2eb3a24d87544d8ce1f26d25"
     },
     {
       "name": "data/documentation/mobile-document-scanner-docs-js",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "84c36dde107cba2d80ed3ee7c42ab232c7434de2",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/84c36dde107cba2d80ed3ee7c42ab232c7434de2"
+      "commit": "a2968e92d1b612dc3acec9424534e1fbc9b0161c",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/a2968e92d1b612dc3acec9424534e1fbc9b0161c"
     },
     {
       "name": "data/samples/document-scanner-javascript",
