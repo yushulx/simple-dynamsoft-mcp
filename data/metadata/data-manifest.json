@@ -88,8 +88,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "mobile-document-scanner-docs-js",
-      "commit": "fb82c2d97d79f219d1d7c94b4c5ced32dce4df9d",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/fb82c2d97d79f219d1d7c94b4c5ced32dce4df9d"
+      "commit": "cf87f7f8ffe218f08ba2a402c223102589bb4415",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/mobile-document-scanner-docs-js/zip/cf87f7f8ffe218f08ba2a402c223102589bb4415"
     },
     {
       "name": "data/documentation/mrz-scanner-docs-js",
@@ -178,8 +178,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-java-samples",
-      "commit": "12f7c6330d38590521526c145434c92747a72bec",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-java-samples/zip/12f7c6330d38590521526c145434c92747a72bec"
+      "commit": "7daa5381c18c5ed0fce05de5db89c538514c733a",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-java-samples/zip/7daa5381c18c5ed0fce05de5db89c538514c733a"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-maui",
@@ -208,8 +208,8 @@
       "branch": "master",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-python-samples",
-      "commit": "854405e6f0ec349f824bcf83bcf98fe3a17d6a22",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-python-samples/zip/854405e6f0ec349f824bcf83bcf98fe3a17d6a22"
+      "commit": "21bf1404054c0797cfc80beaf0812ff7fb5068fb",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-python-samples/zip/21bf1404054c0797cfc80beaf0812ff7fb5068fb"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-react-native",
