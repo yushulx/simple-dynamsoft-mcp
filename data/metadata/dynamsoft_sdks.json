@@ -6,7 +6,7 @@
     "dbr-mobile": {
       "name": "Dynamsoft Barcode Reader Mobile SDK",
       "description": "Barcode scanning for mobile platforms (Android/iOS) using Dynamsoft Barcode Reader.",
-      "version": "11.4.3010",
+      "version": "11.6.1000",
       "default_platform": "android",
       "default_api_level": "high-level",
       "snippet_path": "dynamsoft-barcode-reader",
@@ -369,7 +369,7 @@
     "dcv-mobile": {
       "name": "Dynamsoft Capture Vision Mobile SDK",
       "description": "Capture Vision workflows for mobile platforms including Android, iOS, Flutter, React Native, and .NET MAUI.",
-      "version": "3.4.3010",
+      "version": "3.6.1000",
       "default_platform": "android",
       "snippet_path": "dynamsoft-capture-vision/mobile",
       "platforms": {
@@ -452,7 +452,7 @@
     "dwt": {
       "name": "Dynamic Web TWAIN",
       "description": "Document scanning SDK for web applications. Supports TWAIN, WIA, ICA, SANE scanners.",
-      "version": "19.4",
+      "version": "19.4.2",
       "default_platform": "web",
       "snippet_path": "dynamic-web-twain",
       "api_docs": "web-twain-api-docs.json",
