@@ -138,8 +138,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-javascript-samples",
-      "commit": "5356d45cb15370b50abb5f2a14fa3c71390e1253",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/5356d45cb15370b50abb5f2a14fa3c71390e1253"
+      "commit": "544863c4136ec04d33ff26f0e3f53339f01afa5b",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/544863c4136ec04d33ff26f0e3f53339f01afa5b"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-c-cpp",
