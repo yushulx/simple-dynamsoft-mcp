@@ -228,7 +228,7 @@
     "dbr-web": {
       "name": "Dynamsoft Barcode Reader JavaScript SDK",
       "description": "Barcode scanning for web applications using JavaScript/TypeScript.",
-      "version": "11.6.2000",
+      "version": "11.6.2100",
       "default_platform": "web",
       "snippet_path": "dynamsoft-barcode-reader/web",
       "platforms": {
@@ -255,7 +255,7 @@
     "dcv-core": {
       "name": "Dynamsoft Capture Vision Core",
       "description": "Unified architecture documentation for Capture Vision capabilities across barcode, MRZ, document normalization, and parsing workflows.",
-      "version": "3.6.2000",
+      "version": "3.6.2100",
       "default_platform": "core",
       "snippet_path": "dynamsoft-capture-vision/core",
       "platforms": {
@@ -347,7 +347,7 @@
     "dcv-web": {
       "name": "Dynamsoft Capture Vision JavaScript SDK",
       "description": "Capture Vision workflows for JavaScript web apps, including MRZ processing scenarios.",
-      "version": "3.6.2000",
+      "version": "3.6.2100",
       "default_platform": "web",
       "snippet_path": "dynamsoft-capture-vision/web",
       "platforms": {
