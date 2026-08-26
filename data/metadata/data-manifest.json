@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "8ef7693d481ca43a223310f2d567d5475472b350",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/8ef7693d481ca43a223310f2d567d5475472b350"
+      "commit": "4d4c0929b02cb5848e2c81609e0a685b68d84f2f",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/4d4c0929b02cb5848e2c81609e0a685b68d84f2f"
     },
     {
       "name": "data/samples/document-scanner-javascript",
@@ -158,8 +158,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-dotnet-samples",
-      "commit": "610aedcc7424d1b9c75da801aa416f65ae49f103",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-dotnet-samples/zip/610aedcc7424d1b9c75da801aa416f65ae49f103"
+      "commit": "a75796348eacbdf9ba8af8237e00777c57312a72",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-dotnet-samples/zip/a75796348eacbdf9ba8af8237e00777c57312a72"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-flutter",
@@ -178,8 +178,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-java-samples",
-      "commit": "779aacf7e21b83142ecd5cb675640cb75645aa56",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-java-samples/zip/779aacf7e21b83142ecd5cb675640cb75645aa56"
+      "commit": "04ad2a7e6df07c9305bc1fb9133958df0126163b",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-java-samples/zip/04ad2a7e6df07c9305bc1fb9133958df0126163b"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-maui",
