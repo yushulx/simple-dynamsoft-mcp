@@ -452,7 +452,7 @@
     "dwt": {
       "name": "Dynamic Web TWAIN",
       "description": "Document scanning SDK for web applications. Supports TWAIN, WIA, ICA, SANE scanners.",
-      "version": "19.4.2",
+      "version": "19.4.3",
       "default_platform": "web",
       "snippet_path": "dynamic-web-twain",
       "api_docs": "web-twain-api-docs.json",
