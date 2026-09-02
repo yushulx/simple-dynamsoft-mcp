@@ -68,8 +68,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-server",
-      "commit": "ffb3f8ccd0d438bec19a1d25173452ca7c78d626",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/ffb3f8ccd0d438bec19a1d25173452ca7c78d626"
+      "commit": "c69e4baedd0ce19fb6aff770bc5509c0c80ceef7",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/c69e4baedd0ce19fb6aff770bc5509c0c80ceef7"
     },
     {
       "name": "data/documentation/document-viewer-docs",
@@ -138,8 +138,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-javascript-samples",
-      "commit": "ce6c45b54f05beef8e354366722534f23c6a865b",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/ce6c45b54f05beef8e354366722534f23c6a865b"
+      "commit": "b2a6a5bfc10865ccf12eab4918e385649b4b2c38",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/b2a6a5bfc10865ccf12eab4918e385649b4b2c38"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-c-cpp",
