@@ -228,7 +228,7 @@
     "dbr-web": {
       "name": "Dynamsoft Barcode Reader JavaScript SDK",
       "description": "Barcode scanning for web applications using JavaScript/TypeScript.",
-      "version": "11.6.3000",
+      "version": "11.6.3200",
       "default_platform": "web",
       "snippet_path": "dynamsoft-barcode-reader/web",
       "platforms": {
