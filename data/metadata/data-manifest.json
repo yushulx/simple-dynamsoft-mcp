@@ -8,8 +8,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-js",
-      "commit": "a4cfe2b322df536a4db843444ac03d33421fe87b",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/a4cfe2b322df536a4db843444ac03d33421fe87b"
+      "commit": "15969f4b6ea8cfd801c2c024a7afc1d1c9277e34",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/15969f4b6ea8cfd801c2c024a7afc1d1c9277e34"
     },
     {
       "name": "data/documentation/barcode-reader-docs-mobile",
@@ -28,8 +28,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-server",
-      "commit": "85bef2952c6f06ba3d0065f6862bf4c74ac790c1",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/85bef2952c6f06ba3d0065f6862bf4c74ac790c1"
+      "commit": "0a127de2b351b389daec1703126109ab8ff783f4",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/0a127de2b351b389daec1703126109ab8ff783f4"
     },
     {
       "name": "data/documentation/capture-vision-docs",
@@ -68,8 +68,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-server",
-      "commit": "08d4dbdef6892c57e608a530e38e06c3ab093078",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/08d4dbdef6892c57e608a530e38e06c3ab093078"
+      "commit": "3ed2b85937c1eb9b5b680303d218002edac036a4",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/3ed2b85937c1eb9b5b680303d218002edac036a4"
     },
     {
       "name": "data/documentation/document-viewer-docs",
@@ -78,8 +78,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "document-viewer-docs",
-      "commit": "af38ce2b6accce7bacdf049d4fcd37a9ded2658f",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/af38ce2b6accce7bacdf049d4fcd37a9ded2658f"
+      "commit": "72959296bea4a9dc501a005b2578eed246c87621",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/document-viewer-docs/zip/72959296bea4a9dc501a005b2578eed246c87621"
     },
     {
       "name": "data/documentation/mobile-document-scanner-docs-js",
@@ -108,8 +108,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "8aece316a420f37e12976f20c886552fd97da5d8",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/8aece316a420f37e12976f20c886552fd97da5d8"
+      "commit": "8e00efa41f8e8dc6bd603b22201277eaafc176ac",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/8e00efa41f8e8dc6bd603b22201277eaafc176ac"
     },
     {
       "name": "data/samples/document-scanner-javascript",
@@ -128,8 +128,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "web-twain-codelab",
-      "commit": "2501b7a3f5bc1fd8a301e1dbb7e0fecbe24490f7",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/web-twain-codelab/zip/2501b7a3f5bc1fd8a301e1dbb7e0fecbe24490f7"
+      "commit": "a6fd07599db142b781f111d96fc0231d9877babe",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/web-twain-codelab/zip/a6fd07599db142b781f111d96fc0231d9877babe"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader",
