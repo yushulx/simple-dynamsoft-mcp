@@ -288,8 +288,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-nodejs-samples",
-      "commit": "380fe5f0bc10c8776958353cd349beaec6962fcb",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-nodejs-samples/zip/380fe5f0bc10c8776958353cd349beaec6962fcb"
+      "commit": "ae8c6ce25cc5c71c82d91a3dc6e432b942e81e0a",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-nodejs-samples/zip/ae8c6ce25cc5c71c82d91a3dc6e432b942e81e0a"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-python",
