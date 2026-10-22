@@ -18,8 +18,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-mobile",
-      "commit": "983243fd25c5184adbb7814555552c36938d5b0c",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/983243fd25c5184adbb7814555552c36938d5b0c"
+      "commit": "47b00451735d9f7419d0c8aab9c134ec8c862710",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-mobile/zip/47b00451735d9f7419d0c8aab9c134ec8c862710"
     },
     {
       "name": "data/documentation/barcode-reader-docs-server",
@@ -58,8 +58,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-mobile",
-      "commit": "2fee50f77eeaefca1bd6cec916b08e1b960ef420",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/2fee50f77eeaefca1bd6cec916b08e1b960ef420"
+      "commit": "2caddfabc37a9dad6b09759e05b854fe0f0e9370",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-mobile/zip/2caddfabc37a9dad6b09759e05b854fe0f0e9370"
     },
     {
       "name": "data/documentation/capture-vision-docs-server",
@@ -68,8 +68,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-server",
-      "commit": "1730d0aefdd8e46a17ad486e7f90b524173b3526",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/1730d0aefdd8e46a17ad486e7f90b524173b3526"
+      "commit": "1e7455238c8fe8f935640c1c31c0c433798ce1f0",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-server/zip/1e7455238c8fe8f935640c1c31c0c433798ce1f0"
     },
     {
       "name": "data/documentation/document-viewer-docs",
@@ -198,8 +198,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-mobile-samples",
-      "commit": "a3728616ab7d4e4d241ff35c5bbda931e11b5761",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/a3728616ab7d4e4d241ff35c5bbda931e11b5761"
+      "commit": "34ff1c559bdb7390be2028dfb61d71b3db7ec110",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-mobile-samples/zip/34ff1c559bdb7390be2028dfb61d71b3db7ec110"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-python",
@@ -278,8 +278,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-mobile-samples",
-      "commit": "55001b6513ea1705d3d932d7a41ceb133096dda9",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-mobile-samples/zip/55001b6513ea1705d3d932d7a41ceb133096dda9"
+      "commit": "fb9c68f0a09099adbe4b744e4799b019ba8968b9",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-mobile-samples/zip/fb9c68f0a09099adbe4b744e4799b019ba8968b9"
     },
     {
       "name": "data/samples/dynamsoft-capture-vision-nodejs",
@@ -318,8 +318,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "capture-vision-spm",
-      "commit": "af7bc5c967474d8962216983b6573d2fc966a41d",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-spm/zip/af7bc5c967474d8962216983b6573d2fc966a41d"
+      "commit": "4a86b39dfe64376c9838a5ee5d97973c2bc588e9",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/capture-vision-spm/zip/4a86b39dfe64376c9838a5ee5d97973c2bc588e9"
     },
     {
       "name": "data/samples/dynamsoft-document-viewer",
