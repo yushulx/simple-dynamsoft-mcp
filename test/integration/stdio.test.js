@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
-  RUN_GEMINI_PROVIDER_TESTS,
+  RUN_VECTOR_PROVIDER_TESTS,
+  VECTOR_PROVIDER,
   assertRequestLogs,
   cleanupDir,
   assertStructuredDataStartupMode,
@@ -56,12 +57,12 @@ async function runLexicalFallbackScenario() {
   }
 }
 
-if (RUN_GEMINI_PROVIDER_TESTS) {
-  test("[gemini] stdio integration works", async () => {
-    await runStdioScenario("gemini");
+if (RUN_VECTOR_PROVIDER_TESTS) {
+  test(`[${VECTOR_PROVIDER}] stdio integration works`, async () => {
+    await runStdioScenario(VECTOR_PROVIDER);
   });
 } else {
-  test.skip("[gemini] stdio integration works", () => {});
+  test.skip(`[${VECTOR_PROVIDER}] stdio integration works`, () => {});
 }
 
 test("[lexical fallback] stdio integration works when gemini is unavailable", async () => {

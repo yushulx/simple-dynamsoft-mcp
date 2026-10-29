@@ -48,7 +48,7 @@ jobs:
       RAG_REBUILD: "false"
       RAG_PREWARM: "false"
       RAG_PREWARM_BLOCK: "false"
-      RUN_GEMINI_PROVIDER_TESTS: "false"
+      RUN_VECTOR_PROVIDER_TESTS: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -155,61 +155,119 @@ jobs:
       - name: Test (package runtime)
         run: npm run test:package
 
+  # Decides whether the Gemini job (which spends embedding credits) runs: only
+  # on pull requests, and only when retrieval code, index building, docs/data,
+  # or the golden set changed. Pushes to main skip it (the PR already ran it and
+  # the release builds the index), as do version-bump-only changes.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      rag: ${{ steps.diff.outputs.rag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect retrieval-relevant changes
+        id: diff
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "Not a pull request; skipping the Gemini job."
+            echo "rag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "${BASE_SHA:-}" ]] || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "No usable base commit; running the Gemini job."
+            echo "rag=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          pattern='^(src/rag/|src/server/resource-index|src/server/resource-index/|src/data/repo-map\.js|scripts/prebuild-rag-index\.mjs|scripts/seed-rag-cache\.sh|scripts/check-embedding-credentials\.mjs|scripts/eval-retrieval\.mjs|scripts/lib/|test/fixtures/retrieval-golden\.json|test/integration/(helpers\.js|stdio\.test\.js|http\.test\.js)|scripts/run-gemini-tests\.mjs|data/|\.github/workflows/ci\.yml)'
+          changed="$(git diff --name-only "$BASE_SHA" HEAD)"
+          if grep -Eq "$pattern" <<< "$changed"; then
+            echo "rag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No retrieval-relevant changes; skipping the Gemini job."
+            echo "rag=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Runs the embedding provider selected by the RAG_EMBED_PROVIDER repository
+  # variable (default gemini); skipped when that provider has no credentials.
   test_gemini_provider:
+    needs: changes
+    if: needs.changes.outputs.rag == 'true'
     runs-on: ubuntu-latest
     env:
+      RAG_EMBED_PROVIDER: ${{ vars.RAG_EMBED_PROVIDER || 'gemini' }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      RAG_PROVIDER: gemini
+      GEMINI_EMBED_BATCH_SIZE: 16
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_EMBED_MODEL: ${{ vars.OPENAI_EMBED_MODEL }}
+      OPENAI_EMBED_DIMENSIONS: ${{ vars.OPENAI_EMBED_DIMENSIONS }}
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_EMBED_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBED_DEPLOYMENT }}
+      AZURE_OPENAI_EMBED_MODEL: ${{ vars.AZURE_OPENAI_EMBED_MODEL }}
+      AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+      AZURE_OPENAI_EMBED_DIMENSIONS: ${{ vars.AZURE_OPENAI_EMBED_DIMENSIONS }}
       RAG_FALLBACK: none
       RAG_REBUILD: "false"
       RAG_PREWARM: "true"
       RAG_PREWARM_BLOCK: "true"
-      GEMINI_EMBED_BATCH_SIZE: 16
-      RAG_CACHE_DIR: ${{ github.workspace }}/.cache/rag-index-gemini
-      RUN_GEMINI_PROVIDER_TESTS: "true"
+      RAG_CACHE_DIR: ${{ github.workspace }}/.cache/rag-index
+      RUN_VECTOR_PROVIDER_TESTS: "true"
     steps:
-      - name: Skip when GEMINI_API_KEY is missing
-        if: ${{ env.GEMINI_API_KEY == '' }}
-        run: echo "Skipping gemini provider job because GEMINI_API_KEY is not configured."
-
       - name: Checkout
-        if: ${{ env.GEMINI_API_KEY != '' }}
         uses: actions/checkout@v7
         with:
           submodules: recursive
 
       - name: Use Node 24
-        if: ${{ env.GEMINI_API_KEY != '' }}
         uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
 
-      - name: Restore gemini RAG cache
-        if: ${{ env.GEMINI_API_KEY != '' }}
-        uses: actions/cache@v6
-        with:
-          path: .cache/rag-index-gemini
-          key: rag-gemini-${{ runner.os }}-${{ hashFiles('package-lock.json', 'data/metadata/data-manifest.json') }}
-          restore-keys: |
-            rag-gemini-${{ runner.os }}-
+      - name: Check provider credentials
+        id: creds
+        shell: bash
+        run: |
+          if node scripts/check-embedding-credentials.mjs "$RAG_EMBED_PROVIDER"; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping vector-provider job: $RAG_EMBED_PROVIDER has no credentials configured."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No Actions cache: seeding from the latest release gives every run a
+      # complete index to reuse, so only chunks changed since that release are
+      # embedded, and no ~250 MB cache entry is stored per run.
+      - name: Seed RAG cache from the latest release
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/seed-rag-cache.sh "$RAG_CACHE_DIR" "$RAG_EMBED_PROVIDER"
 
       - name: Install dependencies
-        if: ${{ env.GEMINI_API_KEY != '' }}
+        if: steps.creds.outputs.ok == 'true'
         run: npm ci
 
       - name: Unit tests
-        if: ${{ env.GEMINI_API_KEY != '' }}
+        if: steps.creds.outputs.ok == 'true'
         run: npm run test:unit
 
       - name: Bootstrap data
-        if: ${{ env.GEMINI_API_KEY != '' }}
+        if: steps.creds.outputs.ok == 'true'
         run: npm run data:bootstrap
 
-      - name: Prebuild gemini RAG index
-        if: ${{ env.GEMINI_API_KEY != '' }}
-        run: npm run rag:prebuild
+      - name: Prebuild RAG index
+        if: steps.creds.outputs.ok == 'true'
+        run: RAG_PROVIDER="$RAG_EMBED_PROVIDER" npm run rag:prebuild
 
-      - name: Test (gemini provider)
-        if: ${{ env.GEMINI_API_KEY != '' }}
+      - name: Test (vector provider)
+        if: steps.creds.outputs.ok == 'true'
         run: npm run test:gemini

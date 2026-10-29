@@ -23,7 +23,8 @@ import {
   registryPath,
   DOC_ROOTS,
   SAMPLE_ROOTS,
-  readManifestRepoCommit
+  readManifestRepoCommit,
+  dataCheckoutsMatchManifest
 } from "./resource-index/paths.js";
 import {
   getCodeFileExtensions,
@@ -84,7 +85,11 @@ import {
 } from "./resource-index/builders.js";
 
 const registry = JSON.parse(readFileSync(registryPath, "utf8"));
-const registrySha256 = createHash("sha256").update(readFileSync(registryPath)).digest("hex");
+// Hash LF-normalized text so Windows (CRLF) and Linux checkouts of the same
+// registry produce the same RAG index signature.
+const registrySha256 = createHash("sha256")
+  .update(readFileSync(registryPath, "utf8").replace(/\r\n/g, "\n"))
+  .digest("hex");
 
 function inferDbrMobilePlatform(articlePath) {
   const normalized = String(articlePath || "").replace(/\\/g, "/").toLowerCase();
@@ -585,6 +590,9 @@ function getRagSignatureData() {
     dwtDocCount: dwtDocs.articles.length,
     ddvDocCount: ddvDocs.articles.length,
     versions: LATEST_VERSIONS,
+    // Not part of the signature: whether local data really is the pinned data
+    // the signature names (gates reuse of hash-less legacy vector caches).
+    dataMatchesManifest: dataCheckoutsMatchManifest([...Object.values(DOC_ROOTS), ...Object.values(SAMPLE_ROOTS)]),
     dataSources: {
       dbrWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrWeb),
       dbrMobileSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrMobile),

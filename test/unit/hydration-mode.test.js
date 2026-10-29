@@ -18,3 +18,9 @@ test("resolveHydrationMode accepts eager and lazy", () => {
 test("resolveHydrationMode falls back to eager for unknown mode", () => {
   assert.equal(resolveHydrationMode({ MCP_DATA_HYDRATION_MODE: "something-else" }), "eager");
 });
+
+test("resolveHydrationMode is eager for any vector provider", () => {
+  assert.equal(resolveHydrationMode({ OPENAI_API_KEY: "o" }), "eager");
+  assert.equal(resolveHydrationMode({ RAG_PROVIDER: "azure-openai" }), "eager");
+  assert.equal(resolveHydrationMode({ RAG_PROVIDER: "lexical", OPENAI_API_KEY: "o" }), "lazy");
+});

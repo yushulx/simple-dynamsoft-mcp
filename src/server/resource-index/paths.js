@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -154,6 +155,21 @@ function readManifestRepoCommit(repoPath, options = {}) {
   return commit;
 }
 
+// True when every data repo that is a git checkout has its pinned commit
+// checked out with no local modifications. Archive-hydrated repos (npm/npx mode, no .git) are the pinned
+// commit by construction.
+function dataCheckoutsMatchManifest(repoPaths, options = {}) {
+  for (const repoPath of repoPaths) {
+    if (!existsSync(join(repoPath, ".git"))) continue;
+    const head = spawnSync("git", ["-C", repoPath, "rev-parse", "HEAD"], { encoding: "utf8" });
+    if (head.status !== 0) return false;
+    if (head.stdout.trim() !== readManifestRepoCommit(repoPath, options)) return false;
+    const status = spawnSync("git", ["-C", repoPath, "status", "--porcelain"], { encoding: "utf8" });
+    if (status.status !== 0 || status.stdout.trim() !== "") return false;
+  }
+  return true;
+}
+
 export {
   projectRoot,
   dataRoot,
@@ -166,5 +182,6 @@ export {
   DOC_ROOTS,
   getExistingPath,
   buildManifestCommitLookup,
-  readManifestRepoCommit
+  readManifestRepoCommit,
+  dataCheckoutsMatchManifest
 };

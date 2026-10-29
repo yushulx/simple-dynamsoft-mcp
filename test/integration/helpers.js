@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { hasProviderCredentials } from "../../src/rag/embedding-providers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -15,9 +16,12 @@ const projectRoot = resolve(__dirname, "..", "..");
 const serverEntry = join(projectRoot, "src", "index.js");
 const dataRoot = join(projectRoot, "data");
 
-const RUN_GEMINI_PROVIDER_TESTS =
-  process.env.RUN_GEMINI_PROVIDER_TESTS === "true" &&
-  Boolean(process.env.GEMINI_API_KEY);
+// Vector-provider scenarios run against RAG_EMBED_PROVIDER (default gemini)
+// when RUN_VECTOR_PROVIDER_TESTS=true and that provider has credentials.
+const VECTOR_PROVIDER = process.env.RAG_EMBED_PROVIDER || "gemini";
+const RUN_VECTOR_PROVIDER_TESTS =
+  process.env.RUN_VECTOR_PROVIDER_TESTS === "true" &&
+  hasProviderCredentials(VECTOR_PROVIDER, process.env);
 
 function sleep(ms) {
   return new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
@@ -65,7 +69,7 @@ function resolveServerEnv({ provider, fallback = "none", extra = {} }) {
 }
 
 function requestTimeoutForProvider(provider) {
-  return provider === "gemini" ? 300000 : 60000;
+  return provider === "lexical" ? 60000 : 300000;
 }
 
 function parseLogEvents(output) {
@@ -498,7 +502,8 @@ function cleanupDir(path) {
 }
 
 export {
-  RUN_GEMINI_PROVIDER_TESTS,
+  RUN_VECTOR_PROVIDER_TESTS,
+  VECTOR_PROVIDER,
   cleanupDir,
   connectStreamableClientWithRetry,
   createStdioClient,

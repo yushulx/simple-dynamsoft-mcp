@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
-  RUN_GEMINI_PROVIDER_TESTS,
+  RUN_VECTOR_PROVIDER_TESTS,
+  VECTOR_PROVIDER,
   assertRequestLogs,
   cleanupDir,
   assertStructuredDataStartupMode,
@@ -61,12 +62,12 @@ async function runHttpScenario(provider, { fallback = "none", extraEnv = {} } = 
   }
 }
 
-if (RUN_GEMINI_PROVIDER_TESTS) {
-  test("[gemini] streamableHttp integration works", async () => {
-    await runHttpScenario("gemini");
+if (RUN_VECTOR_PROVIDER_TESTS) {
+  test(`[${VECTOR_PROVIDER}] streamableHttp integration works`, async () => {
+    await runHttpScenario(VECTOR_PROVIDER);
   });
 } else {
-  test.skip("[gemini] streamableHttp integration works", () => {});
+  test.skip(`[${VECTOR_PROVIDER}] streamableHttp integration works`, () => {});
 }
 
 test("[lexical fallback] streamableHttp integration works when gemini is unavailable", async () => {

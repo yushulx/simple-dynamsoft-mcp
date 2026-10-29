@@ -1,30 +1,28 @@
+import { ALL_PROVIDERS, autoDetectProvider, isVectorProvider } from "./embedding-providers.js";
+
 function normalizeEnvValue(value) {
   if (value === undefined || value === null) return "";
   return String(value).trim().toLowerCase();
 }
 
-function hasGeminiKey(env) {
-  return normalizeEnvValue(env?.GEMINI_API_KEY) !== "";
-}
-
 function resolveProvider(env) {
   const explicit = normalizeEnvValue(env?.RAG_PROVIDER);
-  if (explicit === "gemini" || explicit === "lexical") {
+  if (ALL_PROVIDERS.includes(explicit)) {
     return { value: explicit, source: "env" };
   }
   return {
-    value: hasGeminiKey(env) ? "gemini" : "lexical",
+    value: autoDetectProvider(env),
     source: "auto"
   };
 }
 
 function resolveFallback(env, provider) {
   const explicit = normalizeEnvValue(env?.RAG_FALLBACK);
-  if (explicit === "none" || explicit === "gemini" || explicit === "lexical") {
+  if (explicit === "none" || ALL_PROVIDERS.includes(explicit)) {
     return { value: explicit, source: "env" };
   }
   return {
-    value: provider === "gemini" ? "lexical" : "none",
+    value: isVectorProvider(provider) ? "lexical" : "none",
     source: "auto"
   };
 }
@@ -33,7 +31,7 @@ function resolveProfileConfig(env = process.env) {
   const provider = resolveProvider(env);
   const fallback = resolveFallback(env, provider.value);
   return {
-    profile: provider.value === "gemini" ? "semantic-gemini" : "lite",
+    profile: isVectorProvider(provider.value) ? `semantic-${provider.value}` : "lite",
     defaults: {
       provider: provider.value,
       fallback: fallback.value

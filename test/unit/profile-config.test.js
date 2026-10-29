@@ -31,3 +31,23 @@ test("allows explicit provider/fallback overrides for advanced use", () => {
   assert.equal(resolved.providerSource, "env");
   assert.equal(resolved.fallbackSource, "env");
 });
+
+test("auto-detects Azure OpenAI only when key, endpoint, and deployment are all set", () => {
+  const partial = resolveProfileConfig({ AZURE_OPENAI_API_KEY: "k", AZURE_OPENAI_ENDPOINT: "https://x.openai.azure.com" });
+  assert.equal(partial.provider, "lexical");
+
+  const complete = resolveProfileConfig({
+    AZURE_OPENAI_API_KEY: "k",
+    AZURE_OPENAI_ENDPOINT: "https://x.openai.azure.com",
+    AZURE_OPENAI_EMBED_DEPLOYMENT: "embed-large"
+  });
+  assert.equal(complete.provider, "azure-openai");
+  assert.equal(complete.profile, "semantic-azure-openai");
+  assert.equal(complete.fallback, "lexical");
+});
+
+test("explicit RAG_PROVIDER selects a vector provider even when another key is present", () => {
+  const resolved = resolveProfileConfig({ GEMINI_API_KEY: "g", OPENAI_API_KEY: "o", RAG_PROVIDER: "openai" });
+  assert.equal(resolved.provider, "openai");
+  assert.equal(resolved.fallback, "lexical");
+});

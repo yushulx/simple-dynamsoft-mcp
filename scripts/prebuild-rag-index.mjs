@@ -17,7 +17,9 @@ function ensureEnvDefaults() {
   process.env.RAG_FALLBACK = process.env.RAG_FALLBACK || "none";
   process.env.RAG_PREWARM = process.env.RAG_PREWARM || "true";
   process.env.RAG_PREWARM_BLOCK = process.env.RAG_PREWARM_BLOCK || "true";
-  process.env.RAG_REBUILD = process.env.RAG_REBUILD || "true";
+  // Incremental by default: unchanged chunks reuse vectors already in the
+  // cache dir (e.g. a seeded previous release). RAG_REBUILD=true forces a full re-embed.
+  process.env.RAG_REBUILD = process.env.RAG_REBUILD || "false";
 }
 
 ensureEnvDefaults();
@@ -67,12 +69,14 @@ const vectorFiles = cacheFiles.map(toVectorFile);
 
 let indexSignature = "";
 let indexCacheKey = "";
-const geminiCacheFile = cacheFiles.find((path) => /rag-gemini-.*\.json$/i.test(path));
-if (geminiCacheFile) {
+let indexModel = "";
+const providerCacheFile = cacheFiles.find((path) => basename(path).startsWith(`rag-${ragConfig.provider}-`));
+if (providerCacheFile) {
   try {
-    const parsed = JSON.parse(readFileSync(geminiCacheFile, "utf8"));
+    const parsed = JSON.parse(readFileSync(providerCacheFile, "utf8"));
     indexSignature = String(parsed?.meta?.signature || "");
     indexCacheKey = String(parsed?.cacheKey || "");
+    indexModel = String(parsed?.meta?.model || "");
   } catch {
     // Keep manifest generation resilient; runtime still validates cache payloads directly.
   }
@@ -82,7 +86,7 @@ const manifest = {
   packageVersion: pkg.version,
   generatedAt: new Date().toISOString(),
   ragProvider: ragConfig.provider,
-  ragModel: ragConfig.geminiModel,
+  ragModel: indexModel,
   indexSignature,
   indexCacheKey,
   cacheDir: toPosixPath(cacheDir),

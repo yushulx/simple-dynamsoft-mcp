@@ -8,7 +8,7 @@ const child = spawn(
     stdio: "inherit",
     env: {
       ...process.env,
-      RUN_GEMINI_PROVIDER_TESTS: "true"
+      RUN_VECTOR_PROVIDER_TESTS: "true"
     }
   }
 );

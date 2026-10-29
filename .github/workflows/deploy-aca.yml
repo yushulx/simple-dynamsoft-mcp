@@ -230,7 +230,7 @@ jobs:
             --only-show-errors \
             -o none
 
-      - name: Upload Gemini prebuilt RAG cache to Azure Files
+      - name: Upload prebuilt RAG cache to Azure Files
         if: ${{ inputs.rag_artifact_name != '' }}
         shell: bash
         run: |
@@ -239,22 +239,23 @@ jobs:
           account="${{ steps.vars.outputs.storage_account }}"
           share="${{ steps.vars.outputs.cache_share }}"
           version="${{ steps.vars.outputs.version }}"
+          provider="${{ vars.RAG_EMBED_PROVIDER || 'gemini' }}"
           artifact_root="$RUNNER_TEMP/prebuilt-rag-artifact"
           key="$(az storage account keys list --account-name "$account" --query "[0].value" -o tsv)"
 
-          gemini_cache_dir=""
+          rag_cache_dir=""
           for candidate in \
-            "$artifact_root/gemini/cache" \
-            "$artifact_root/prebuilt-rag/gemini/cache" \
-            "$artifact_root/release-assets/prebuilt-rag/gemini/cache"; do
+            "$artifact_root/$provider/cache" \
+            "$artifact_root/prebuilt-rag/$provider/cache" \
+            "$artifact_root/release-assets/prebuilt-rag/$provider/cache"; do
             if [[ -d "$candidate" ]]; then
-              gemini_cache_dir="$candidate"
+              rag_cache_dir="$candidate"
               break
             fi
           done
 
-          if [[ -z "$gemini_cache_dir" ]]; then
-            echo "Could not find gemini prebuilt cache directory in artifact root: $artifact_root"
+          if [[ -z "$rag_cache_dir" ]]; then
+            echo "Could not find $provider prebuilt cache directory in artifact root: $artifact_root"
             exit 1
           fi
 
@@ -273,7 +274,7 @@ jobs:
           az storage file upload-batch \
             --account-name "$account" \
             --account-key "$key" \
-            --source "$gemini_cache_dir" \
+            --source "$rag_cache_dir" \
             --destination "$share" \
             --destination-path "$version/rag/cache" \
             --max-connections 64 \
@@ -323,7 +324,7 @@ jobs:
             fi
           done
 
-      - name: Verify uploaded Gemini prebuilt RAG cache
+      - name: Verify uploaded prebuilt RAG cache
         if: ${{ inputs.rag_artifact_name != '' }}
         shell: bash
         run: |
@@ -407,6 +408,55 @@ jobs:
             --output none
           echo "env_args=MCP_LOG_IP_SALT=secretref:log-ip-salt" >> "$GITHUB_OUTPUT"
 
+      - name: Configure embedding provider
+        id: embedding
+        shell: bash
+        env:
+          RAG_EMBED_PROVIDER: ${{ vars.RAG_EMBED_PROVIDER || 'gemini' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          OPENAI_EMBED_MODEL: ${{ vars.OPENAI_EMBED_MODEL }}
+          OPENAI_EMBED_DIMENSIONS: ${{ vars.OPENAI_EMBED_DIMENSIONS }}
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_EMBED_DEPLOYMENT: ${{ vars.AZURE_OPENAI_EMBED_DEPLOYMENT }}
+          AZURE_OPENAI_EMBED_MODEL: ${{ vars.AZURE_OPENAI_EMBED_MODEL }}
+          AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+          AZURE_OPENAI_EMBED_DIMENSIONS: ${{ vars.AZURE_OPENAI_EMBED_DIMENSIONS }}
+        run: |
+          set -euo pipefail
+
+          # GEMINI_API_KEY comes from infra (main.bicep). Other providers' keys
+          # are stored here as ACA secrets; non-secret settings come from
+          # repository variables.
+          app="${{ steps.vars.outputs.container_app }}"
+          rg="${{ steps.vars.outputs.resource_group }}"
+          args="RAG_PROVIDER=${RAG_EMBED_PROVIDER} RAG_FALLBACK=lexical"
+          add_optional() { if [[ -n "${!1:-}" ]]; then args="$args $1=${!1}"; fi; }
+          case "$RAG_EMBED_PROVIDER" in
+            gemini) ;;
+            openai)
+              [[ -n "${OPENAI_API_KEY:-}" ]] || { echo "::error::OPENAI_API_KEY secret is required for RAG_EMBED_PROVIDER=openai"; exit 1; }
+              az containerapp secret set -n "$app" -g "$rg" --secrets "openai-api-key=${OPENAI_API_KEY}" --output none
+              args="$args OPENAI_API_KEY=secretref:openai-api-key"
+              add_optional OPENAI_EMBED_MODEL
+              add_optional OPENAI_EMBED_DIMENSIONS
+              ;;
+            azure-openai)
+              [[ -n "${AZURE_OPENAI_API_KEY:-}" ]] || { echo "::error::AZURE_OPENAI_API_KEY secret is required for RAG_EMBED_PROVIDER=azure-openai"; exit 1; }
+              [[ -n "${AZURE_OPENAI_ENDPOINT:-}" && -n "${AZURE_OPENAI_EMBED_DEPLOYMENT:-}" ]] \
+                || { echo "::error::AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_EMBED_DEPLOYMENT repository variables are required"; exit 1; }
+              az containerapp secret set -n "$app" -g "$rg" --secrets "azure-openai-api-key=${AZURE_OPENAI_API_KEY}" --output none
+              args="$args AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key"
+              add_optional AZURE_OPENAI_ENDPOINT
+              add_optional AZURE_OPENAI_EMBED_DEPLOYMENT
+              add_optional AZURE_OPENAI_EMBED_MODEL
+              add_optional AZURE_OPENAI_API_VERSION
+              add_optional AZURE_OPENAI_EMBED_DIMENSIONS
+              ;;
+            *) echo "::error::Unknown RAG_EMBED_PROVIDER '$RAG_EMBED_PROVIDER'"; exit 1 ;;
+          esac
+          echo "env_args=$args" >> "$GITHUB_OUTPUT"
+
       - name: Deploy single steady revision
         id: deploy
         shell: bash
@@ -445,7 +495,8 @@ jobs:
               TMPDIR="${cache_root}/tmp" \
               TMP="${cache_root}/tmp" \
               TEMP="${cache_root}/tmp" \
-              ${{ steps.salt.outputs.env_args }}
+              ${{ steps.salt.outputs.env_args }} \
+              ${{ steps.embedding.outputs.env_args }}
 
       - name: Wait for deployed revision ready
         id: ready

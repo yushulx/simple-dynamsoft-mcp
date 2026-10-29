@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Measures search relevance against the golden query set.
 //
-//   node scripts/eval-retrieval.mjs [--provider=lexical|gemini] [--case=<id>] [--show] [--json=<path>]
+//   node scripts/eval-retrieval.mjs [--provider=lexical|gemini|openai|azure-openai] [--case=<id>] [--show] [--json=<path>]
 //
 // The provider is passed through RAG_PROVIDER before the RAG layer loads, with
 // fallback disabled so a failing provider is reported instead of masked.

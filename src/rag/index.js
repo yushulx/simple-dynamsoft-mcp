@@ -10,7 +10,8 @@ import {
 } from "../server/resource-index.js";
 import { latencyBucket } from "../observability/logging.js";
 import { createLexicalProvider } from "./lexical-provider.js";
-import { pkg, ragConfig, legacyPrebuiltIndexUrl } from "./config.js";
+import { pkg, ragConfig, defaultPrebuiltIndexUrl } from "./config.js";
+import { isVectorProvider } from "./embedding-providers.js";
 import {
   ragLogState,
   logRag,
@@ -56,7 +57,7 @@ const searchUtils = {
 const vectorCache = createVectorCacheHelpers({
   ragConfig,
   pkgVersion: pkg.version,
-  legacyPrebuiltIndexUrl,
+  prebuiltIndexUrlFor: defaultPrebuiltIndexUrl,
   logRag
 });
 
@@ -73,22 +74,24 @@ const providerOrchestrator = createProviderOrchestrator({
   vectorCache
 });
 
-function classifyGeminiFailureReason(error) {
+function classifyEmbeddingFailureReason(error) {
   const status = Number(error?.status);
   if (status === 401 || status === 403) return "invalid_auth";
+  if (status === 402) return "quota_exhausted";
   if (status === 400 || status === 404) return "invalid_config";
   const message = String(error?.message || "").toLowerCase();
-  if (message.includes("gemini_api_key") || message.includes("api key")) return "missing_api_key";
-  if (message.includes("embed model") || message.includes("model")) return "invalid_config";
+  if (message.includes("insufficient_quota") || message.includes("credits")) return "quota_exhausted";
+  if (message.includes("_api_key") || message.includes("api key")) return "missing_api_key";
+  if (message.includes("embed model") || message.includes("model") || message.includes("deployment")) return "invalid_config";
   return "runtime_error";
 }
 
-function logGeminiDegradedOnce({ reason, fallback, error, stage }) {
-  const key = `${stage}:${reason}:${fallback}`;
+function logProviderDegradedOnce({ provider, reason, fallback, error, stage }) {
+  const key = `${provider}:${stage}:${reason}:${fallback}`;
   if (ragLogState.degradedNotices.has(key)) return;
   ragLogState.degradedNotices.add(key);
   logRag("provider_degraded", {
-    provider: "gemini",
+    provider,
     fallback,
     reason,
     stage,
@@ -190,12 +193,14 @@ async function searchResources({ query, product, edition, platform, type, limit,
         fallback: ragConfig.fallback,
         error: error.message
       }, { level: "error" });
-      if (name === "gemini") {
-        const reason = classifyGeminiFailureReason(error);
-        const hasFallback = providers.includes("lexical") && providers[0] === "gemini";
-        if (hasFallback) {
-          logGeminiDegradedOnce({ reason, fallback: "lexical", error, stage: "search" });
-        }
+      if (isVectorProvider(name) && name === providers[0] && providers.length > 1) {
+        logProviderDegradedOnce({
+          provider: name,
+          reason: classifyEmbeddingFailureReason(error),
+          fallback: providers[1],
+          error,
+          stage: "search"
+        });
       }
     }
   }
@@ -237,9 +242,14 @@ async function prewarmRagIndex() {
       fallback: ragConfig.fallback
     });
   } catch (error) {
-    if (primary === "gemini" && providers.includes("lexical")) {
-      const reason = classifyGeminiFailureReason(error);
-      logGeminiDegradedOnce({ reason, fallback: "lexical", error, stage: "prewarm" });
+    if (isVectorProvider(primary) && providers.length > 1) {
+      logProviderDegradedOnce({
+        provider: primary,
+        reason: classifyEmbeddingFailureReason(error),
+        fallback: providers[1],
+        error,
+        stage: "prewarm"
+      });
     }
     logRag("prewarm_failed", {
       provider: primary,

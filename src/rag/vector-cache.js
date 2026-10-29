@@ -3,6 +3,7 @@ import { join, basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import * as tar from "tar";
+import { isVectorProvider } from "./embedding-providers.js";
 
 function ensureDirectory(path) {
   if (!existsSync(path)) {
@@ -10,14 +11,87 @@ function ensureDirectory(path) {
   }
 }
 
-function makeCacheFileName(provider, model, cacheKey) {
+function cacheFilePrefix(provider, model) {
   const safeModel = String(model || "default").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 32);
-  return `rag-${provider}-${safeModel}-${cacheKey.slice(0, 12)}.json`;
+  return `rag-${provider}-${safeModel}-`;
+}
+
+function makeCacheFileName(provider, model, cacheKey) {
+  return `${cacheFilePrefix(provider, model)}${cacheKey.slice(0, 12)}.json`;
 }
 
 function makeCheckpointFileName(provider, model, cacheKey) {
-  const safeModel = String(model || "default").replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 32);
-  return `rag-${provider}-${safeModel}-${cacheKey.slice(0, 12)}.checkpoint.json`;
+  return `${cacheFilePrefix(provider, model)}${cacheKey.slice(0, 12)}.checkpoint.json`;
+}
+
+function listProviderCacheHeaders(cacheDir, provider, model) {
+  if (!existsSync(cacheDir)) return [];
+  const prefix = cacheFilePrefix(provider, model);
+  return readdirSync(cacheDir)
+    .filter((name) => name.startsWith(prefix) && name.endsWith(".json"))
+    .map((name) => join(cacheDir, name));
+}
+
+function signatureWithoutPackageVersion(signature) {
+  try {
+    const parsed = JSON.parse(signature || "");
+    delete parsed.packageVersion;
+    return JSON.stringify(parsed);
+  } catch {
+    return "";
+  }
+}
+
+// Vectors already computed for identical chunk text, keyed by item `hash`
+// (see providers.js). Sources are every cache and checkpoint for the same
+// provider/model in cacheDir: a previous version's cache, a CI-restored cache,
+// an extracted previous release, or a partial checkpoint. Caches written
+// before hashes existed are adopted only when their signature matches apart
+// from packageVersion and their items are the same sequence, which means the
+// chunk texts are identical.
+function collectReusableVectors({ cacheDir, provider, model, items, signature, allowLegacyAdoption = false }) {
+  const reusable = new Map();
+  const currentSignature = signatureWithoutPackageVersion(signature);
+  for (const headerFile of listProviderCacheHeaders(cacheDir, provider, model)) {
+    let payload;
+    try {
+      const result = readVectorFiles(headerFile);
+      if (result.error) continue;
+      payload = result.payload;
+    } catch {
+      continue;
+    }
+    if (payload.meta?.model && payload.meta.model !== model) continue;
+    const hashed = payload.items.length > 0 && payload.items.every((item) => item.hash);
+    if (hashed) {
+      payload.items.forEach((item, i) => {
+        if (payload.vectors[i] && !reusable.has(item.hash)) reusable.set(item.hash, payload.vectors[i]);
+      });
+      continue;
+    }
+    // Same content signature and the same set of chunk ids/uris means the same
+    // chunk texts; match by id/uri rather than position, because directory
+    // listing order differs between platforms (e.g. sample folders).
+    // The signature names pinned data commits, not what is checked out, so
+    // legacy adoption also needs the caller to confirm local data matches them.
+    if (!allowLegacyAdoption) continue;
+    if (!currentSignature || signatureWithoutPackageVersion(payload.meta?.signature) !== currentSignature) continue;
+    if (payload.items.length !== items.length || payload.vectors.length !== items.length) continue;
+    const vectorByKey = new Map(payload.items.map((item, i) => [`${item.id}\n${item.uri}`, payload.vectors[i]]));
+    if (vectorByKey.size !== items.length || !items.every((item) => vectorByKey.has(`${item.id}\n${item.uri}`))) continue;
+    for (const item of items) {
+      if (!reusable.has(item.hash)) reusable.set(item.hash, vectorByKey.get(`${item.id}\n${item.uri}`));
+    }
+  }
+  return reusable;
+}
+
+// Keep only `keepFile` (and its vectors) among this provider/model's caches,
+// so restored/seeded caches do not accumulate in CI caches or release assets.
+function pruneOtherCaches({ cacheDir, provider, model, keepFile }) {
+  for (const headerFile of listProviderCacheHeaders(cacheDir, provider, model)) {
+    if (resolve(headerFile) !== resolve(keepFile)) removeVectorFiles(headerFile);
+  }
 }
 
 // Cache layout: a JSON header (`<name>.json`: cacheKey, meta, items, vector
@@ -126,35 +200,8 @@ function saveVectorIndexCache(cacheDir, cacheFile, payload) {
   writeVectorFiles(cacheFile, payload);
 }
 
-function loadVectorIndexCheckpoint(checkpointFile, expectedKey, expectedItems) {
-  if (!existsSync(checkpointFile)) {
-    return { hit: false, reason: "missing", payload: null };
-  }
-  try {
-    const { payload: parsed, error } = readVectorFiles(checkpointFile);
-    if (error) {
-      return { hit: false, reason: error, payload: null };
-    }
-    if (parsed.cacheKey !== expectedKey) {
-      return { hit: false, reason: "cache_key_mismatch", payload: null };
-    }
-    if (parsed.items.length !== expectedItems.length) {
-      return { hit: false, reason: "items_length_mismatch", payload: null };
-    }
-    for (let i = 0; i < expectedItems.length; i += 1) {
-      if (parsed.items[i]?.id !== expectedItems[i]?.id || parsed.items[i]?.uri !== expectedItems[i]?.uri) {
-        return { hit: false, reason: "items_mismatch", payload: null };
-      }
-    }
-    if (parsed.vectors.length > expectedItems.length) {
-      return { hit: false, reason: "vectors_overflow", payload: null };
-    }
-    return { hit: true, reason: "ok", payload: parsed };
-  } catch {
-    return { hit: false, reason: "parse_error", payload: null };
-  }
-}
-
+// Checkpoints hold only the items embedded so far (each with its `hash`);
+// collectReusableVectors picks them up on the next attempt.
 function saveVectorIndexCheckpoint(cacheDir, checkpointFile, payload) {
   ensureDirectory(cacheDir);
   writeVectorFiles(checkpointFile, payload);
@@ -211,22 +258,14 @@ function listDownloadedCacheCandidatesByProvider(extractRoot, expectedCacheFileN
   return unique;
 }
 
-function resolvePrebuiltIndexUrlCandidates(provider, ragConfig, legacyPrebuiltIndexUrl) {
+// The release asset for the active provider (`prebuiltIndexUrlFor`), unless
+// RAG_PREBUILT_INDEX_URL or, for Gemini, RAG_PREBUILT_INDEX_URL_GEMINI overrides it.
+function resolvePrebuiltIndexUrl(provider, ragConfig, prebuiltIndexUrlFor) {
   const override = String(ragConfig.prebuiltIndexUrl || "").trim();
-  if (override) return [override];
-
-  const candidates = [];
-  if (provider === "gemini") {
-    candidates.push(String(ragConfig.prebuiltIndexUrlGemini || "").trim());
-  }
-  candidates.push(legacyPrebuiltIndexUrl);
-
-  const deduped = [];
-  for (const candidate of candidates) {
-    if (!candidate) continue;
-    if (!deduped.includes(candidate)) deduped.push(candidate);
-  }
-  return deduped;
+  if (override) return override;
+  const geminiOverride = String(ragConfig.prebuiltIndexUrlGemini || "").trim();
+  if (provider === "gemini" && geminiOverride) return geminiOverride;
+  return prebuiltIndexUrlFor ? String(prebuiltIndexUrlFor(provider) || "").trim() : "";
 }
 
 async function downloadPrebuiltArchive(url, outputPath, timeoutMs) {
@@ -260,18 +299,19 @@ async function downloadPrebuiltArchive(url, outputPath, timeoutMs) {
   }
 }
 
-function createVectorCacheHelpers({ ragConfig, pkgVersion, legacyPrebuiltIndexUrl, logRag }) {
+function createVectorCacheHelpers({ ragConfig, pkgVersion, prebuiltIndexUrlFor, logRag }) {
   const prebuiltDownloadAttempts = new Map();
 
   async function maybeDownloadPrebuiltVectorIndex({ provider, model, cacheKey, signature, cacheFile }) {
-    if (provider !== "gemini") {
+    if (!isVectorProvider(provider)) {
       return { downloaded: false, reason: "provider_not_supported" };
     }
     if (!ragConfig.prebuiltIndexAutoDownload) {
       return { downloaded: false, reason: "auto_download_disabled" };
     }
 
-    const sourceUrls = resolvePrebuiltIndexUrlCandidates(provider, ragConfig, legacyPrebuiltIndexUrl);
+    const sourceUrl = resolvePrebuiltIndexUrl(provider, ragConfig, prebuiltIndexUrlFor);
+    const sourceUrls = sourceUrl ? [sourceUrl] : [];
     if (sourceUrls.length === 0) {
       return { downloaded: false, reason: "url_not_set" };
     }
@@ -371,9 +411,10 @@ function createVectorCacheHelpers({ ragConfig, pkgVersion, legacyPrebuiltIndexUr
     makeCheckpointFileName,
     loadVectorIndexCache,
     saveVectorIndexCache: (cacheFile, payload) => saveVectorIndexCache(ragConfig.cacheDir, cacheFile, payload),
-    loadVectorIndexCheckpoint,
     saveVectorIndexCheckpoint: (checkpointFile, payload) => saveVectorIndexCheckpoint(ragConfig.cacheDir, checkpointFile, payload),
     clearVectorIndexCheckpoint,
+    collectReusableVectors: (options) => collectReusableVectors({ cacheDir: ragConfig.cacheDir, ...options }),
+    pruneOtherCaches: (options) => pruneOtherCaches({ cacheDir: ragConfig.cacheDir, ...options }),
     maybeDownloadPrebuiltVectorIndex
   };
 }

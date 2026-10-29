@@ -291,7 +291,9 @@ function dotProduct(a, b) {
 }
 
 function isRateLimitError(error, isRateLimitGeminiStatus) {
-  if (error?.rateLimited) return true;
+  // An explicit flag wins: providers clear it for permanent errors that share
+  // the 429 status (OpenAI insufficient_quota).
+  if (typeof error?.rateLimited === "boolean") return error.rateLimited;
   const status = Number(error?.status);
   return isRateLimitGeminiStatus(status);
 }

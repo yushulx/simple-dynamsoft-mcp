@@ -102,8 +102,10 @@ async function executeWithGeminiRetry({
     } catch (error) {
       lastError = error;
       const status = Number(error?.status);
-      const retryable = Boolean(error?.retryable) || isRetryableGeminiStatus(status);
-      const rateLimited = Boolean(error?.rateLimited) || isRateLimitGeminiStatus(status);
+      // Explicit flags (set by GeminiHttpError and cleared by providers for
+      // permanent errors such as OpenAI insufficient_quota) take precedence.
+      const retryable = typeof error?.retryable === "boolean" ? error.retryable : isRetryableGeminiStatus(status);
+      const rateLimited = typeof error?.rateLimited === "boolean" ? error.rateLimited : isRateLimitGeminiStatus(status);
       if (!retryable || attempt >= config.maxAttempts) {
         throw error;
       }
@@ -116,7 +118,7 @@ async function executeWithGeminiRetry({
         random
       });
       logger(
-        `gemini retry op=${operation} attempt=${attempt}/${config.maxAttempts} status=${status || "n/a"} ` +
+        `embedding retry op=${operation} attempt=${attempt}/${config.maxAttempts} status=${status || "n/a"} ` +
         `retryable=${retryable} rate_limited=${rateLimited} delay_ms=${delayMs}`
       );
       onRetry({
