@@ -8,8 +8,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "barcode-reader-docs-js",
-      "commit": "8c5cd13b851d632d3ffe9bf4dca30289ac6b8ce5",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/8c5cd13b851d632d3ffe9bf4dca30289ac6b8ce5"
+      "commit": "d34116f3c7bdad9d3ab0ab8a19c2365076da4929",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-js/zip/d34116f3c7bdad9d3ab0ab8a19c2365076da4929"
     },
     {
       "name": "data/documentation/barcode-reader-docs-mobile",
@@ -38,8 +38,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs",
-      "commit": "428c0080975aee70f15e09deda09ca548a4f9a93",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs/zip/428c0080975aee70f15e09deda09ca548a4f9a93"
+      "commit": "dbd15028a8a76cb0bc39fcb1f7c8e8b366b42496",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs/zip/dbd15028a8a76cb0bc39fcb1f7c8e8b366b42496"
     },
     {
       "name": "data/documentation/capture-vision-docs-js",
@@ -48,8 +48,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "capture-vision-docs-js",
-      "commit": "acbcef22e86ee252b6cf8cd97fd75c5f4c0e3f40",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-js/zip/acbcef22e86ee252b6cf8cd97fd75c5f4c0e3f40"
+      "commit": "f5d39c818fa6bdc28d7d9e1a6fdf567a8d52b892",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/capture-vision-docs-js/zip/f5d39c818fa6bdc28d7d9e1a6fdf567a8d52b892"
     },
     {
       "name": "data/documentation/capture-vision-docs-mobile",
@@ -138,8 +138,8 @@
       "branch": "main",
       "owner": "Dynamsoft",
       "repo": "barcode-reader-javascript-samples",
-      "commit": "c1011477f745d7259331f4d9a1963623c2f0e64f",
-      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/c1011477f745d7259331f4d9a1963623c2f0e64f"
+      "commit": "36244065391a6a32506546c9fe7b422823f8c58e",
+      "archiveUrl": "https://codeload.github.com/Dynamsoft/barcode-reader-javascript-samples/zip/36244065391a6a32506546c9fe7b422823f8c58e"
     },
     {
       "name": "data/samples/dynamsoft-barcode-reader-c-cpp",
