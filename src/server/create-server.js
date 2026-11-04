@@ -73,7 +73,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
       "",
       "How to use it:",
       "- Call get_index first to see valid product/edition/platform combinations before asking the user anything.",
-      "- To answer from documentation: call search, then call read_document with the exact doc:// uri it returned, and base the answer on that text, citing the public documentation URL it contains. Do not answer from search summaries alone or hand doc:// links to the user.",
+      "- To answer from documentation: call search. When a matched passage in the search response covers the question, answer from it and cite its Source URL. Otherwise call read_document with the exact doc:// uri it returned, base the answer on that text, and cite the public documentation URL it contains. Do not answer from search summaries alone or hand doc:// links to the user.",
       "- For sample:// results, call get_sample_files with resource_uri to get the complete sample project.",
       "- Only ask the user to disambiguate dimensions that actually vary for the chosen product. Do NOT ask about dimensions that don't apply.",
       "",

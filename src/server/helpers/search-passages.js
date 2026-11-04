@@ -9,7 +9,10 @@ function formatSearchPassages(results, count = SEARCH_PASSAGE_COUNT) {
     .slice(0, count)
     .map((entry, index) => ({ entry, rank: index + 1 }))
     .filter(({ entry }) => entry.matchedPassage)
-    .map(({ entry, rank }) => `[${rank}] ${entry.title} (${entry.uri})\n${entry.matchedPassage}`);
+    .map(({ entry, rank }) => {
+      const source = entry.url ? `\nSource: ${entry.url}` : "";
+      return `[${rank}] ${entry.title} (${entry.uri})${source}\n${entry.matchedPassage}`;
+    });
   if (blocks.length === 0) return "";
   return [
     `Matched passages from the top ${count} results (call read_document for the full page):`,

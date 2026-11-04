@@ -349,6 +349,9 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
   const passageUris = [...passages.text.matchAll(/^\[\d+\] .* \(((?:doc|sample):\/\/\S+)\)$/gm)].map((m) => m[1]);
   assert.ok(passageUris.length > 0, "Passages should be labeled with the uri they come from");
   assert.ok(passageUris.every((uri) => linkUris.has(uri)), "Every passage should belong to a returned link");
+  const docPassageCount = passageUris.filter((uri) => uri.startsWith("doc://")).length;
+  const sourceCount = [...passages.text.matchAll(/^Source: https:\/\/www\.dynamsoft\.com\/\S+$/gm)].length;
+  assert.equal(sourceCount, docPassageCount, "Each doc passage should carry its public URL to cite");
   const linksOnly = await client.callTool(
     {
       name: "search",
