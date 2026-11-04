@@ -214,8 +214,18 @@ const PASSAGE_STOPWORDS = new Set(
   "a an and are as at be by can do does for from how i if in into is it its me my of on or so the this that to use using via what when where which with without you your".split(" ")
 );
 
+// Each word is kept whole and, when camelCase, also split into its parts
+// ("SelectSource" -> "selectsource", "select", "source"), so API names match
+// plain query words and lowercased identifiers alike.
 function wordTokens(text) {
-  return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  const tokens = [];
+  for (const word of String(text || "").split(/[^A-Za-z0-9]+/)) {
+    if (!word) continue;
+    tokens.push(word.toLowerCase());
+    const parts = word.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(" ");
+    if (parts.length > 1) tokens.push(...parts);
+  }
+  return tokens;
 }
 
 // True when the passage contains a query content word (compared by stem, with
@@ -230,15 +240,15 @@ function passageMatchesQuery(passage, terms) {
 }
 
 // Short snippet plus the full matched passage (capped) for one search hit.
-// `fallbackSnippet` (e.g. the page summary) feeds the short snippet only, when
-// no body passage matched; it is never presented as a passage.
+// Both come from the passage only when it contains a query content word;
+// otherwise the snippet comes from `fallbackSnippet` (e.g. the page summary)
+// or is omitted, so an unrelated section is never shown as evidence.
 function buildMatchFields(passage, terms, fallbackSnippet = "") {
   const fields = {};
-  const snippet = extractSnippet(passage || fallbackSnippet || "", terms);
+  const matched = Boolean(passage) && passageMatchesQuery(passage, terms);
+  const snippet = extractSnippet(matched ? passage : fallbackSnippet, terms);
   if (snippet) fields.matchedSnippet = snippet;
-  if (passage && passageMatchesQuery(passage, terms)) {
-    fields.matchedPassage = extractSnippet(passage, terms, PASSAGE_MAX_CHARS);
-  }
+  if (matched) fields.matchedPassage = extractSnippet(passage, terms, PASSAGE_MAX_CHARS);
   return fields;
 }
 

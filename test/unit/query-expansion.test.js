@@ -7,7 +7,7 @@ import {
   buildMatchFields
 } from "../../src/rag/search-utils.js";
 import { createLexicalProvider } from "../../src/rag/lexical-provider.js";
-import { formatSearchPassages } from "../../src/server/helpers/search-response.js";
+import { buildSearchResultsResponse, createHitDescriber, formatSearchPassages, searchResponseText } from "../../src/server/helpers/search-response.js";
 
 test("#148: expandQueryTokens adds domain synonyms and stems", () => {
   const out = expandQueryTokens(["webcam"]);
@@ -133,10 +133,31 @@ test("extractSnippet keeps text that fits whole, even when the first match is la
   assert.equal(extractSnippet(text, ["init"], 1500), text);
 });
 
-test("a passage sharing only function words with the query is not shown as a match", () => {
-  const fields = buildMatchFields("Security > How to configure the firewall", ["how", "to", "set", "the", "license", "key"]);
-  assert.equal(fields.matchedPassage, undefined);
-  assert.ok(fields.matchedSnippet, "the short snippet is still returned");
+test("a passage sharing only function words with the query is not shown anywhere in the response", () => {
+  const query = "how to set the license key";
+  const terms = query.split(" ");
+  const junk = "Security > How to configure the firewall";
+  const doc = { type: "doc", title: "D", uri: "doc://d", summary: "Page summary", ...buildMatchFields(junk, terms) };
+  assert.equal(doc.matchedPassage, undefined);
+  assert.equal(doc.matchedSnippet, undefined);
+
+  const text = searchResponseText(buildSearchResultsResponse({
+    query,
+    product: "dbr",
+    results: [doc],
+    contentMode: "passage",
+    describeHit: createHitDescriber({ formatScopeLabel: () => "dbr", getSampleIdFromUri: () => "" }),
+    getSampleIdFromUri: () => ""
+  }));
+  assert.doesNotMatch(text, /firewall/);
+
+  // Lexical passes the page summary as the fallback snippet.
+  assert.equal(buildMatchFields(junk, terms, "Page summary").matchedSnippet, "Page summary");
+});
+
+test("a passage naming the API in camelCase matches plain query words", () => {
+  const fields = buildMatchFields("Acquire > DWTObject.SelectSourceAsync().then(() => DWTObject.AcquireImageAsync())", ["pick", "source"]);
+  assert.match(fields.matchedPassage, /SelectSourceAsync/);
 });
 
 test("a passage matching a query word by stem is shown", () => {
