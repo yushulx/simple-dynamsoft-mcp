@@ -342,6 +342,26 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
   const docLink = docSearch.content.find((item) => item.type === "resource_link" && item.uri.startsWith("doc://"));
   assert.ok(docLink, "Doc search should return a doc:// resource_link");
   assert.match(docSearch.content[0].text, /read_document/, "Search guidance should point doc results to read_document");
+  const passagesOf = (response) => response.content.find((item) => item.type === "text" && item.text.startsWith("Matched passages"));
+  const passages = passagesOf(docSearch);
+  assert.ok(passages, "Doc search should include the matched passages of the top results");
+  const linkUris = new Set(docSearch.content.filter((item) => item.type === "resource_link").map((item) => item.uri));
+  const passageUris = [...passages.text.matchAll(/^\[\d+\] .* \(((?:doc|sample):\/\/\S+)\)$/gm)].map((m) => m[1]);
+  assert.ok(passageUris.length > 0, "Passages should be labeled with the uri they come from");
+  assert.ok(passageUris.every((uri) => linkUris.has(uri)), "Every passage should belong to a returned link");
+  const docPassageCount = passageUris.filter((uri) => uri.startsWith("doc://")).length;
+  const sourceCount = [...passages.text.matchAll(/^Source: https:\/\/www\.dynamsoft\.com\/\S+$/gm)].length;
+  assert.equal(sourceCount, docPassageCount, "Each doc passage should carry its public URL to cite");
+  const linksOnly = await client.callTool(
+    {
+      name: "search",
+      arguments: { query: "getting started", product: "dwt", type: "doc", limit: 3, content: "none" }
+    },
+    undefined,
+    requestOptions
+  );
+  assert.equal(passagesOf(linksOnly), undefined, "content='none' should omit passages");
+  assert.doesNotMatch(linksOnly.content[0].text, /Matched passages/, "Lead text should not mention absent passages");
 
   const docRead = await client.callTool(
     { name: "read_document", arguments: { uri: docLink.uri } },

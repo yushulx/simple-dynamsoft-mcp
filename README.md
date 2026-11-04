@@ -296,14 +296,14 @@ mcpServers:
 The server exposes this minimal tool surface:
 
 - `get_index` -- compact product/version/sample index with selection guidance
-- `search` -- semantic search across docs and samples (also accepts exact sample IDs); returns `doc://` and `sample://` links
+- `search` -- semantic search across docs and samples (also accepts exact sample IDs); returns `doc://` and `sample://` links plus the matched passage (up to ~1500 chars) of the top 3 results (`content: "none"` returns links and short snippets only)
 - `read_document` -- read the full text (title, public docs URL, body) of a `doc://` URI returned by `search`
 - `list_samples` -- browse available samples for a product/edition/platform
 - `resolve_version` -- resolve current version for a product/edition/platform
 - `get_quickstart` -- opinionated quickstart: picks a sample by scenario, returns code + install instructions
 - `get_sample_files` -- get full project files for a known sample (discovered via list_samples or search)
 
-Typical doc Q&A flow: `search` -> `read_document` with the exact `doc://` URI -> answer from the returned text and cite its public URL. Clients that support MCP resources can also fetch the same `doc://` / `sample://` URIs with `resources/read`.
+Typical doc Q&A flow: `search` -> answer from a matched passage when it covers the question, otherwise `read_document` with the exact `doc://` URI -> answer from the returned text and cite its public URL. Clients that support MCP resources can also fetch the same `doc://` / `sample://` URIs with `resources/read`.
 
 DBR searches also cover the shared Capture Vision API pages that the DBR docs link to (for example `CaptureVisionRouter.capture()` and `getSimplifiedSettings()`/`updateSettings()`); these hits keep their official `capture-vision/docs` URL and are labelled `shared Capture Vision API used by DBR` in search results. Doc URIs are path-based (`doc://dbr/web/web/<version>/user-guide/use-in-framework`) and change only when the docs move or the SDK version changes.
 

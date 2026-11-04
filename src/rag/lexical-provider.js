@@ -1,5 +1,5 @@
 import Fuse from "fuse.js";
-import { chunkMarkdown, expandQueryTokens, extractSnippet } from "./search-utils.js";
+import { buildMatchFields, chunkMarkdown, expandQueryTokens } from "./search-utils.js";
 
 const DEFAULT_FUSE_OPTIONS = {
   keys: [
@@ -150,7 +150,8 @@ function scoreDocument(index, doc, terms) {
   }
   return {
     score: computeBm25Score(index.headerStats, doc, terms) + bestScore,
-    snippetText: best ? best.text : doc.fallbackSnippet
+    passageText: best ? best.text : "",
+    fallbackSnippet: doc.fallbackSnippet
   };
 }
 
@@ -204,11 +205,11 @@ function createLexicalProvider({
       // out-of-scope fuzzy match deflate every in-scope fuse contribution (issue #147).
       let maxFuse = 0;
 
-      const snippetTextByUri = new Map();
+      const matchByUri = new Map();
       for (const doc of bm25Index.documents) {
         if (!entryMatchesScope(doc.entry, filters)) continue;
-        const { score, snippetText } = scoreDocument(bm25Index, doc, terms);
-        snippetTextByUri.set(doc.entry.uri, snippetText);
+        const { score, passageText, fallbackSnippet } = scoreDocument(bm25Index, doc, terms);
+        matchByUri.set(doc.entry.uri, { passageText, fallbackSnippet });
         if (score > 0) {
           bm25ScoreByUri.set(doc.entry.uri, score);
           if (score > maxBm25) maxBm25 = score;
@@ -237,9 +238,11 @@ function createLexicalProvider({
 
       merged.sort(compareLexicalResults);
       const ranked = merged.map((item) => {
-        const scored = attachScore(item.entry, item.score);
-        const snippet = extractSnippet(snippetTextByUri.get(item.entry.uri) || "", terms);
-        return snippet ? { ...scored, matchedSnippet: snippet } : scored;
+        const match = matchByUri.get(item.entry.uri) || {};
+        return {
+          ...attachScore(item.entry, item.score),
+          ...buildMatchFields(match.passageText, terms, match.fallbackSnippet)
+        };
       });
       if (limit) return ranked.slice(0, limit);
       return ranked;

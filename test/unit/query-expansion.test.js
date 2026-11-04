@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import {
   expandQueryTokens,
   chunkMarkdown,
-  extractSnippet
+  extractSnippet,
+  buildMatchFields
 } from "../../src/rag/search-utils.js";
 import { createLexicalProvider } from "../../src/rag/lexical-provider.js";
+import { buildSearchResultsResponse, createHitDescriber, formatSearchPassages, searchResponseText } from "../../src/server/helpers/search-response.js";
 
 test("#148: expandQueryTokens adds domain synonyms and stems", () => {
   const out = expandQueryTokens(["webcam"]);
@@ -123,4 +125,51 @@ test("extractSnippet windows around the first term", () => {
   const text = "alpha beta gamma delta epsilon zeta eta theta";
   const snip = extractSnippet(text, ["gamma"], 20);
   assert.match(snip, /gamma/);
+});
+
+test("extractSnippet keeps text that fits whole, even when the first match is late", () => {
+  const text = `Heading > Setup ${"filler ".repeat(100)}call init() here.`;
+  assert.ok(text.length < 1500 && text.indexOf("init") > 500);
+  assert.equal(extractSnippet(text, ["init"], 1500), text);
+});
+
+test("a passage sharing only function words with the query is not shown anywhere in the response", () => {
+  const query = "how to set the license key";
+  const terms = query.split(" ");
+  const junk = "Security > How to configure the firewall";
+  const doc = { type: "doc", title: "D", uri: "doc://d", summary: "Page summary", ...buildMatchFields(junk, terms) };
+  assert.equal(doc.matchedPassage, undefined);
+  assert.equal(doc.matchedSnippet, undefined);
+
+  const text = searchResponseText(buildSearchResultsResponse({
+    query,
+    product: "dbr",
+    results: [doc],
+    contentMode: "passage",
+    describeHit: createHitDescriber({ formatScopeLabel: () => "dbr", getSampleIdFromUri: () => "" }),
+    getSampleIdFromUri: () => ""
+  }));
+  assert.doesNotMatch(text, /firewall/);
+
+  // Lexical passes the page summary as the fallback snippet.
+  assert.equal(buildMatchFields(junk, terms, "Page summary").matchedSnippet, "Page summary");
+});
+
+test("a passage naming the API in camelCase matches plain query words", () => {
+  const fields = buildMatchFields("Acquire > DWTObject.SelectSourceAsync().then(() => DWTObject.AcquireImageAsync())", ["pick", "source"]);
+  assert.match(fields.matchedPassage, /SelectSourceAsync/);
+});
+
+test("a passage matching a query word by stem is shown", () => {
+  const fields = buildMatchFields("Scan > Call scan() on the router.", ["scanning", "barcodes"]);
+  assert.match(fields.matchedPassage, /Call scan\(\)/);
+});
+
+test("matched passages are shown for docs only, not for samples", () => {
+  const text = formatSearchPassages([
+    { type: "sample", title: "S", uri: "sample://s", matchedPassage: "DBR web sample s" },
+    { type: "doc", title: "D", uri: "doc://d", url: "https://www.dynamsoft.com/d", matchedPassage: "Doc body" }
+  ]);
+  assert.doesNotMatch(text, /sample:\/\/s/);
+  assert.match(text, /\[2\] D \(doc:\/\/d\)\nSource: https:\/\/www\.dynamsoft\.com\/d\nDoc body/);
 });

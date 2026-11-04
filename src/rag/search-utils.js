@@ -184,11 +184,17 @@ function expandQueryTokens(tokens) {
   return [...out];
 }
 
+// Cap for matched passages returned by search: one chunk (RAG_CHUNK_SIZE 1200)
+// plus its heading path. The same cap applies to semantic and lexical results.
+const PASSAGE_MAX_CHARS = 1500;
+
 // A ~maxLen window around the first query term found in text — used to give the
 // agent a matched snippet in search results (issues #146/#149).
 function extractSnippet(text, terms, maxLen = 240) {
   const cleaned = normalizeText(text);
   if (!cleaned) return "";
+  // Text that fits is returned whole, so its heading and leading context stay.
+  if (cleaned.length <= maxLen) return cleaned;
   const lower = cleaned.toLowerCase();
   let hitAt = -1;
   for (const term of terms) {
@@ -200,6 +206,50 @@ function extractSnippet(text, terms, maxLen = 240) {
   const start = Math.max(0, hitAt - Math.floor(maxLen / 3));
   const snippet = cleaned.slice(start, start + maxLen).trim();
   return (start > 0 ? "…" : "") + snippet + (start + maxLen < cleaned.length ? "…" : "");
+}
+
+// Function words that match almost any passage; a passage must share a word
+// other than these with the query to count as matched.
+const PASSAGE_STOPWORDS = new Set(
+  "a an and are as at be by can do does for from how i if in into is it its me my of on or so the this that to use using via what when where which with without you your".split(" ")
+);
+
+// Each word is kept whole and, when camelCase, also split into its parts
+// ("SelectSource" -> "selectsource", "select", "source"), so API names match
+// plain query words and lowercased identifiers alike.
+function wordTokens(text) {
+  const tokens = [];
+  for (const word of String(text || "").split(/[^A-Za-z0-9]+/)) {
+    if (!word) continue;
+    tokens.push(word.toLowerCase());
+    const parts = word.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase().split(" ");
+    if (parts.length > 1) tokens.push(...parts);
+  }
+  return tokens;
+}
+
+// True when the passage contains a query content word (compared by stem, with
+// the query's synonym expansion). Semantic scores include the page title,
+// summary, and tags, so the best chunk of a header-driven hit can be an
+// unrelated or near-empty section; such chunks are not shown as passages.
+function passageMatchesQuery(passage, terms) {
+  const queryWords = expandQueryTokens(wordTokens(terms.join(" ")).filter((word) => !PASSAGE_STOPWORDS.has(word)));
+  if (queryWords.length === 0) return false;
+  const wanted = new Set(queryWords.map(stemToken));
+  return wordTokens(passage).some((word) => wanted.has(stemToken(word)));
+}
+
+// Short snippet plus the full matched passage (capped) for one search hit.
+// Both come from the passage only when it contains a query content word;
+// otherwise the snippet comes from `fallbackSnippet` (e.g. the page summary)
+// or is omitted, so an unrelated section is never shown as evidence.
+function buildMatchFields(passage, terms, fallbackSnippet = "") {
+  const fields = {};
+  const matched = Boolean(passage) && passageMatchesQuery(passage, terms);
+  const snippet = extractSnippet(matched ? passage : fallbackSnippet, terms);
+  if (snippet) fields.matchedSnippet = snippet;
+  if (matched) fields.matchedPassage = extractSnippet(passage, terms, PASSAGE_MAX_CHARS);
+  return fields;
 }
 
 function buildEntryBaseText(entry) {
@@ -230,7 +280,10 @@ function buildEmbeddingItems(resourceIndex, ragConfig) {
         items.push({
           id: `${entry.id}#${index}`,
           uri: entry.uri,
-          text: truncateText(combined, ragConfig.maxTextChars)
+          text: truncateText(combined, ragConfig.maxTextChars),
+          // The chunk alone (heading path + body), without the page header that
+          // is embedded with it; search returns this as the matched passage.
+          passage: chunk
         });
       });
       continue;
@@ -308,6 +361,8 @@ export {
   expandQueryTokens,
   stemToken,
   extractSnippet,
+  buildMatchFields,
+  PASSAGE_MAX_CHARS,
   buildEmbeddingItems,
   buildIndexSignature,
   normalizeVector,

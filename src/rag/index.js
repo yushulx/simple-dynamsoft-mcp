@@ -30,7 +30,7 @@ import {
   dotProduct,
   isRateLimitError,
   expandQueryTokens,
-  extractSnippet
+  buildMatchFields
 } from "./search-utils.js";
 import { createProviderOrchestrator } from "./providers.js";
 import { createVectorCacheHelpers } from "./vector-cache.js";
@@ -46,7 +46,7 @@ const searchUtils = {
   dotProduct,
   isRateLimitError,
   expandQueryTokens,
-  extractSnippet,
+  buildMatchFields,
   entryMatchesScope: (entry, filters) => entryMatchesScope(entry, filters, {
     editionMatches,
     platformMatches
