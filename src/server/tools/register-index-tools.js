@@ -9,7 +9,7 @@ import {
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
-import { validatePlatform, validateEdition } from "../normalizers.js";
+import { resolveSearchScope, validatePlatform, validateEdition } from "../normalizers.js";
 
 export function registerIndexTools({
   server,
@@ -164,6 +164,15 @@ export function registerIndexTools({
       }
 
       const maxResults = Math.min(limit || 5, 10);
+      // MRZ/MDS are served for web only: exact sample matches and sample
+      // suggestions use the same default edition as ranked search. (DBR
+      // editions are read from the query only for ranked search.)
+      const sampleEdition = resolveSearchScope({
+        query: "",
+        product: normalizedProduct,
+        edition: normalizedEdition,
+        platform: normalizedPlatform
+      }).edition;
 
       // Exact sample-ID fast path (when searching for samples)
       const effectiveType = type || "any";
@@ -171,7 +180,7 @@ export function registerIndexTools({
         const normalizedQuery = normalizeSampleName(query);
         const scopedSamples = getSampleEntries({
           product: normalizedProduct,
-          edition: normalizedEdition,
+          edition: sampleEdition,
           platform: normalizedPlatform
         });
         const exactMatches = scopedSamples.filter((entry) => {
@@ -242,7 +251,7 @@ export function registerIndexTools({
           const suggestions = await getSampleSuggestions({
             query,
             product: normalizedProduct,
-            edition: normalizedEdition,
+            edition: sampleEdition,
             platform: normalizedPlatform,
             limit: maxResults
           });

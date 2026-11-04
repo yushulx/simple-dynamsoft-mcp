@@ -218,6 +218,7 @@
       "id": "S-dbr-web-from-query",
       "query": "Dynamsoft Barcode Reader web product page",
       "filters": { "product": "dbr", "type": "doc" },
+      "expectedEdition": "web",
       "allowedUrlPrefixes": ["https://www.dynamsoft.com/barcode-reader/docs/web/", "https://www.dynamsoft.com/capture-vision/docs/"],
       "relevant": {
         "https://www.dynamsoft.com/barcode-reader/docs/web/programming/javascript/index.html": 3,
@@ -229,6 +230,7 @@
       "id": "S-dbr-android-from-query",
       "query": "enable only specific barcode formats in an Android app",
       "filters": { "product": "dbr", "type": "doc" },
+      "expectedEdition": "mobile",
       "answerTerms": [["barcodeFormatIds", "setBarcodeFormatIds"], ["BF_"]],
       "relevant": {
         "https://www.dynamsoft.com/barcode-reader/docs/mobile/programming/android/user-guide/capabilities/barcode-formats.html": 3,
@@ -240,6 +242,7 @@
       "id": "S-mrz-unfiltered-web-only",
       "query": "ID card recognition Dynamsoft MRZ Driver's license ID card reading",
       "filters": { "product": "mrz", "type": "doc" },
+      "expectedEdition": "web",
       "allowedUrlPrefixes": ["https://www.dynamsoft.com/mrz-scanner/docs/web/"],
       "relevant": {
         "https://www.dynamsoft.com/mrz-scanner/docs/web/guides/mrz-scanner.html": 3,
