@@ -402,6 +402,35 @@ function inferProductFromQuery(query) {
   return "";
 }
 
+// Edition hints for DBR searches, checked against the current query only.
+// "react native" and "node.js" are removed before the web check so they do
+// not also count as web.
+const QUERY_EDITION_PATTERNS = {
+  mobile: /\b(?:android|ios|iphone|ipad|swift|kotlin|flutter|maui|xamarin|react[\s-]?native|mobile)\b/,
+  server: /\b(?:python|java|cpp|csharp|dotnet|node\.?js|server|desktop)\b|(?<![a-z0-9])(?:c\+\+|c#|\.net)(?![a-z0-9])/,
+  web: /\b(?:web|browser|javascript|typescript|js|react|angular|vue|svelte|nuxt|next\.?js|html)\b/
+};
+
+// The edition a search runs in when the caller gave neither edition nor
+// platform. MRZ and MDS are served for web only, so they default to web.
+// For DBR, an edition is taken from the query only when it names exactly one
+// edition unambiguously ("web app", "Android"); otherwise all editions are
+// searched. `inferredFrom` is set when the query decided the edition, so the
+// response can say so.
+function resolveSearchScope({ query, product, edition, platform }) {
+  if (edition || platform) return { edition: edition || "", inferredFrom: "" };
+  if (product === "mrz" || product === "mds") return { edition: "web", inferredFrom: "" };
+  if (product !== "dbr") return { edition: "", inferredFrom: "" };
+  const text = String(query || "").toLowerCase();
+  const mentioned = [];
+  if (QUERY_EDITION_PATTERNS.mobile.test(text)) mentioned.push("mobile");
+  if (QUERY_EDITION_PATTERNS.server.test(text)) mentioned.push("server");
+  const withoutOtherJs = text.replace(/react[\s-]?native|node\.?js/g, " ");
+  if (QUERY_EDITION_PATTERNS.web.test(withoutOtherJs)) mentioned.push("web");
+  if (mentioned.length !== 1) return { edition: "", inferredFrom: "" };
+  return { edition: mentioned[0], inferredFrom: "query" };
+}
+
 export {
   sdkAliases,
   platformAliases,
@@ -421,6 +450,7 @@ export {
   isWebFrameworkPlatform,
   isWebPlatform,
   inferProductFromQuery,
+  resolveSearchScope,
   KNOWN_PLATFORMS,
   KNOWN_EDITIONS,
   validatePlatform,

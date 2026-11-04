@@ -72,7 +72,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
       "This server answers questions about five public Dynamsoft offerings: DBR, DWT, DDV, MRZ, MDS.",
       "",
       "How to use it:",
-      "- Call get_index first to see valid product/edition/platform combinations before asking the user anything.",
+      "- Call get_index first to see valid product/edition/platform combinations before asking the user anything. Its productSelection.capabilities lists known facts (OCR, VIN, ID documents) that take precedence over inference; for other capabilities, search before saying something is not offered.",
       "- To answer from documentation: call search. When a matched passage in the search response covers the question, answer from it and cite its Source URL. Otherwise call read_document with the exact doc:// uri it returned, base the answer on that text, and cite the public documentation URL it contains. Do not answer from search summaries alone or hand doc:// links to the user.",
       "- For sample:// results, call get_sample_files with resource_uri to get the complete sample project.",
       "- Only ask the user to disambiguate dimensions that actually vary for the chosen product. Do NOT ask about dimensions that don't apply.",

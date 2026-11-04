@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber } from "../helpers/search-response.js";
+import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber, runScopedSearch } from "../helpers/search-response.js";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
 import {
   buildUnknownPublicProductResponse,
@@ -225,9 +225,9 @@ export function registerIndexTools({
       const preferSampleSuggestionFallback =
         effectiveType === "sample" && looksLikeSampleIdQuery(query);
 
-      const topResults = preferSampleSuggestionFallback
-        ? []
-        : await searchResources({
+      const { results: topResults, scopeNote } = preferSampleSuggestionFallback
+        ? { results: [], scopeNote: "" }
+        : await runScopedSearch(searchResources, {
             query,
             product: normalizedProduct,
             edition: normalizedEdition,
@@ -302,6 +302,7 @@ export function registerIndexTools({
         results: topResults,
         contentMode,
         product: normalizedProduct,
+        scopeNote,
         describeHit: buildHitDescription,
         getSampleIdFromUri
       });

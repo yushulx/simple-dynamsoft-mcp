@@ -34,7 +34,7 @@ const { ensureResourceIndexReady, formatScopeLabel, getSampleIdFromUri } = await
 const { searchResources } = await import("../src/rag/index.js");
 const { runRetrievalEval } = await import("./lib/retrieval-eval.mjs");
 const { isResultInScope } = await import("./lib/scope-matcher.mjs");
-const { buildSearchResultsResponse, createHitDescriber, searchResponseText } = await import("../src/server/helpers/search-response.js");
+const { buildSearchResultsResponse, createHitDescriber, runScopedSearch, searchResponseText } = await import("../src/server/helpers/search-response.js");
 
 const describeHit = createHitDescriber({ formatScopeLabel, getSampleIdFromUri });
 // The text of the search tool's own response for these results (eval cases
@@ -49,8 +49,10 @@ const renderResponse = (testCase, results, contentMode) => searchResponseText(bu
 }));
 
 ensureResourceIndexReady();
+// Search in the scope the tool would use (edition defaults read from the query).
+const scopedSearch = async (params) => (await runScopedSearch(searchResources, params)).results;
 const report = await runRetrievalEval({
-  searchResources,
+  searchResources: scopedSearch,
   cases,
   k: golden.k || 5,
   isInScope: isResultInScope,

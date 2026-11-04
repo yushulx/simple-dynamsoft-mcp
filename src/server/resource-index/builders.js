@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { DDV_PREFERRED_ENTRY_FILES } from "./config.js";
 import { shortDocPath } from "./docs-loader.js";
-import { PRODUCT_SELECTION_GUIDANCE, PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
+import { CAPABILITY_FACTS, PRODUCT_SELECTION_GUIDANCE, PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
 
 const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
 const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
@@ -93,7 +93,15 @@ function buildProductSelectionGuidanceText() {
     "- MRZ Scanner (MRZ): use for passport and machine-readable-zone workflows. Public guidance is web/mobile solution/RTU only. Do not default to a foundational API path here; handle server/desktop separately through contact-driven guidance.",
     "- Mobile Document Scanner (MDS): use for document scan and normalization workflows. Public guidance is web-only solution/RTU. Do not default to a foundational API path here; handle mobile and server/desktop separately through contact-driven guidance.",
     "",
-    "Choose DBR when you want direct barcode capabilities, MRZ when you want passport/MRZ flows, MDS when you want document scanning flows, DWT when you need browser acquisition, and DDV when you need viewing, annotation, multi-page handling, or PDF-oriented extension paths."
+    "Choose DBR when you want direct barcode capabilities, MRZ when you want passport/MRZ flows, MDS when you want document scanning flows, DWT when you need browser acquisition, and DDV when you need viewing, annotation, multi-page handling, or PDF-oriented extension paths.",
+    "",
+    "## Known Capability Facts",
+    "",
+    CAPABILITY_FACTS.note,
+    "",
+    `- OCR: ${CAPABILITY_FACTS.ocr}`,
+    `- VIN: ${CAPABILITY_FACTS.vin}`,
+    `- ID documents: ${CAPABILITY_FACTS.idDocuments}`
   ].join("\n");
 }
 
@@ -428,6 +436,7 @@ function buildIndexData({
       productSelection: {
         guidance: PRODUCT_SELECTION_GUIDANCE,
         publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
+        capabilities: { ...CAPABILITY_FACTS },
         offerings: {
           dwt: {
             name: "Dynamic Web TWAIN",
@@ -506,6 +515,7 @@ function buildIndexData({
     productSelection: {
       guidance: PRODUCT_SELECTION_GUIDANCE,
       publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
+      capabilities: { ...CAPABILITY_FACTS },
       dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline. DCV is internal only and is not a selectable public product.",
       useDbrWhen: [
         "Barcode-only workflows where DCV-specific workflows are not required."

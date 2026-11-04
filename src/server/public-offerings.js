@@ -43,6 +43,16 @@ const DBR_ONLY_EDITIONS_NOTE = `Only DBR has multiple editions; ${WEB_ONLY_OMIT_
 const API_LEVEL_NOTE = "high-level or low-level. DBR mobile ONLY; ignored for web/server/other products.";
 const PRODUCT_SELECTION_GUIDANCE = "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.";
 
+// Capability facts confirmed by Dynamsoft that the docs do not state outright
+// (especially what is NOT offered). Served by get_index and the pinned
+// product-selection guidance so agents answer "do you support X?" correctly.
+const CAPABILITY_FACTS = {
+  note: "Known capability facts. They take precedence over inference; for anything not listed here, search before concluding that a capability is unsupported.",
+  ocr: "There is no standalone OCR SDK. The OCR Connector is an add-on of Dynamic Web TWAIN (DWT) and is used only together with DWT, typically on a PC or workstation. Do not recommend it for mobile, camera-based, or non-DWT web workflows.",
+  vin: "VINs are read from their barcodes with DBR (web sample: read-vin). Reading VIN text (OCR) is not offered.",
+  idDocuments: "Passports and ID cards with an MRZ zone: MRZ. AAMVA driver licenses: DBR, which decodes the PDF417 barcode and parses the driver-license fields (web sample: read-a-drivers-license)."
+};
+
 function normalizePublicOffering(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
@@ -76,6 +86,7 @@ export {
   DBR_ONLY_EDITIONS_NOTE,
   API_LEVEL_NOTE,
   PRODUCT_SELECTION_GUIDANCE,
+  CAPABILITY_FACTS,
   normalizePublicOffering,
   getHydrationProduct,
   isKnownPublicOffering,
