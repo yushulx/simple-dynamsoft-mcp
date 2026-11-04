@@ -144,9 +144,21 @@ export function registerIndexTools({
       const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
       if (unsupportedScopeResponse) return unsupportedScopeResponse;
 
-      await ensureScopeHydrated({
+      // MRZ/MDS are served for web only: hydration, exact sample matches,
+      // sample suggestions, and ranked search all use the web default (an
+      // unfiltered MRZ scope would otherwise download the mobile repos in lazy
+      // mode). DBR editions are read from the query only for ranked search.
+      // Version policy keeps the scope exactly as the caller gave it.
+      const defaultEdition = resolveSearchScope({
+        query: "",
         product: normalizedProduct,
         edition: normalizedEdition,
+        platform: normalizedPlatform
+      }).edition;
+
+      await ensureScopeHydrated({
+        product: normalizedProduct,
+        edition: defaultEdition,
         platform: normalizedPlatform,
         type: type || "any"
       });
@@ -164,23 +176,13 @@ export function registerIndexTools({
       }
 
       const maxResults = Math.min(limit || 5, 10);
-      // MRZ/MDS are served for web only: exact sample matches and sample
-      // suggestions use the same default edition as ranked search. (DBR
-      // editions are read from the query only for ranked search.)
-      const sampleEdition = resolveSearchScope({
-        query: "",
-        product: normalizedProduct,
-        edition: normalizedEdition,
-        platform: normalizedPlatform
-      }).edition;
-
       // Exact sample-ID fast path (when searching for samples)
       const effectiveType = type || "any";
       if (effectiveType === "sample" || effectiveType === "any") {
         const normalizedQuery = normalizeSampleName(query);
         const scopedSamples = getSampleEntries({
           product: normalizedProduct,
-          edition: sampleEdition,
+          edition: defaultEdition,
           platform: normalizedPlatform
         });
         const exactMatches = scopedSamples.filter((entry) => {
@@ -251,7 +253,7 @@ export function registerIndexTools({
           const suggestions = await getSampleSuggestions({
             query,
             product: normalizedProduct,
-            edition: sampleEdition,
+            edition: defaultEdition,
             platform: normalizedPlatform,
             limit: maxResults
           });
