@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber } from "../helpers/search-response.js";
+import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber, runScopedSearch } from "../helpers/search-response.js";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
 import {
   buildUnknownPublicProductResponse,
@@ -9,7 +9,7 @@ import {
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
 import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
-import { validatePlatform, validateEdition } from "../normalizers.js";
+import { resolveSearchScope, validatePlatform, validateEdition } from "../normalizers.js";
 
 export function registerIndexTools({
   server,
@@ -144,9 +144,21 @@ export function registerIndexTools({
       const unsupportedScopeResponse = buildUnsupportedPublicScopeResponse(normalizedProduct, normalizedEdition, normalizedPlatform);
       if (unsupportedScopeResponse) return unsupportedScopeResponse;
 
-      await ensureScopeHydrated({
+      // MRZ/MDS are served for web only: hydration, exact sample matches,
+      // sample suggestions, and ranked search all use the web default (an
+      // unfiltered MRZ scope would otherwise download the mobile repos in lazy
+      // mode). DBR editions are read from the query only for ranked search.
+      // Version policy keeps the scope exactly as the caller gave it.
+      const defaultEdition = resolveSearchScope({
+        query: "",
         product: normalizedProduct,
         edition: normalizedEdition,
+        platform: normalizedPlatform
+      }).edition;
+
+      await ensureScopeHydrated({
+        product: normalizedProduct,
+        edition: defaultEdition,
         platform: normalizedPlatform,
         type: type || "any"
       });
@@ -164,14 +176,13 @@ export function registerIndexTools({
       }
 
       const maxResults = Math.min(limit || 5, 10);
-
       // Exact sample-ID fast path (when searching for samples)
       const effectiveType = type || "any";
       if (effectiveType === "sample" || effectiveType === "any") {
         const normalizedQuery = normalizeSampleName(query);
         const scopedSamples = getSampleEntries({
           product: normalizedProduct,
-          edition: normalizedEdition,
+          edition: defaultEdition,
           platform: normalizedPlatform
         });
         const exactMatches = scopedSamples.filter((entry) => {
@@ -225,9 +236,9 @@ export function registerIndexTools({
       const preferSampleSuggestionFallback =
         effectiveType === "sample" && looksLikeSampleIdQuery(query);
 
-      const topResults = preferSampleSuggestionFallback
-        ? []
-        : await searchResources({
+      const { results: topResults, scopeNote } = preferSampleSuggestionFallback
+        ? { results: [], scopeNote: "" }
+        : await runScopedSearch(searchResources, {
             query,
             product: normalizedProduct,
             edition: normalizedEdition,
@@ -242,7 +253,7 @@ export function registerIndexTools({
           const suggestions = await getSampleSuggestions({
             query,
             product: normalizedProduct,
-            edition: normalizedEdition,
+            edition: defaultEdition,
             platform: normalizedPlatform,
             limit: maxResults
           });
@@ -302,6 +313,7 @@ export function registerIndexTools({
         results: topResults,
         contentMode,
         product: normalizedProduct,
+        scopeNote,
         describeHit: buildHitDescription,
         getSampleIdFromUri
       });

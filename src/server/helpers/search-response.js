@@ -1,4 +1,21 @@
 import { formatScoreLabel, formatScoreNote } from "./server-helpers.js";
+import { resolveSearchScope } from "../normalizers.js";
+
+// Runs a search in the scope resolveSearchScope picks (see normalizers.js).
+// An edition read from the query never hides every result: with no results
+// it searches again across all editions. `filters` are already normalized.
+async function runScopedSearch(searchResources, { query, product, edition, platform, ...rest }) {
+  const scope = resolveSearchScope({ query, product, edition, platform });
+  const results = await searchResources({ query, product, edition: scope.edition, platform, ...rest });
+  if (!scope.inferredFrom) return { results, scopeNote: "" };
+  if (results.length === 0) {
+    return { results: await searchResources({ query, product, edition, platform, ...rest }), scopeNote: "" };
+  }
+  return {
+    results,
+    scopeNote: `Searched the ${product.toUpperCase()} ${scope.edition} edition because the query names it; pass edition (or platform) explicitly to search another edition.`
+  };
+}
 
 // Matched passages are inlined for the top doc results, so an agent can answer
 // from the relevant section without a read_document round trip. Each passage
@@ -50,14 +67,15 @@ function createHitDescriber({ formatScopeLabel, getSampleIdFromUri }) {
 
 // The search tool's response for ranked results: lead text, one resource_link
 // per hit, matched passages (unless contentMode is "none"), plain URI list.
-// `product` is the normalized product filter (empty when none was given).
-function buildSearchResultsResponse({ query, product, results, contentMode, describeHit, getSampleIdFromUri }) {
+// `product` is the normalized product filter (empty when none was given);
+// `scopeNote` explains a search scope the server chose (empty when none).
+function buildSearchResultsResponse({ query, product, scopeNote = "", results, contentMode, describeHit, getSampleIdFromUri }) {
   const passages = contentMode === "none" ? "" : formatSearchPassages(results);
   const linkGuidance = "call read_document with the exact uri of a doc:// result for the full page, or get_sample_files with resource_uri for a sample:// result.";
   const readGuidance = passages
     ? `Matched passages of the top results follow the links; when they do not cover the question, ${linkGuidance}`
     : `To read a result, ${linkGuidance}`;
-  const found = `Found ${results.length} result(s) for "${query}". ${readGuidance}`;
+  const found = `Found ${results.length} result(s) for "${query}".${scopeNote ? ` ${scopeNote}` : ""} ${readGuidance}`;
   // Capture Vision / DCV is the umbrella framework, not a selectable public
   // product; steer the agent to the right offering (issue #150).
   const dcvUmbrella = /\b(capture[\s-]?vision|dcv)\b/i.test(query) && !product;
@@ -113,5 +131,6 @@ export {
   formatSearchPassages,
   createHitDescriber,
   buildSearchResultsResponse,
-  searchResponseText
+  searchResponseText,
+  runScopedSearch
 };

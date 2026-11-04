@@ -25,9 +25,12 @@ function percentile(values, p) {
 
 // `isInScope(result, filters)` (when given) applies the server's own
 // product/edition/platform matching so cross-platform leakage is counted too.
+// `expectedEdition` checks the edition the server should pick on its own
+// (cases that pass no edition filter), independently of the filters.
 function isOffScope(result, testCase, isInScope) {
   const product = testCase.filters?.product;
   if (product && result.product !== product) return true;
+  if (testCase.expectedEdition && result.edition !== testCase.expectedEdition) return true;
   if (isInScope && !isInScope(result, testCase.filters || {})) return true;
   const prefixes = testCase.allowedUrlPrefixes;
   if (Array.isArray(prefixes) && prefixes.length > 0 && result.url) {
