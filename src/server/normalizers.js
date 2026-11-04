@@ -403,11 +403,12 @@ function inferProductFromQuery(query) {
 }
 
 // Edition hints for DBR searches, checked against the current query only.
-// "react native" and "node.js" are removed before the web check so they do
-// not also count as web.
+// React Native and Node.js (also written "node js", "node-js") are removed
+// before the web check so their "js"/"react" do not also count as web.
+const NON_WEB_JS = /react[\s-]?native|node[\s.-]?js/g;
 const QUERY_EDITION_PATTERNS = {
   mobile: /\b(?:android|ios|iphone|ipad|swift|kotlin|flutter|maui|xamarin|react[\s-]?native|mobile)\b/,
-  server: /\b(?:python|java|cpp|csharp|dotnet|node\.?js|server|desktop)\b|(?<![a-z0-9])(?:c\+\+|c#|\.net)(?![a-z0-9])/,
+  server: /\b(?:python|java|cpp|csharp|dotnet|node[\s.-]?js|server|desktop)\b|(?<![a-z0-9])(?:c\+\+|c#|\.net)(?![a-z0-9])/,
   web: /\b(?:web|browser|javascript|typescript|js|react|angular|vue|svelte|nuxt|next\.?js|html)\b/
 };
 
@@ -425,7 +426,7 @@ function resolveSearchScope({ query, product, edition, platform }) {
   const mentioned = [];
   if (QUERY_EDITION_PATTERNS.mobile.test(text)) mentioned.push("mobile");
   if (QUERY_EDITION_PATTERNS.server.test(text)) mentioned.push("server");
-  const withoutOtherJs = text.replace(/react[\s-]?native|node\.?js/g, " ");
+  const withoutOtherJs = text.replace(NON_WEB_JS, " ");
   if (QUERY_EDITION_PATTERNS.web.test(withoutOtherJs)) mentioned.push("web");
   if (mentioned.length !== 1) return { edition: "", inferredFrom: "" };
   return { edition: mentioned[0], inferredFrom: "query" };

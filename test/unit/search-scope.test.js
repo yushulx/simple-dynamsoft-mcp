@@ -11,6 +11,9 @@ test("a DBR query naming exactly one edition searches that edition", () => {
   assert.equal(resolveSearchScope({ query: "React Native barcode scanner", product: "dbr" }).edition, "mobile");
   assert.equal(resolveSearchScope({ query: "decode an image in Node.js", product: "dbr" }).edition, "server");
   assert.equal(resolveSearchScope({ query: "decode with C++", product: "dbr" }).edition, "server");
+  for (const query of ["decode an image in Node JS", "Node-JS server decode", "nodejs decode"]) {
+    assert.equal(resolveSearchScope({ query, product: "dbr" }).edition, "server", query);
+  }
 });
 
 test("an ambiguous or edition-free DBR query searches every edition", () => {
