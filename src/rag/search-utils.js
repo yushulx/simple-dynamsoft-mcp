@@ -208,6 +208,27 @@ function extractSnippet(text, terms, maxLen = 240) {
   return (start > 0 ? "…" : "") + snippet + (start + maxLen < cleaned.length ? "…" : "");
 }
 
+// Function words that match almost any passage; a passage must share a word
+// other than these with the query to count as matched.
+const PASSAGE_STOPWORDS = new Set(
+  "a an and are as at be by can do does for from how i if in into is it its me my of on or so the this that to use using via what when where which with without you your".split(" ")
+);
+
+function wordTokens(text) {
+  return String(text || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean);
+}
+
+// True when the passage contains a query content word (compared by stem, with
+// the query's synonym expansion). Semantic scores include the page title,
+// summary, and tags, so the best chunk of a header-driven hit can be an
+// unrelated or near-empty section; such chunks are not shown as passages.
+function passageMatchesQuery(passage, terms) {
+  const queryWords = expandQueryTokens(wordTokens(terms.join(" ")).filter((word) => !PASSAGE_STOPWORDS.has(word)));
+  if (queryWords.length === 0) return false;
+  const wanted = new Set(queryWords.map(stemToken));
+  return wordTokens(passage).some((word) => wanted.has(stemToken(word)));
+}
+
 // Short snippet plus the full matched passage (capped) for one search hit.
 // `fallbackSnippet` (e.g. the page summary) feeds the short snippet only, when
 // no body passage matched; it is never presented as a passage.
@@ -215,8 +236,9 @@ function buildMatchFields(passage, terms, fallbackSnippet = "") {
   const fields = {};
   const snippet = extractSnippet(passage || fallbackSnippet || "", terms);
   if (snippet) fields.matchedSnippet = snippet;
-  const full = extractSnippet(passage || "", terms, PASSAGE_MAX_CHARS);
-  if (full) fields.matchedPassage = full;
+  if (passage && passageMatchesQuery(passage, terms)) {
+    fields.matchedPassage = extractSnippet(passage, terms, PASSAGE_MAX_CHARS);
+  }
   return fields;
 }
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SEARCH_PASSAGE_COUNT, formatSearchPassages } from "../helpers/search-passages.js";
+import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber } from "../helpers/search-response.js";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
 import {
   buildUnknownPublicProductResponse,
@@ -26,28 +26,7 @@ export function registerIndexTools({
   getSampleEntries,
   getSampleSuggestions
 }) {
-  // Build a resource_link description that lets an agent choose WITHOUT a
-  // follow-up read: type | scope | version | score - summary, then the matched
-  // snippet and canonical URL when available (issue #146).
-  function buildHitDescription(entry) {
-    const versionLabel = entry.version ? `v${entry.version}` : "n/a";
-    const scopeLabel = formatScopeLabel(entry);
-    const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-    const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
-    const scoreLabel = formatScoreLabel(entry);
-    const sharedLabel = entry.type === "doc" && Array.isArray(entry.tags) && entry.tags.includes("shared")
-      ? ` | shared Capture Vision API used by DBR (DCV v${entry.sourceVersion || "n/a"})`
-      : "";
-    let desc = `${entry.type.toUpperCase()} | ${scopeLabel} | ${versionLabel}${sharedLabel}${scoreLabel} - ${entry.summary}${sampleHint}`;
-    if (entry.matchedSnippet) {
-      const snippet = String(entry.matchedSnippet).replace(/\s+/g, " ").slice(0, 220);
-      desc += ` — "${snippet}"`;
-    }
-    if (entry.type === "doc" && entry.url) {
-      desc += ` | ${entry.url}`;
-    }
-    return desc;
-  }
+  const buildHitDescription = createHitDescriber({ formatScopeLabel, getSampleIdFromUri });
 
   function looksLikeSampleIdQuery(value) {
     const normalized = String(value || "").trim();
@@ -318,60 +297,14 @@ export function registerIndexTools({
         };
       }
 
-      // Capture Vision / DCV is the umbrella framework, not a selectable public
-      // product — steer the agent to the right offering (issue #150).
-      const dcvUmbrella = /\b(capture[\s-]?vision|dcv)\b/i.test(query) && !normalizedProduct;
-      const passages = contentMode === "none" ? "" : formatSearchPassages(topResults);
-      const linkGuidance = "call read_document with the exact uri of a doc:// result for the full page, or get_sample_files with resource_uri for a sample:// result.";
-      const readGuidance = passages
-        ? `Matched passages of the top results follow the links; when they do not cover the question, ${linkGuidance}`
-        : `To read a result, ${linkGuidance}`;
-      const leadText = dcvUmbrella
-        ? `"Capture Vision" (DCV) is Dynamsoft's umbrella framework — pick the public product for your task: DBR (barcodes), MRZ (passports/IDs), MDS (document capture), DWT (scanner hardware), DDV (document viewer). Results below span the closest matches.\nFound ${topResults.length} result(s) for "${query}". ${readGuidance}`
-        : `Found ${topResults.length} result(s) for "${query}". ${readGuidance}`;
-      const content = [
-        {
-          type: "text",
-          text: leadText
-        }
-      ];
-
-      for (const entry of topResults) {
-        const versionLabel = entry.version ? `v${entry.version}` : "n/a";
-        const scopeLabel = formatScopeLabel(entry);
-        const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-        const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
-        const scoreLabel = formatScoreLabel(entry);
-        content.push({
-          type: "resource_link",
-          uri: entry.uri,
-          name: entry.title,
-          description: buildHitDescription(entry),
-          mimeType: entry.mimeType,
-          annotations: {
-            audience: ["assistant"],
-            priority: 0.8
-          }
-        });
-      }
-
-      if (passages) {
-        content.push({ type: "text", text: passages });
-      }
-
-      const plainLines = topResults.map((entry, index) => {
-        const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-        const action = entry.type === "sample" ? "get_sample_files resource_uri" : "read_document uri";
-        const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
-        const scoreNote = formatScoreNote(entry);
-        return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote} (${action})`;
+      return buildSearchResultsResponse({
+        query,
+        results: topResults,
+        contentMode,
+        product: normalizedProduct,
+        describeHit: buildHitDescription,
+        getSampleIdFromUri
       });
-      content.push({
-        type: "text",
-        text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
-      });
-
-      return { content };
     }
   );
 }

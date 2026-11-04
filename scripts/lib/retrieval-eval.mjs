@@ -44,16 +44,16 @@ function normalizeForMatch(text) {
   return String(text || "").toLowerCase().replace(/\s+/g, " ");
 }
 
-// What an agent reads from a search response without a follow-up call: each
-// link's summary and short snippet (as in the tool's resource_link
-// descriptions), plus, in passage mode, the formatted passages block.
-function emittedText(results, k, formatPassages) {
-  const descriptions = results.slice(0, k).map((result) => {
-    const snippet = result.matchedSnippet ? String(result.matchedSnippet).replace(/\s+/g, " ").slice(0, 220) : "";
-    return `${result.title || ""} - ${result.summary || ""} ${snippet}`;
-  }).join("\n");
-  const passages = formatPassages ? formatPassages(results) : "";
-  return { snippet: descriptions, passage: passages ? `${descriptions}\n${passages}` : descriptions };
+// What an agent reads from the search tool's actual response in each content
+// mode. `renderResponse(testCase, results, contentMode)` returns that text
+// (scripts/eval-retrieval.mjs builds it with the tool's own response builder).
+function emittedText(testCase, results, k, renderResponse) {
+  if (!renderResponse) return { snippet: "", passage: "" };
+  const top = results.slice(0, k);
+  return {
+    snippet: renderResponse(testCase, top, "none"),
+    passage: renderResponse(testCase, top, "passage")
+  };
 }
 
 // answerTerms: groups of alternatives; the answer counts as present when
@@ -63,7 +63,7 @@ function answerPresent(text, answerTerms) {
   return answerTerms.every((group) => group.some((term) => haystack.includes(normalizeForMatch(term))));
 }
 
-function scoreCase(testCase, results, k, isInScope, formatPassages) {
+function scoreCase(testCase, results, k, isInScope, renderResponse) {
   const relevant = new Map(
     Object.entries(testCase.relevant || {}).map(([url, grade]) => [normalizeUrl(url), Number(grade) || 0])
   );
@@ -81,7 +81,7 @@ function scoreCase(testCase, results, k, isInScope, formatPassages) {
   const urls = top.map((result) => normalizeUrl(result.url || result.uri));
   const duplicates = urls.length - new Set(urls).size;
   const hasAnswer = Array.isArray(testCase.answerTerms) && testCase.answerTerms.length > 0;
-  const emitted = emittedText(results, k, formatPassages);
+  const emitted = emittedText(testCase, results, k, renderResponse);
 
   return {
     id: testCase.id,
@@ -147,7 +147,7 @@ function summarize(caseScores, firstPass, warmPass) {
   };
 }
 
-async function runRetrievalEval({ searchResources, cases, k = 5, isInScope, formatPassages }) {
+async function runRetrievalEval({ searchResources, cases, k = 5, isInScope, renderResponse }) {
   const caseScores = [];
   const firstPass = [];
   const warmPass = [];
@@ -156,7 +156,7 @@ async function runRetrievalEval({ searchResources, cases, k = 5, isInScope, form
     const results = await searchResources({ query: testCase.query, ...(testCase.filters || {}), limit: k, throwOnError: true });
     const latencyMs = performance.now() - startedAt;
     firstPass.push(latencyMs);
-    caseScores.push({ ...scoreCase(testCase, results, k, isInScope, formatPassages), latencyMs });
+    caseScores.push({ ...scoreCase(testCase, results, k, isInScope, renderResponse), latencyMs });
   }
   for (const testCase of cases) {
     const startedAt = performance.now();

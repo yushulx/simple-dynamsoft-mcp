@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import {
   expandQueryTokens,
   chunkMarkdown,
-  extractSnippet
+  extractSnippet,
+  buildMatchFields
 } from "../../src/rag/search-utils.js";
 import { createLexicalProvider } from "../../src/rag/lexical-provider.js";
+import { formatSearchPassages } from "../../src/server/helpers/search-response.js";
 
 test("#148: expandQueryTokens adds domain synonyms and stems", () => {
   const out = expandQueryTokens(["webcam"]);
@@ -129,4 +131,24 @@ test("extractSnippet keeps text that fits whole, even when the first match is la
   const text = `Heading > Setup ${"filler ".repeat(100)}call init() here.`;
   assert.ok(text.length < 1500 && text.indexOf("init") > 500);
   assert.equal(extractSnippet(text, ["init"], 1500), text);
+});
+
+test("a passage sharing only function words with the query is not shown as a match", () => {
+  const fields = buildMatchFields("Security > How to configure the firewall", ["how", "to", "set", "the", "license", "key"]);
+  assert.equal(fields.matchedPassage, undefined);
+  assert.ok(fields.matchedSnippet, "the short snippet is still returned");
+});
+
+test("a passage matching a query word by stem is shown", () => {
+  const fields = buildMatchFields("Scan > Call scan() on the router.", ["scanning", "barcodes"]);
+  assert.match(fields.matchedPassage, /Call scan\(\)/);
+});
+
+test("matched passages are shown for docs only, not for samples", () => {
+  const text = formatSearchPassages([
+    { type: "sample", title: "S", uri: "sample://s", matchedPassage: "DBR web sample s" },
+    { type: "doc", title: "D", uri: "doc://d", url: "https://www.dynamsoft.com/d", matchedPassage: "Doc body" }
+  ]);
+  assert.doesNotMatch(text, /sample:\/\/s/);
+  assert.match(text, /\[2\] D \(doc:\/\/d\)\nSource: https:\/\/www\.dynamsoft\.com\/d\nDoc body/);
 });

@@ -30,11 +30,23 @@ if (cases.length === 0) {
   process.exit(1);
 }
 
-const { ensureResourceIndexReady } = await import("../src/server/resource-index.js");
+const { ensureResourceIndexReady, formatScopeLabel, getSampleIdFromUri } = await import("../src/server/resource-index.js");
 const { searchResources } = await import("../src/rag/index.js");
 const { runRetrievalEval } = await import("./lib/retrieval-eval.mjs");
 const { isResultInScope } = await import("./lib/scope-matcher.mjs");
-const { formatSearchPassages } = await import("../src/server/helpers/search-passages.js");
+const { buildSearchResultsResponse, createHitDescriber, searchResponseText } = await import("../src/server/helpers/search-response.js");
+
+const describeHit = createHitDescriber({ formatScopeLabel, getSampleIdFromUri });
+// The text of the search tool's own response for these results (eval cases
+// pass already-normalized product filters).
+const renderResponse = (testCase, results, contentMode) => searchResponseText(buildSearchResultsResponse({
+  query: testCase.query,
+  product: testCase.filters?.product || "",
+  results,
+  contentMode,
+  describeHit,
+  getSampleIdFromUri
+}));
 
 ensureResourceIndexReady();
 const report = await runRetrievalEval({
@@ -42,7 +54,7 @@ const report = await runRetrievalEval({
   cases,
   k: golden.k || 5,
   isInScope: isResultInScope,
-  formatPassages: formatSearchPassages
+  renderResponse
 });
 report.provider = provider;
 
