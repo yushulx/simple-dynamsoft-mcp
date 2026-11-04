@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SEARCH_PASSAGE_COUNT, formatSearchPassages } from "../helpers/search-passages.js";
 import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
 import {
   buildUnknownPublicProductResponse,
@@ -119,8 +120,9 @@ export function registerIndexTools({
         "- version: Version constraint (e.g. '10', '11.x'). Only latest major is served by default.",
         "- type: 'doc', 'sample', 'index', 'policy', or 'any' (default). Use 'sample' to restrict to sample results.",
         "- limit: 1-10 (default 5). Max number of results.",
+        `- content: 'passage' (default) includes the matched passage (up to ~1500 chars) of the top ${SEARCH_PASSAGE_COUNT} results; 'none' returns links and short snippets only.`,
         "",
-        "RETURNS: An MCP response whose content array includes a leading text summary item followed by zero or more resource_link items with URIs. For doc:// URIs, call read_document with the exact returned uri to get the full document text before answering. For sample:// URIs, call get_sample_files with resource_uri to get the full project files.",
+        "RETURNS: An MCP response whose content array includes a leading text summary item, zero or more resource_link items with URIs, and (unless content='none') a text item with the matched passages of the top results. Answer from a passage when it covers the question; otherwise, for doc:// URIs call read_document with the exact returned uri to get the full document text. For sample:// URIs, call get_sample_files with resource_uri to get the full project files.",
         "",
         "RELATED TOOLS: get_index (discover products first), list_samples (browse all samples), read_document (read a doc:// result), get_sample_files (retrieve full sample project files)."
       ].join("\n"),
@@ -131,7 +133,8 @@ export function registerIndexTools({
         platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint (major or full version)"),
         type: z.enum(["doc", "sample", "index", "policy", "any"]).optional(),
-        limit: z.number().int().min(1).max(10).optional().describe("Max results (default 5)")
+        limit: z.number().int().min(1).max(10).optional().describe("Max results (default 5)"),
+        content: z.enum(["passage", "none"]).optional().describe(`'passage' (default): include the matched passage of the top ${SEARCH_PASSAGE_COUNT} results. 'none': links and short snippets only.`)
       },
       annotations: {
         readOnlyHint: true,
@@ -140,7 +143,7 @@ export function registerIndexTools({
         openWorldHint: false
       }
     },
-    async ({ query, product, edition, platform, version, type, limit }) => {
+    async ({ query, product, edition, platform, version, type, limit, content: contentMode }) => {
       const normalizedProduct = normalizeProduct(product);
       if (product && !isKnownPublicOffering(normalizedProduct)) {
         return buildUnknownPublicProductResponse(product);
@@ -318,7 +321,11 @@ export function registerIndexTools({
       // Capture Vision / DCV is the umbrella framework, not a selectable public
       // product — steer the agent to the right offering (issue #150).
       const dcvUmbrella = /\b(capture[\s-]?vision|dcv)\b/i.test(query) && !normalizedProduct;
-      const readGuidance = "For doc:// results, call read_document with the exact uri to get the document text; for sample:// results, call get_sample_files with resource_uri.";
+      const passages = contentMode === "none" ? "" : formatSearchPassages(topResults);
+      const linkGuidance = "call read_document with the exact uri of a doc:// result for the full page, or get_sample_files with resource_uri for a sample:// result.";
+      const readGuidance = passages
+        ? `Matched passages of the top results follow the links; when they do not cover the question, ${linkGuidance}`
+        : `To read a result, ${linkGuidance}`;
       const leadText = dcvUmbrella
         ? `"Capture Vision" (DCV) is Dynamsoft's umbrella framework — pick the public product for your task: DBR (barcodes), MRZ (passports/IDs), MDS (document capture), DWT (scanner hardware), DDV (document viewer). Results below span the closest matches.\nFound ${topResults.length} result(s) for "${query}". ${readGuidance}`
         : `Found ${topResults.length} result(s) for "${query}". ${readGuidance}`;
@@ -346,6 +353,10 @@ export function registerIndexTools({
             priority: 0.8
           }
         });
+      }
+
+      if (passages) {
+        content.push({ type: "text", text: passages });
       }
 
       const plainLines = topResults.map((entry, index) => {

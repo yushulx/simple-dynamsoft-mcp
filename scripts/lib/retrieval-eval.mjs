@@ -40,7 +40,30 @@ function isReleaseNotes(result) {
   return /\/release-notes?\//i.test(String(result.url || ""));
 }
 
-function scoreCase(testCase, results, k, isInScope) {
+function normalizeForMatch(text) {
+  return String(text || "").toLowerCase().replace(/\s+/g, " ");
+}
+
+// What an agent reads from a search response without a follow-up call: each
+// link's summary and short snippet (as in the tool's resource_link
+// descriptions), plus, in passage mode, the formatted passages block.
+function emittedText(results, k, formatPassages) {
+  const descriptions = results.slice(0, k).map((result) => {
+    const snippet = result.matchedSnippet ? String(result.matchedSnippet).replace(/\s+/g, " ").slice(0, 220) : "";
+    return `${result.title || ""} - ${result.summary || ""} ${snippet}`;
+  }).join("\n");
+  const passages = formatPassages ? formatPassages(results) : "";
+  return { snippet: descriptions, passage: passages ? `${descriptions}\n${passages}` : descriptions };
+}
+
+// answerTerms: groups of alternatives; the answer counts as present when
+// every group has at least one alternative in the text (case-insensitive).
+function answerPresent(text, answerTerms) {
+  const haystack = normalizeForMatch(text);
+  return answerTerms.every((group) => group.some((term) => haystack.includes(normalizeForMatch(term))));
+}
+
+function scoreCase(testCase, results, k, isInScope, formatPassages) {
   const relevant = new Map(
     Object.entries(testCase.relevant || {}).map(([url, grade]) => [normalizeUrl(url), Number(grade) || 0])
   );
@@ -57,6 +80,8 @@ function scoreCase(testCase, results, k, isInScope) {
 
   const urls = top.map((result) => normalizeUrl(result.url || result.uri));
   const duplicates = urls.length - new Set(urls).size;
+  const hasAnswer = Array.isArray(testCase.answerTerms) && testCase.answerTerms.length > 0;
+  const emitted = emittedText(results, k, formatPassages);
 
   return {
     id: testCase.id,
@@ -70,6 +95,10 @@ function scoreCase(testCase, results, k, isInScope) {
     offScope: top.filter((result) => isOffScope(result, testCase, isInScope)).length,
     releaseNotes: top.filter(isReleaseNotes).length,
     returned: top.length,
+    answerInSnippets: hasAnswer ? answerPresent(emitted.snippet, testCase.answerTerms) : null,
+    answerInPassages: hasAnswer ? answerPresent(emitted.passage, testCase.answerTerms) : null,
+    snippetChars: emitted.snippet.length,
+    passageChars: emitted.passage.length,
     top: top.map((result, index) => ({
       rank: index + 1,
       grade: gains[index],
@@ -90,6 +119,7 @@ function mean(values) {
 function summarize(caseScores, firstPass, warmPass) {
   const totalReturned = caseScores.reduce((sum, item) => sum + item.returned, 0) || 1;
   const required = caseScores.filter((item) => item.requiredHit !== null);
+  const answered = caseScores.filter((item) => item.answerInPassages !== null);
   return {
     cases: caseScores.length,
     gapCases: caseScores.filter((item) => item.gap).length,
@@ -100,6 +130,11 @@ function summarize(caseScores, firstPass, warmPass) {
     duplicateRate: caseScores.reduce((sum, item) => sum + item.duplicates, 0) / totalReturned,
     offScopeRate: caseScores.reduce((sum, item) => sum + item.offScope, 0) / totalReturned,
     releaseNotesRate: caseScores.reduce((sum, item) => sum + item.releaseNotes, 0) / totalReturned,
+    answerCases: answered.length,
+    answerInSnippetsRate: answered.length ? answered.filter((item) => item.answerInSnippets).length / answered.length : null,
+    answerInPassagesRate: answered.length ? answered.filter((item) => item.answerInPassages).length / answered.length : null,
+    meanSnippetChars: mean(caseScores.map((item) => item.snippetChars)),
+    meanPassageChars: mean(caseScores.map((item) => item.passageChars)),
     // First pass pays index loading and per-scope index builds; the warm pass
     // repeats the same queries, so it reflects steady-state search cost.
     latencyMs: {
@@ -112,7 +147,7 @@ function summarize(caseScores, firstPass, warmPass) {
   };
 }
 
-async function runRetrievalEval({ searchResources, cases, k = 5, isInScope }) {
+async function runRetrievalEval({ searchResources, cases, k = 5, isInScope, formatPassages }) {
   const caseScores = [];
   const firstPass = [];
   const warmPass = [];
@@ -121,7 +156,7 @@ async function runRetrievalEval({ searchResources, cases, k = 5, isInScope }) {
     const results = await searchResources({ query: testCase.query, ...(testCase.filters || {}), limit: k, throwOnError: true });
     const latencyMs = performance.now() - startedAt;
     firstPass.push(latencyMs);
-    caseScores.push({ ...scoreCase(testCase, results, k, isInScope), latencyMs });
+    caseScores.push({ ...scoreCase(testCase, results, k, isInScope, formatPassages), latencyMs });
   }
   for (const testCase of cases) {
     const startedAt = performance.now();

@@ -76,7 +76,7 @@ async function buildIndex({ entries, pkgVersion, cacheDir, baseUrl, overrides = 
     vectorCache: createVectorCacheHelpers({ ragConfig, pkgVersion, legacyPrebuiltIndexUrl: "", logRag: noop })
   });
   const provider = await orchestrator.loadSearchProvider("gemini");
-  await provider.search("alpha", {}, 5);
+  return provider.search("alpha", {}, 5);
 }
 
 test("rebuilds embed only chunks whose text changed", async () => {
@@ -205,6 +205,26 @@ test("a build that would embed more than RAG_MAX_EMBED_CHUNKS fails before any e
       /Refusing to embed 2 chunks/
     );
     assert.equal(stub.stats.texts, 0);
+  } finally {
+    await stub.close();
+    rmSync(cacheDir, { recursive: true, force: true });
+  }
+});
+
+test("semantic results carry the matched chunk as a passage, after a build and after a cache reload", async () => {
+  const stub = await startStubEmbedder();
+  const cacheDir = mkdtempSync(join(tmpdir(), "passages-"));
+  const entries = [
+    { id: "a", uri: "doc://a", type: "doc", product: "dbr", title: "Alpha", summary: "page summary", tags: ["tag"], embedText: "## Setup\nCall alpha.init() before scanning." }
+  ];
+  try {
+    for (const label of ["fresh build", "cache reload"]) {
+      const [hit] = await buildIndex({ entries, pkgVersion: "1.0.0", cacheDir, baseUrl: stub.url });
+      assert.match(hit.matchedPassage, /Setup.*Call alpha\.init\(\) before scanning\./, label);
+      // The page header embedded with each chunk is not repeated in the passage.
+      assert.doesNotMatch(hit.matchedPassage, /page summary/, label);
+      assert.match(hit.matchedSnippet, /alpha\.init\(\)/, label);
+    }
   } finally {
     await stub.close();
     rmSync(cacheDir, { recursive: true, force: true });

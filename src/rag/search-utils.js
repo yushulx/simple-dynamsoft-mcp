@@ -184,6 +184,10 @@ function expandQueryTokens(tokens) {
   return [...out];
 }
 
+// Cap for matched passages returned by search: one chunk (RAG_CHUNK_SIZE 1200)
+// plus its heading path. The same cap applies to semantic and lexical results.
+const PASSAGE_MAX_CHARS = 1500;
+
 // A ~maxLen window around the first query term found in text — used to give the
 // agent a matched snippet in search results (issues #146/#149).
 function extractSnippet(text, terms, maxLen = 240) {
@@ -200,6 +204,18 @@ function extractSnippet(text, terms, maxLen = 240) {
   const start = Math.max(0, hitAt - Math.floor(maxLen / 3));
   const snippet = cleaned.slice(start, start + maxLen).trim();
   return (start > 0 ? "…" : "") + snippet + (start + maxLen < cleaned.length ? "…" : "");
+}
+
+// Short snippet plus the full matched passage (capped) for one search hit.
+// `fallbackSnippet` (e.g. the page summary) feeds the short snippet only, when
+// no body passage matched; it is never presented as a passage.
+function buildMatchFields(passage, terms, fallbackSnippet = "") {
+  const fields = {};
+  const snippet = extractSnippet(passage || fallbackSnippet || "", terms);
+  if (snippet) fields.matchedSnippet = snippet;
+  const full = extractSnippet(passage || "", terms, PASSAGE_MAX_CHARS);
+  if (full) fields.matchedPassage = full;
+  return fields;
 }
 
 function buildEntryBaseText(entry) {
@@ -230,7 +246,10 @@ function buildEmbeddingItems(resourceIndex, ragConfig) {
         items.push({
           id: `${entry.id}#${index}`,
           uri: entry.uri,
-          text: truncateText(combined, ragConfig.maxTextChars)
+          text: truncateText(combined, ragConfig.maxTextChars),
+          // The chunk alone (heading path + body), without the page header that
+          // is embedded with it; search returns this as the matched passage.
+          passage: chunk
         });
       });
       continue;
@@ -308,6 +327,8 @@ export {
   expandQueryTokens,
   stemToken,
   extractSnippet,
+  buildMatchFields,
+  PASSAGE_MAX_CHARS,
   buildEmbeddingItems,
   buildIndexSignature,
   normalizeVector,

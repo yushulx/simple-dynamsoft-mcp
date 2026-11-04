@@ -300,6 +300,9 @@ function createProviderOrchestrator({
           uri: item.uri,
           hash: createHash("sha256").update(`${model}\n${item.text}`).digest("hex").slice(0, 32)
         }));
+        // Passages stay in memory only (not in the cache file): they come from
+        // the current docs, parallel to indexedItems.
+        const passages = items.map((item) => item.passage || "");
         const checkpointHashes = new Set();
         const collect = () => (ragConfig.rebuild
           ? new Map()
@@ -338,7 +341,7 @@ function createProviderOrchestrator({
           vectorCache.clearVectorIndexCheckpoint(checkpointFile);
           vectorCache.pruneOtherCaches({ provider: name, model, keepFile: cacheFile });
           logRag(`cache hit provider=${name} file=${cacheFile} items=${indexedItems.length}`);
-          return { items: indexedItems, vectors };
+          return { items: indexedItems, vectors, passages };
         }
 
         if (name === "gemini" && embedder.resetMetrics) {
@@ -431,7 +434,8 @@ function createProviderOrchestrator({
         );
         return {
           items: payload.items,
-          vectors: payload.vectors
+          vectors: payload.vectors,
+          passages
         };
       })();
       return indexPromise;
@@ -462,7 +466,7 @@ function createProviderOrchestrator({
           if (!entry || !utils.entryMatchesScope(entry, filters)) continue;
           const existing = bestByUri.get(item.uri);
           if (!existing || score > existing.score) {
-            bestByUri.set(item.uri, { entry, score, chunkText: item.text });
+            bestByUri.set(item.uri, { entry, score, passage: index.passages[i] });
           }
         }
 
@@ -477,11 +481,10 @@ function createProviderOrchestrator({
         const kept = ordered.filter((item) => item.score >= relativeFloor);
 
         const snippetTerms = baseQuery.toLowerCase().split(/\s+/).filter(Boolean);
-        const results = kept.map((item) => {
-          const scored = utils.attachScore(item.entry, item.score);
-          const snippet = utils.extractSnippet ? utils.extractSnippet(item.chunkText || "", snippetTerms, 240) : "";
-          return snippet ? { ...scored, matchedSnippet: snippet } : scored;
-        });
+        const results = kept.map((item) => ({
+          ...utils.attachScore(item.entry, item.score),
+          ...utils.buildMatchFields(item.passage, snippetTerms)
+        }));
 
         if (limit) return results.slice(0, limit);
         return results;
