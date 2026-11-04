@@ -124,3 +124,9 @@ test("extractSnippet windows around the first term", () => {
   const snip = extractSnippet(text, ["gamma"], 20);
   assert.match(snip, /gamma/);
 });
+
+test("extractSnippet keeps text that fits whole, even when the first match is late", () => {
+  const text = `Heading > Setup ${"filler ".repeat(100)}call init() here.`;
+  assert.ok(text.length < 1500 && text.indexOf("init") > 500);
+  assert.equal(extractSnippet(text, ["init"], 1500), text);
+});

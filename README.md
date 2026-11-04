@@ -296,7 +296,7 @@ mcpServers:
 The server exposes this minimal tool surface:
 
 - `get_index` -- compact product/version/sample index with selection guidance
-- `search` -- semantic search across docs and samples (also accepts exact sample IDs); returns `doc://` and `sample://` links plus the matched passage (up to ~1500 chars) of the top 3 results (`content: "none"` returns links only)
+- `search` -- semantic search across docs and samples (also accepts exact sample IDs); returns `doc://` and `sample://` links plus the matched passage (up to ~1500 chars) of the top 3 results (`content: "none"` returns links and short snippets only)
 - `read_document` -- read the full text (title, public docs URL, body) of a `doc://` URI returned by `search`
 - `list_samples` -- browse available samples for a product/edition/platform
 - `resolve_version` -- resolve current version for a product/edition/platform

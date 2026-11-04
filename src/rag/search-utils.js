@@ -193,6 +193,8 @@ const PASSAGE_MAX_CHARS = 1500;
 function extractSnippet(text, terms, maxLen = 240) {
   const cleaned = normalizeText(text);
   if (!cleaned) return "";
+  // Text that fits is returned whole, so its heading and leading context stay.
+  if (cleaned.length <= maxLen) return cleaned;
   const lower = cleaned.toLowerCase();
   let hitAt = -1;
   for (const term of terms) {
