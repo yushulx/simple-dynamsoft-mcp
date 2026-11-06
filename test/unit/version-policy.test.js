@@ -64,10 +64,11 @@ test("BBS checks each app against its own current major when the apps diverge", 
   assert.equal(ios.latestMajor, 3);
   assert.equal(check({ version: "3", platform: "android" }).ok, false);
   assert.equal(check({ version: "4.0.0", platform: "android" }).ok, true);
-  // Shared pages and platform-less requests accept any current app major.
-  assert.equal(check({ version: "3", platform: "mobile" }).ok, true);
-  assert.equal(check({ version: "3" }).ok, true);
-  assert.equal(check({ version: "2" }).ok, false);
+  // Shared pages and platform-less requests keep the docs-set major.
+  assert.equal(check({ version: "4.0.0", platform: "mobile" }).ok, true);
+  assert.equal(check({ version: "3", platform: "mobile" }).ok, false);
+  assert.equal(check({ version: "3" }).ok, false);
+  assert.equal(check({ version: "3" }).message.includes("v4"), true);
 });
 
 test("#152: validatePlatform accepts known + alias, rejects unknown with suggestion", () => {

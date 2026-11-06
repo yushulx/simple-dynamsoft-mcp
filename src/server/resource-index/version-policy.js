@@ -70,13 +70,10 @@ function retryWithoutVersionHint(currentMajor) {
 }
 
 // BBS Android and iOS apps release independently, so each platform has its own
-// current major. A platform-specific request is checked against that platform;
-// shared pages (no app platform) accept any current app major or the docs-set one.
-function resolveBbsCurrentMajor({ requestedMajor, platform, latestMajor, bbsPlatformMajors = {} }) {
-  const platformMajor = bbsPlatformMajors[normalizePlatform(platform)];
-  if (platformMajor) return platformMajor;
-  const currentMajors = [latestMajor.bbs, ...Object.values(bbsPlatformMajors)];
-  return currentMajors.includes(requestedMajor) ? requestedMajor : latestMajor.bbs;
+// current major. An explicit android/ios request is checked against that app;
+// shared pages and platform-less requests keep the docs-set major.
+function resolveBbsCurrentMajor({ platform, latestMajor, bbsPlatformMajors = {} }) {
+  return bbsPlatformMajors[normalizePlatform(platform)] || latestMajor.bbs;
 }
 
 function ensureLatestMajor({ product, version, query, edition, platform, latestMajor, bbsPlatformMajors }) {
@@ -97,7 +94,7 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
     ? latestMajor.dcv
     : latestMajor[inferredProduct];
   if (inferredProduct === "bbs") {
-    currentMajor = resolveBbsCurrentMajor({ requestedMajor, platform, latestMajor, bbsPlatformMajors });
+    currentMajor = resolveBbsCurrentMajor({ platform, latestMajor, bbsPlatformMajors });
   }
 
   if (!requestedMajor || requestedMajor === currentMajor) {
