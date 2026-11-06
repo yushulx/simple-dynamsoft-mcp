@@ -81,7 +81,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
       "Platform/edition rules (important):",
       "- DBR (Dynamsoft Barcode Reader) is the ONLY product with multiple editions: mobile, web, and server/desktop. Ask which one when it is unclear.",
       "- DWT (Dynamic Web TWAIN), DDV (Document Viewer), MRZ (MRZ Scanner), and MDS (Mobile Document Scanner) are web/JavaScript-only in this MCP. NEVER ask the user which platform or language for these — there is no .NET/Java/C++/mobile option here. Go straight to the web quickstart or samples.",
-      "- BBS (Batch Barcode Scanner) is a ready-made Android/iOS app, not an SDK: it has only documentation, no quickstart or code samples. NEVER ask the user which platform or language for it. Answer from search and read_document; for integration, point to its result export (CSV/images, sharing, cloud), or to DBR when the user wants multi-barcode scanning inside their own app.",
+      "- BBS (Batch Barcode Scanner) is a ready-made Android/iOS app, not an SDK: it has only documentation, no quickstart or code samples. NEVER ask the user which programming language for it. The Android and iOS apps release separately, so ask which app (android or ios) only when the answer differs by app, such as versions or release notes. Answer from search and read_document; for integration, point to its result export (CSV/images, sharing, cloud), or to DBR when the user wants multi-barcode scanning inside their own app.",
       "",
       "api_level rule:",
       "- api_level (high-level / low-level) applies ONLY to DBR mobile. Never ask about it, or pass it, for web, server, or any product other than DBR mobile.",

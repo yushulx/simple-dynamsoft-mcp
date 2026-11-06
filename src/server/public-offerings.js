@@ -43,10 +43,10 @@ const PUBLIC_OFFERINGS_TEXT = "dbr, dwt, ddv, mrz, mds, or bbs";
 // Shared lineup-policy wording for tool descriptions and input-schema notes.
 // Single source: when the lineup changes (e.g. a product gains an edition),
 // edit here and the long-form server `instructions` in create-server.js.
-const WEB_ONLY_OMIT_NOTE = "DWT/DDV/MRZ/MDS are web/JS-only and BBS is an Android/iOS app (omit for them).";
+const WEB_ONLY_OMIT_NOTE = "DWT/DDV/MRZ/MDS are web/JS-only (omit for them); BBS is an Android/iOS app (omit edition; pass platform android or ios only for version or release-note questions).";
 const DBR_ONLY_EDITIONS_NOTE = `Only DBR has multiple editions; ${WEB_ONLY_OMIT_NOTE}`;
 const API_LEVEL_NOTE = "high-level or low-level. DBR mobile ONLY; ignored for web/server/other products.";
-const PRODUCT_SELECTION_GUIDANCE = "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, and BBS is an Android/iOS app (docs only, no SDK), so do not ask the user which platform or language for them. api_level (high-level/low-level) applies only to DBR mobile.";
+const PRODUCT_SELECTION_GUIDANCE = "DBR is the only product with multiple editions (mobile/web/server). DWT, DDV, MRZ, and MDS are web/JavaScript-only here, so do not ask the user which platform or language for them. BBS is an Android/iOS app (docs only, no SDK): never ask for a programming language, and ask Android or iOS only when the answer differs by app, such as versions or release notes. api_level (high-level/low-level) applies only to DBR mobile.";
 // Pinned workflow-based selection guide (resource and read_document target),
 // advertised to tool-only clients as get_index productSelection.guideUri.
 const PRODUCT_SELECTION_GUIDE_URI = "doc://product-selection";

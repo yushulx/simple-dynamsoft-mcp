@@ -69,7 +69,17 @@ function retryWithoutVersionHint(currentMajor) {
   return `Retry without the version parameter to get v${currentMajor} content.`;
 }
 
-function ensureLatestMajor({ product, version, query, edition, platform, latestMajor }) {
+// BBS Android and iOS apps release independently, so each platform has its own
+// current major. A platform-specific request is checked against that platform;
+// shared pages (no app platform) accept any current app major or the docs-set one.
+function resolveBbsCurrentMajor({ requestedMajor, platform, latestMajor, bbsPlatformMajors = {} }) {
+  const platformMajor = bbsPlatformMajors[normalizePlatform(platform)];
+  if (platformMajor) return platformMajor;
+  const currentMajors = [latestMajor.bbs, ...Object.values(bbsPlatformMajors)];
+  return currentMajors.includes(requestedMajor) ? requestedMajor : latestMajor.bbs;
+}
+
+function ensureLatestMajor({ product, version, query, edition, platform, latestMajor, bbsPlatformMajors }) {
   const inferredProduct = product || inferProductFromQuery(query);
   if (!inferredProduct) return { ok: true };
 
@@ -83,9 +93,12 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
     return { ok: true, latestMajor: latestMajor.dcv };
   }
 
-  const currentMajor = inferredProduct === "mrz" && normalizedEdition === "mobile"
+  let currentMajor = inferredProduct === "mrz" && normalizedEdition === "mobile"
     ? latestMajor.dcv
     : latestMajor[inferredProduct];
+  if (inferredProduct === "bbs") {
+    currentMajor = resolveBbsCurrentMajor({ requestedMajor, platform, latestMajor, bbsPlatformMajors });
+  }
 
   if (!requestedMajor || requestedMajor === currentMajor) {
     return { ok: true, latestMajor: currentMajor };

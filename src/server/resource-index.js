@@ -368,10 +368,15 @@ const LATEST_MAJOR = {
   bbs: parseMajorVersion(bbsMobileSdk.version)
 };
 
+const BBS_PLATFORM_MAJORS = {
+  android: parseMajorVersion(LATEST_VERSIONS.bbs.android),
+  ios: parseMajorVersion(LATEST_VERSIONS.bbs.ios)
+};
+
 setWebFrameworkPlatformsGetter(getWebFrameworkPlatforms);
 
 function ensureLatestMajor(args) {
-  return ensureLatestMajorWithPolicy({ ...args, latestMajor: LATEST_MAJOR });
+  return ensureLatestMajorWithPolicy({ ...args, latestMajor: LATEST_MAJOR, bbsPlatformMajors: BBS_PLATFORM_MAJORS });
 }
 
 function buildVersionPolicyText() {

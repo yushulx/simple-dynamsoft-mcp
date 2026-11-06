@@ -187,7 +187,7 @@ export function registerVersionTools({
         const lines = [
           "# BBS Version Resolution",
           `- Platform: ${normalizedPlatform}`,
-          `- Latest major: v${LATEST_MAJOR.bbs}`,
+          `- Latest major: v${policy.latestMajor ?? LATEST_MAJOR.bbs}`,
           `- Resolved version: ${platformVersions[normalizedPlatform]}`
         ];
         return { content: [{ type: "text", text: lines.join("\n") }] };

@@ -53,6 +53,23 @@ test("BBS refusals name the latest BBS major", () => {
   assert.equal(ensureLatestMajor({ product: "bbs", version: "3.1.1", latestMajor }).ok, true);
 });
 
+test("BBS checks each app against its own current major when the apps diverge", () => {
+  // Android moved to v4 while iOS is still on v3.
+  const divergent = { ...latestMajor, bbs: 4 };
+  const bbsPlatformMajors = { android: 4, ios: 3 };
+  const check = (args) => ensureLatestMajor({ product: "bbs", latestMajor: divergent, bbsPlatformMajors, ...args });
+
+  const ios = check({ version: "3.1.0", platform: "ios" });
+  assert.equal(ios.ok, true, "current iOS release notes must stay readable");
+  assert.equal(ios.latestMajor, 3);
+  assert.equal(check({ version: "3", platform: "android" }).ok, false);
+  assert.equal(check({ version: "4.0.0", platform: "android" }).ok, true);
+  // Shared pages and platform-less requests accept any current app major.
+  assert.equal(check({ version: "3", platform: "mobile" }).ok, true);
+  assert.equal(check({ version: "3" }).ok, true);
+  assert.equal(check({ version: "2" }).ok, false);
+});
+
 test("#152: validatePlatform accepts known + alias, rejects unknown with suggestion", () => {
   assert.deepEqual(validatePlatform("android"), { ok: true, normalized: "android" });
   assert.deepEqual(validatePlatform("kotlin"), { ok: true, normalized: "android" });
