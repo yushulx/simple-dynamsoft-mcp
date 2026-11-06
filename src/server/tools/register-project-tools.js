@@ -8,7 +8,7 @@ import {
   DBR_ONLY_EDITIONS_NOTE,
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
-import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
+import { buildBbsAppReferenceResponse, buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerProjectTools({
   server,
@@ -85,9 +85,10 @@ export function registerProjectTools({
         "- If you do not have a sample_id or resource_uri yet, call list_samples or search first to discover one.",
         "- For doc:// URIs, use read_document instead (this tool only handles sample:// URIs).",
         "- If the user just wants a quick code snippet, use get_quickstart instead.",
+        "- BBS is an Android/iOS app, not an SDK, so it has no sample projects; this tool only returns its docs and integration links.",
         "",
         "PARAMETERS:",
-        "- product (required): dbr, dwt, ddv, mrz, or mds.",
+        "- product (required): dbr, dwt, ddv, mrz, mds, or bbs.",
         `- edition: mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE}`,
         `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- version: Version constraint. Latest major is used by default.",
@@ -102,7 +103,7 @@ export function registerProjectTools({
         "RELATED TOOLS: list_samples (discover sample IDs), search (find samples by keyword), get_quickstart (quick single-file snippet)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds. Optional when resource_uri is provided (the URI already encodes it)."),
+        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds, bbs. Optional when resource_uri is provided (the URI already encodes it)."),
         edition: z.string().optional().describe(`Edition: mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
         platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview. ${WEB_ONLY_OMIT_NOTE}`),
         version: z.string().optional().describe("Version constraint"),
@@ -167,6 +168,23 @@ export function registerProjectTools({
 
       const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
       const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
+
+      // BBS has no samples; enforce the same version policy as get_quickstart
+      // and resolve_version, without hydrating content the reply never uses.
+      if (normalizedProduct === "bbs") {
+        const bbsPolicy = ensureLatestMajor({
+          product: normalizedProduct,
+          version,
+          query: sample_id,
+          edition: normalizedEdition,
+          platform: normalizedPlatform
+        });
+        if (!bbsPolicy.ok) {
+          return { isError: true, content: [{ type: "text", text: bbsPolicy.message }] };
+        }
+        return buildBbsAppReferenceResponse();
+      }
+
       // A concrete sample:// URI names a hydrated sample we can serve inline, so
       // it must bypass the scope-level redirect (which is for scope-only asks).
       // Without this, search emits mrz/mds mobile/server URIs that this tool then

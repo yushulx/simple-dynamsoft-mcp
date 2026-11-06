@@ -387,6 +387,29 @@ async function runCoreAssertions(client, { requestTimeoutMs = 60000 } = {}) {
   );
   assert.equal(staleRead.isError, true, "read_document should flag stale URIs as errors");
   assert.match(staleRead.content[0].text, /Call search/, "stale URI errors should guide back to search");
+
+  // Product-selection flow for tool-only clients: get_index -> guideUri -> read_document.
+  const index = await client.callTool({ name: "get_index", arguments: {} }, undefined, requestOptions);
+  const { guideUri } = JSON.parse(index.content[0].text).productSelection;
+  assert.ok(resourceUris.includes(guideUri), "get_index guideUri should be a listed pinned resource");
+  const guide = await client.callTool({ name: "read_document", arguments: { uri: guideUri } }, undefined, requestOptions);
+  assert.equal(guide.isError, undefined, "read_document should read the product-selection guide");
+  assert.match(guide.content[0].text, /^# Product Selection Guidance/, "guideUri should resolve to the product-selection guide");
+
+  // BBS is an Android/iOS app with docs only: indexed for android/ios and searchable with public URLs.
+  const { products } = JSON.parse(index.content[0].text);
+  assert.deepEqual(products.bbs.editions.mobile.platforms, ["android", "ios"], "get_index should list BBS for android and ios only");
+  const bbsSearch = await client.callTool(
+    { name: "search", arguments: { query: "panorama mode", product: "bbs", type: "doc", limit: 3 } },
+    undefined,
+    requestOptions
+  );
+  assert.equal(bbsSearch.isError, undefined, "BBS search should not return isError");
+  const bbsLink = bbsSearch.content.find((item) => item.type === "resource_link");
+  assert.ok(bbsLink?.uri.startsWith("doc://bbs/mobile/"), "BBS search should return doc://bbs/mobile/ links");
+  const bbsRead = await client.callTool({ name: "read_document", arguments: { uri: bbsLink.uri } }, undefined, requestOptions);
+  assert.equal(bbsRead.isError, undefined, "read_document should read a BBS doc");
+  assert.match(bbsRead.content[0].text, /\*\*URL:\*\* https:\/\/www\.dynamsoft\.com\/batch-barcode-scanner\/docs\//, "BBS docs should cite their public URL");
 }
 
 async function getFreePort() {

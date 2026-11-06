@@ -80,5 +80,19 @@ export const sdkVersionSources = [
   {
     sdkId: "mds-web",
     strategies: [{ type: "package-json", file: "data/samples/document-scanner-javascript/package.json" }]
+  },
+  {
+    sdkId: "bbs-mobile",
+    docsPath: "data/documentation/batch-barcode-scanner-docs",
+    // BBS ships as Android and iOS apps; each app's release notes list its releases
+    // as "## x.y.z (date)" headings. Each platform's version comes from its own file
+    // (stored at platforms.<platform>.version); the source version is the highest.
+    strategies: [{
+      type: "release-notes-headings",
+      platforms: {
+        android: "app/release-notes/android.md",
+        ios: "app/release-notes/ios.md"
+      }
+    }]
   }
 ];

@@ -66,13 +66,14 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
   const server = new McpServer({
     name: "simple-dynamsoft-mcp",
     version: pkgVersion,
-    description: "MCP server for the public Dynamsoft offerings: Barcode Reader, Dynamic Web TWAIN, Document Viewer, MRZ, and MDS. Includes guidance for choosing the right public product by workflow."
+    description: "MCP server for the public Dynamsoft offerings: Barcode Reader, Dynamic Web TWAIN, Document Viewer, MRZ, MDS, and Batch Barcode Scanner (BBS). Includes guidance for choosing the right public product by workflow."
   }, {
     instructions: [
-      "This server answers questions about five public Dynamsoft offerings: DBR, DWT, DDV, MRZ, MDS.",
+      "This server answers questions about six public Dynamsoft offerings: DBR, DWT, DDV, MRZ, MDS, BBS.",
       "",
       "How to use it:",
-      "- Call get_index first to see valid product/edition/platform combinations before asking the user anything. Its productSelection.capabilities lists known facts (OCR, VIN, ID documents) that take precedence over inference; for other capabilities, search before saying something is not offered.",
+      "- Call get_index first to see valid product/edition/platform combinations before asking the user anything. Its productSelection.capabilities lists known facts (OCR, VIN, ID documents, batch scanning) that take precedence over inference; for other capabilities, search before saying something is not offered.",
+      "- To recommend products for a described workflow, call read_document with productSelection.guideUri from get_index and follow that guide.",
       "- To answer from documentation: call search. When a matched passage in the search response covers the question, answer from it and cite its Source URL. Otherwise call read_document with the exact doc:// uri it returned, base the answer on that text, and cite the public documentation URL it contains. Do not answer from search summaries alone or hand doc:// links to the user.",
       "- For sample:// results, call get_sample_files with resource_uri to get the complete sample project.",
       "- Only ask the user to disambiguate dimensions that actually vary for the chosen product. Do NOT ask about dimensions that don't apply.",
@@ -80,11 +81,12 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
       "Platform/edition rules (important):",
       "- DBR (Dynamsoft Barcode Reader) is the ONLY product with multiple editions: mobile, web, and server/desktop. Ask which one when it is unclear.",
       "- DWT (Dynamic Web TWAIN), DDV (Document Viewer), MRZ (MRZ Scanner), and MDS (Mobile Document Scanner) are web/JavaScript-only in this MCP. NEVER ask the user which platform or language for these — there is no .NET/Java/C++/mobile option here. Go straight to the web quickstart or samples.",
+      "- BBS (Batch Barcode Scanner) is a ready-made Android/iOS app, not an SDK: it has only documentation, no quickstart or code samples. NEVER ask the user which programming language for it. The Android and iOS apps release separately, so ask which app (android or ios) only when the answer differs by app, such as versions or release notes. Answer from search and read_document; for integration, point to its result export (CSV/images, sharing, cloud), or to DBR when the user wants multi-barcode scanning inside their own app.",
       "",
       "api_level rule:",
       "- api_level (high-level / low-level) applies ONLY to DBR mobile. Never ask about it, or pass it, for web, server, or any product other than DBR mobile.",
       "",
-      "For scopes this MCP does not index (e.g. MRZ/MDS on mobile or server), tools return official documentation and sample links — pass those on rather than inventing code."
+      "For scopes this MCP does not index (e.g. MRZ/MDS on mobile or server), tools return official documentation and sample links — pass those on rather than inventing code. For BBS, the quickstart and sample tools return its documentation and integration links."
     ].join("\n")
   });
 

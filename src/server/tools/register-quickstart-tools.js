@@ -8,7 +8,7 @@ import {
   DBR_ONLY_EDITIONS_NOTE,
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
-import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
+import { buildBbsAppReferenceResponse, buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerQuickstartTools({
   server,
@@ -143,9 +143,10 @@ export function registerQuickstartTools({
         "- If the user wants full project files (multiple source files, build configs), use get_sample_files instead.",
         "- If the user wants to browse available samples first, use search or list_samples.",
         "- If the user only needs version info, use resolve_version.",
+        "- BBS is an Android/iOS app, not an SDK: there is no starter code, so get_quickstart only returns its docs and integration links.",
         "",
         "PARAMETERS:",
-        "- product (required): dbr, dwt, ddv, mrz, or mds.",
+        "- product (required): dbr, dwt, ddv, mrz, mds, or bbs.",
         `- edition: core, mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE} Inferred from platform if omitted.`,
         `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- language: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular. Helps select the best sample variant.",
@@ -158,7 +159,7 @@ export function registerQuickstartTools({
         "RELATED TOOLS: search (find specific docs or samples), get_sample_files (get full multi-file project), resolve_version (version numbers only)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds, bbs"),
         edition: z.string().optional().describe(`Edition: core, mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
         platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         language: z.string().optional().describe("Language hint: kotlin, java, swift, js, ts, python, cpp, csharp, react, vue, angular"),
@@ -187,6 +188,22 @@ export function registerQuickstartTools({
       const isPublicDcvProduct = normalizedProduct === "mrz" || normalizedProduct === "mds";
       const effectiveProduct = isPublicDcvProduct ? "dcv" : normalizedProduct;
       const publicProductLabel = getPublicProductLabel(normalizedProduct);
+
+      // BBS has no SDK: its reference reply needs no local content, so it must
+      // not wait on (or fail with) a lazy docs download.
+      if (normalizedProduct === "bbs") {
+        const bbsPolicy = ensureLatestMajor({
+          product: normalizedProduct,
+          version,
+          query: scenario,
+          edition: normalizedEdition,
+          platform: normalizedPlatform
+        });
+        if (!bbsPolicy.ok) {
+          return { isError: true, content: [{ type: "text", text: bbsPolicy.message }] };
+        }
+        return buildBbsAppReferenceResponse();
+      }
 
       await ensureScopeHydrated({
         product: normalizedProduct,
@@ -996,6 +1013,7 @@ Add camera permissions in Platforms/Android/AndroidManifest.xml and Platforms/iO
             "- ddv: web",
             "- mrz: web",
             "- mds: web",
+            "- bbs: app only (docs and integration links, no starter code)",
             "Call get_index to see valid product/edition/platform combinations."
           ].join("\n")
         }]

@@ -15,6 +15,9 @@ const MOBILE_SAMPLE_REPOS = {
   maui: "https://github.com/Dynamsoft/capture-vision-maui-samples"
 };
 
+const BBS_DOCS_URL = "https://www.dynamsoft.com/batch-barcode-scanner/docs/introduction.html";
+const BBS_INTEGRATION_SAMPLES_URL = "https://github.com/Dynamsoft/batch-barcode-scanner-samples/";
+
 function getPublicServerSamplesUrl(platform) {
   return SERVER_SAMPLE_REPOS[platform] || SERVER_SAMPLE_REPOS.python;
 }
@@ -77,7 +80,26 @@ function buildUnsupportedPublicScopeResponse(product, edition, platform) {
   };
 }
 
+// BBS is a ready-to-use Android/iOS app, not an SDK, so there is no quickstart
+// code or sample project to serve. Point at the docs and at the integration
+// helpers (Android Share-Receiver, Web Viewer) that consume its exported results.
+function buildBbsAppReferenceResponse() {
+  return {
+    content: [{
+      type: "text",
+      text: [
+        "Dynamsoft Batch Barcode Scanner (BBS) is a ready-to-use Android/iOS app, not an SDK, so it has no quickstart code or code samples to return.",
+        "To use its results in your own workflow, export them (CSV/images, system sharing, cloud, or custom JavaScript output). To embed multi-barcode scanning in your own app, use DBR.",
+        "Reference links:",
+        `- Docs: ${BBS_DOCS_URL}`,
+        `- Integration samples (Android Share-Receiver, Web Viewer): ${BBS_INTEGRATION_SAMPLES_URL}`
+      ].join("\n")
+    }]
+  };
+}
+
 export {
   getUnsupportedPublicScopeRedirect,
-  buildUnsupportedPublicScopeResponse
+  buildUnsupportedPublicScopeResponse,
+  buildBbsAppReferenceResponse
 };

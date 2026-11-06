@@ -2,7 +2,12 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { DDV_PREFERRED_ENTRY_FILES } from "./config.js";
 import { shortDocPath } from "./docs-loader.js";
-import { CAPABILITY_FACTS, PRODUCT_SELECTION_GUIDANCE, PUBLIC_OFFERING_PRODUCTS } from "../public-offerings.js";
+import {
+  CAPABILITY_FACTS,
+  PRODUCT_SELECTION_GUIDANCE,
+  PRODUCT_SELECTION_GUIDE_URI,
+  PUBLIC_OFFERING_PRODUCTS
+} from "../public-offerings.js";
 
 const MRZ_MATCHER = /(?:\bmrz\b|machine[-\s]?readable[-\s]?zone|passport)/i;
 const MDS_MATCHER = /(?:document[-\s]scan|document scanner|document scanning|document normalizer|document normalization|normaliz|auto[-\s]?capture|crop|cropping|deskew)/i;
@@ -85,15 +90,16 @@ function buildProductSelectionGuidanceText() {
     "",
     "## Public Product Offerings",
     "",
-    "The public MCP catalog exposes five first-tier products: Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), and Mobile Document Scanner (MDS).",
+    "The public MCP catalog exposes six first-tier products: Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), Mobile Document Scanner (MDS), and Batch Barcode Scanner (BBS).",
     "",
     "- Dynamic Web TWAIN (DWT): use for browser-based document acquisition and scanner control.",
     "- Dynamsoft Document Viewer (DDV): use as a standalone viewer. It is the extension path for DWT users who need mobile support or PDF annotation, and for MDS users who need multi-page support or PDF output.",
-    "- Dynamsoft Barcode Reader (DBR): use for barcode workflows. On server/desktop, it is the foundational subset with dedicated docs, samples, and packages for C++, Python, Java, and .NET. On web, start with the foundational API by default for the current 11.4 positioning, with only minimal use of BarcodeScanner RTU when utter simplicity matters. On mobile, both the foundational API and BarcodeScanner RTU remain official.",
+    "- Dynamsoft Barcode Reader (DBR): use for barcode workflows. On server/desktop, it is the foundational subset with dedicated docs, samples, and packages for C++, Python, Java, and .NET. On web, start with the foundational API by default, with only minimal use of BarcodeScanner RTU when utter simplicity matters. On mobile, both the foundational API and BarcodeScanner RTU remain official.",
     "- MRZ Scanner (MRZ): use for passport and machine-readable-zone workflows. Public guidance is web/mobile solution/RTU only. Do not default to a foundational API path here; handle server/desktop separately through contact-driven guidance.",
     "- Mobile Document Scanner (MDS): use for document scan and normalization workflows. Public guidance is web-only solution/RTU. Do not default to a foundational API path here; handle mobile and server/desktop separately through contact-driven guidance.",
+    "- Dynamsoft Batch Barcode Scanner (BBS): use when a ready-made Android or iOS app that scans many barcodes at once (inventory boxes, lab tubes) fits the workflow. It is an app, not an SDK: there is no code to embed, no quickstart, and no samples, so do not ask for a programming language. Results leave the app by export (CSV and images, sharing, cloud). To build batch or multi-barcode scanning into your own app, use DBR instead.",
     "",
-    "Choose DBR when you want direct barcode capabilities, MRZ when you want passport/MRZ flows, MDS when you want document scanning flows, DWT when you need browser acquisition, and DDV when you need viewing, annotation, multi-page handling, or PDF-oriented extension paths.",
+    "Choose DBR when you want direct barcode capabilities, MRZ when you want passport/MRZ flows, MDS when you want document scanning flows, DWT when you need browser acquisition, DDV when you need viewing, annotation, multi-page handling, or PDF-oriented extension paths, and BBS when a ready-made Android/iOS app for scanning many barcodes at once meets the need.",
     "",
     "## Known Capability Facts",
     "",
@@ -101,7 +107,99 @@ function buildProductSelectionGuidanceText() {
     "",
     `- OCR: ${CAPABILITY_FACTS.ocr}`,
     `- VIN: ${CAPABILITY_FACTS.vin}`,
-    `- ID documents: ${CAPABILITY_FACTS.idDocuments}`
+    `- ID documents: ${CAPABILITY_FACTS.idDocuments}`,
+    `- Batch scanning: ${CAPABILITY_FACTS.batchScanning}`,
+    "",
+    "## Choosing by Workflow",
+    "",
+    "Start from the customer's workflow, not the product catalog. Recommend the smallest practical set of products, prefer one packaged product when it fully covers the use case, and do not list every potentially relevant product.",
+    "",
+    "1. Identify the input source: physical scanner, mobile camera, webcam, uploaded image, PDF, server-side file, or existing image stream.",
+    "2. Identify the target: barcode, MRZ, complete document image, text in known regions, printed VIN, general page text, structured payload, or a combination.",
+    "3. Identify the deployment environment: web, mobile web, native mobile, desktop, server, hybrid, or embedded.",
+    "4. Clarify the capture flow: single item, continuous scanning, multi-page, many barcodes, document plus data extraction, local processing, or server processing.",
+    "5. For identity documents, keep data extraction, image capture, visible-text recognition, authenticity verification, and identity verification separate.",
+    "6. Prefer a packaged product when one primary task dominates and its standard workflow is acceptable. Recommend Dynamsoft Capture Vision (DCV) components only when no packaged product covers the workflow, or when it combines recognition tasks or needs customized camera behavior, processing order, UI, or intermediate results.",
+    "7. Separate essential products, add-ons, or components from optional ones, and explain why each one is included.",
+    "8. Ask only the unresolved questions that could change the recommendation, no more than five at once.",
+    "9. Recommend a proof of concept when samples, capture conditions, platform support, or accuracy remain uncertain.",
+    "",
+    "## Requirement to Product",
+    "",
+    "| Requirement | Recommendation |",
+    "|---|---|",
+    "| Scan paper documents from a physical scanner into a browser | DWT |",
+    "| Scan documents and read their barcodes | DWT with its Barcode Reader add-on |",
+    "| Process PDF pages as images in a DWT workflow | DWT with its PDF Rasterizer add-on, subject to validation |",
+    "| Send scanned images to an OCR engine | DWT with its OCR Connector add-on on a PC or workstation, subject to integration validation |",
+    "| Capture from a webcam inside a DWT workflow | DWT with its Webcam Capture add-on |",
+    "| View, annotate, or assemble multi-page documents and output PDF in the browser | DDV; add DWT when pages come from a physical scanner |",
+    "| Read barcodes as the primary task (camera, image, PDF; web, mobile, or server) | DBR, edition matching the platform |",
+    "| Customized camera barcode workflow (own UI, camera control, intermediate results) | DBR foundational API rather than BarcodeScanner RTU |",
+    "| Scan many barcodes at once (inventory boxes, lab tubes) with a ready-made Android/iOS app | BBS; integrate through its export |",
+    "| Embed batch or multi-barcode scanning in your own app | DBR (multi-barcode scanning; web sample batch-inventory) |",
+    "| North American AAMVA driver license data | DBR, which decodes the PDF417 and parses the fields |",
+    "| Driver license acquired from a physical scanner | DWT with its Barcode Reader add-on; confirm field parsing with Dynamsoft |",
+    "| Passport, visa, or ID card MRZ data | MRZ |",
+    "| Capture and normalize documents from a mobile browser | MDS; add DDV for multi-page handling or PDF output |",
+    "| VIN encoded in a barcode | DBR |",
+    "| Printed VIN text on a door-frame label or on paperwork | DCV: Camera Enhancer + Label Recognizer + Code Parser (VIN text template); add Barcode Reader when the VIN may be a barcode or text |",
+    "| Text in a known region (labels, tags, cards, short fields next to a barcode) | DCV: Label Recognizer, with Camera Enhancer for live capture; add Barcode Reader for nearby barcodes |",
+    "| General full-page OCR | Not offered as an SDK; in a DWT workflow use the OCR Connector add-on |",
+    "| Capture a full driver license image and its PDF417 data | DCV: Camera Enhancer + Document Normalizer + Barcode Reader + Code Parser |",
+    "| Capture a document image and read its barcode | DCV: Camera Enhancer + Document Normalizer + Barcode Reader |",
+    "| Parse a supported barcode payload into fields | DBR when the packaged parsing covers it; otherwise DCV: Barcode Reader + Code Parser |",
+    "",
+    "Recommend DWT add-ons only when the workflow requires them.",
+    "",
+    "## Dynamsoft Capture Vision (DCV) Components",
+    "",
+    "DCV is the framework behind the packaged products. Its components can be combined into one pipeline when no packaged product covers the use case. DCV is not a selectable product in this MCP's tools; DBR search covers the shared Capture Vision API pages. Confirm platform support for a combination in current documentation or with Dynamsoft.",
+    "",
+    "- Dynamsoft Camera Enhancer (DCE): camera preview, camera selection, focus and zoom, frame supply to other components, and capture UI. Include it only when camera input is required. Docs: https://www.dynamsoft.com/camera-enhancer/docs/core/introduction/",
+    "- Barcode Reader (DBR) component: barcode decoding inside a combined pipeline. When barcode reading is the only task, recommend the DBR product instead.",
+    "- Dynamsoft Label Recognizer (DLR): text in known or structured regions, such as labels, tags, cards, short fields next to barcodes, and printed VINs. Confirm layout, fonts, languages, field locations, and capture conditions. It is not unrestricted full-page OCR. Docs: https://www.dynamsoft.com/capture-vision/docs/core/introduction/dlr.html",
+    "- Dynamsoft Document Normalizer (DDN): document boundary detection, perspective correction, cropping, and normalization. Add it when the complete document image must be detected, corrected, or saved. Docs: https://www.dynamsoft.com/capture-vision/docs/core/introduction/ddn.html",
+    "- Dynamsoft Code Parser (DCP): converts supported decoded payloads, such as AAMVA driver license data, VINs, and MRZ, into named fields. Barcode Reader or Label Recognizer reads the code; Code Parser interprets it. Docs: https://www.dynamsoft.com/capture-vision/docs/core/introduction/dcp.html",
+    "",
+    "Common combinations:",
+    "",
+    "- Camera Enhancer + Barcode Reader + Code Parser: scan and structure supported encoded data.",
+    "- Camera Enhancer + Barcode Reader + Label Recognizer: decode a barcode and read nearby text.",
+    "- Camera Enhancer + Document Normalizer + Barcode Reader: capture a document and decode its barcode.",
+    "- Camera Enhancer + Document Normalizer + Barcode Reader + Label Recognizer + Code Parser: custom document, barcode, text, and structured-data workflow.",
+    "",
+    "Framework overview: https://www.dynamsoft.com/capture-vision/docs/core/introduction/",
+    "",
+    "## Driver Licenses",
+    "",
+    "- Ask the jurisdictions, the capture method, the desired output (barcode data, named fields, normalized image, visible front-side text), and whether verification is required.",
+    "- Do not assume every driver license uses AAMVA PDF417 or MRZ. Some use MRZ (MRZ applies), another barcode, a chip, or only visible text (Label Recognizer may read known fields; confirm with Dynamsoft).",
+    "- For AAMVA licenses: DBR for barcode data and named fields; add Document Normalizer (DCV) only when the complete license image must be detected, corrected, cropped, or saved; DWT with its Barcode Reader add-on when acquisition is from a physical scanner.",
+    "- Data extraction does not establish authenticity or identity.",
+    "",
+    "## VINs",
+    "",
+    "- Ask whether the VIN is a barcode, printed text, or both, and where it is captured. Barcode: DBR. Printed text: DCV Camera Enhancer + Label Recognizer + Code Parser. Both: add Barcode Reader to that pipeline.",
+    "- Printed VINs on door-frame labels and paperwork read well. Known limitation: VINs read through the windshield on the dashboard are not well supported; say so, and require representative samples and a proof of concept before committing.",
+    "- Length, character, and check-digit validation does not prove vehicle authenticity.",
+    "",
+    "## Discovery Questions",
+    "",
+    "Ask only questions whose answers could change the recommendation, no more than five at once.",
+    "",
+    "- General, in priority order: input source; target (barcode formats, MRZ, complete document image, text in a known region, or a combination); application platform; capture flow (single, continuous, multi-page, batch, many barcodes per view); required output (raw text, named fields, normalized image); whether processing must stay on-device or offline; whether authenticity or identity verification is required.",
+    "- Driver license scanning: jurisdictions in scope; browser camera, uploaded image, or physical scanner; barcode data, named fields, normalized image, visible text, or a combination; data capture only or verification; availability of representative or synthetic samples.",
+    "- VIN reading: barcode, printed text, or both; where the VIN is captured (door-frame label, paperwork, or through the windshield on the dashboard); target platform; barcode formats in the samples; availability of representative images and videos.",
+    "- Web document scanning: scanner interfaces and operating systems; multi-page scanning; loading or rasterizing PDFs; barcode reading, OCR, or webcam capture; browsers and deployment environment.",
+    "- Batch barcode scanning: ready-made app or embedded in your own app; Android or iOS; how results reach your system (CSV, sharing, cloud); barcode formats and count per scene.",
+    "",
+    "## Cautions and Validation",
+    "",
+    "- Do not state platform or browser support, barcode formats, parsing specifications, offline operation, packaging, licensing, pricing, accuracy, or performance unless current documentation confirms it; search first.",
+    "- Do not present any product as unrestricted full-page OCR.",
+    "- Do not imply that barcode, MRZ, OCR, or format validation authenticates a document, vehicle, or person.",
+    "- For a proof of concept, use representative and difficult samples (images and videos from the intended devices, failed samples, PDFs, synthetic IDs from the target jurisdictions) and measure recognition and field accuracy, capture completion rate, time to successful capture, duplicate or false-positive rate, image quality, browser and device compatibility, and behavior under blur, glare, low light, or perspective."
   ].join("\n");
 }
 
@@ -241,6 +339,7 @@ function addMarkdownDocResources({
   product,
   edition,
   version,
+  resolveVersion,
   majorVersion,
   defaultPlatform = "web",
   defaultSummary,
@@ -269,16 +368,18 @@ function addMarkdownDocResources({
     // Prefer the frontmatter description as the summary (distinct per doc) over
     // the breadcrumb (identical across sibling docs) (#142).
     const baseSummary = article.description || article.breadcrumb || defaultSummary;
+    // Pages tied to one platform's release (BBS release notes) carry that platform's version.
+    const articleVersion = resolveVersion ? resolveVersion(article) : version;
 
     addPublicResourceToIndex(addResourceToIndex, {
       id: `${idPrefix}-${i}`,
-      uri: `${uriPrefix}/${platform}/${version}/${slug}`,
+      uri: `${uriPrefix}/${platform}/${articleVersion}/${slug}`,
       type: "doc",
       product,
       edition,
       platform,
       ...(Array.isArray(article.platforms) ? { platforms: article.platforms } : {}),
-      version,
+      version: articleVersion,
       ...(article.sourceVersion ? { sourceVersion: article.sourceVersion } : {}),
       majorVersion,
       url: article.url,
@@ -341,6 +442,14 @@ function loadStructuredWebSampleContent({
   return { text: readCodeFile(samplePath), mimeType: getMimeTypeForExtension(ext) };
 }
 
+// BBS ships Android and iOS apps with their own versions; list them for the
+// platforms an edition covers.
+function getBbsPlatformVersions(bbsVersions, platforms) {
+  return Object.fromEntries(
+    platforms.filter((platform) => bbsVersions[platform]).map((platform) => [platform, bbsVersions[platform]])
+  );
+}
+
 function buildIndexData({
   LATEST_VERSIONS,
   LATEST_MAJOR,
@@ -355,6 +464,7 @@ function buildIndexData({
   dbrServerDocs,
   dwtDocs,
   ddvDocs,
+  bbsMobileDocs,
   discoverDcvWebSamples,
   getDcvWebFrameworkPlatforms,
   discoverMrzWebSamples,
@@ -402,11 +512,16 @@ function buildIndexData({
 
       const edition = products[entry.product].editions[editionName];
       const platforms = new Set();
-      if (entry.platform) {
-        platforms.add(entry.platform);
-        if (entry.edition === "web" && entry.platform === "web") {
-          platforms.add("js");
-        }
+      // A page that serves several platforms (BBS app pages, shared Capture
+      // Vision pages) lists those rather than its edition-level label.
+      const servedPlatforms = Array.isArray(entry.platforms) && entry.platforms.length > 0
+        ? entry.platforms
+        : [entry.platform];
+      for (const servedPlatform of servedPlatforms) {
+        if (servedPlatform) platforms.add(servedPlatform);
+      }
+      if (entry.edition === "web" && entry.platform === "web") {
+        platforms.add("js");
       }
       if (entry.edition === "web" && Array.isArray(entry.tags)) {
         for (const tag of entry.tags) {
@@ -432,9 +547,17 @@ function buildIndexData({
       }
     }
 
+    // The BBS edition version is the docs-set label; platformVersions says where each app is.
+    const bbsEdition = products.bbs.editions.mobile;
+    if (bbsEdition) {
+      bbsEdition.version = LATEST_VERSIONS.bbs.mobile;
+      bbsEdition.platformVersions = getBbsPlatformVersions(LATEST_VERSIONS.bbs, bbsEdition.platforms);
+    }
+
     return {
       productSelection: {
         guidance: PRODUCT_SELECTION_GUIDANCE,
+        guideUri: PRODUCT_SELECTION_GUIDE_URI,
         publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
         capabilities: { ...CAPABILITY_FACTS },
         offerings: {
@@ -476,6 +599,14 @@ function buildIndexData({
             webOnly: true,
             platforms: ["js"],
             whenToUse: ["Document scan and normalization workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
+          },
+          bbs: {
+            name: "Dynamsoft Batch Barcode Scanner",
+            abbreviation: "BBS",
+            webOnly: false,
+            editions: ["mobile"],
+            platforms: ["android", "ios"],
+            whenToUse: ["Ready-made Android/iOS app for scanning many barcodes at once (inventory boxes, lab tubes). It is an app, not an SDK: docs only, with no samples or quickstart; integrate by exporting results. To embed multi-barcode scanning in your own app, use DBR."]
           }
         }
       },
@@ -494,6 +625,7 @@ function buildIndexData({
   const ddvVersion = LATEST_VERSIONS.ddv.web;
   const mrzWebVersion = LATEST_VERSIONS.mrz.web;
   const mdsWebVersion = LATEST_VERSIONS.mds.web;
+  const bbsVersion = LATEST_VERSIONS.bbs.mobile;
 
   const dcvWebSamples = discoverDcvWebSamples();
   const dcvWebFrameworks = getDcvWebFrameworkPlatforms();
@@ -514,6 +646,7 @@ function buildIndexData({
   return {
     productSelection: {
       guidance: PRODUCT_SELECTION_GUIDANCE,
+      guideUri: PRODUCT_SELECTION_GUIDE_URI,
       publicOfferings: [...PUBLIC_OFFERING_PRODUCTS],
       capabilities: { ...CAPABILITY_FACTS },
       dcvSupersetSummary: "Dynamsoft Capture Vision (DCV) aggregates Dynamsoft Barcode Reader (DBR), Dynamsoft Label Recognizer (DLR), Dynamsoft Document Normalizer (DDN), Dynamsoft Code Parser (DCP), and Dynamsoft Camera Enhancer (DCE) into one pipeline. DCV is internal only and is not a selectable public product.",
@@ -623,6 +756,18 @@ function buildIndexData({
             sampleCount: countSamples(mdsWebSamples)
           }
         }
+      },
+      bbs: {
+        latestMajor: LATEST_MAJOR.bbs,
+        editions: {
+          mobile: {
+            version: bbsVersion,
+            platforms: ["android", "ios"],
+            platformVersions: getBbsPlatformVersions(LATEST_VERSIONS.bbs, ["android", "ios"]),
+            docCount: bbsMobileDocs.length,
+            sampleCount: 0
+          }
+        }
       }
     }
   };
@@ -646,6 +791,7 @@ function buildResourceIndex({
   dbrSharedDocs,
   dwtDocs,
   ddvDocs,
+  bbsMobileDocs,
   discoverDcvMobileSamples,
   getDcvMobilePlatforms,
   getDcvMobileSamplePath,
@@ -707,12 +853,12 @@ function buildResourceIndex({
 
   addResourceToIndex({
     id: "product-selection",
-    uri: "doc://product-selection",
+    uri: PRODUCT_SELECTION_GUIDE_URI,
     type: "policy",
     title: "Product Selection Guidance",
-    summary: "When to use Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), and Mobile Document Scanner (MDS).",
+    summary: "When to use Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), Mobile Document Scanner (MDS), and Batch Barcode Scanner (BBS).",
     mimeType: "text/markdown",
-    tags: ["guidance", "product-selection", "dbr", "dwt", "ddv", "mrz", "mds"],
+    tags: ["guidance", "product-selection", "dbr", "dwt", "ddv", "mrz", "mds", "bbs"],
     pinned: true,
     loadContent: async () => ({
       text: buildProductSelectionGuidanceText(),
@@ -731,6 +877,7 @@ function buildResourceIndex({
   const ddvVersion = LATEST_VERSIONS.ddv.web;
   const mrzWebVersion = LATEST_VERSIONS.mrz.web;
   const mdsWebVersion = LATEST_VERSIONS.mds.web;
+  const bbsVersion = LATEST_VERSIONS.bbs.mobile;
 
   addMarkdownDocResources({
     addResourceToIndex,
@@ -1215,6 +1362,21 @@ function buildResourceIndex({
     defaultPlatform: "web",
     defaultSummary: "Dynamsoft Document Viewer documentation",
     baseTags: ["doc", "ddv"]
+  });
+
+  addMarkdownDocResources({
+    addResourceToIndex,
+    docs: bbsMobileDocs,
+    idPrefix: "bbs-mobile-doc",
+    uriPrefix: "doc://bbs/mobile",
+    product: "bbs",
+    edition: "mobile",
+    version: bbsVersion,
+    resolveVersion: (article) => LATEST_VERSIONS.bbs[article.platform] || bbsVersion,
+    majorVersion: LATEST_MAJOR.bbs,
+    defaultPlatform: "mobile",
+    defaultSummary: "Dynamsoft Batch Barcode Scanner app documentation",
+    baseTags: ["doc", "bbs", "mobile"]
   });
 }
 

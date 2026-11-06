@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ensureLatestMajor } from "../../src/server/resource-index/version-policy.js";
 import { validatePlatform, validateEdition } from "../../src/server/normalizers.js";
 
-const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1, bbs: 3 };
 
 test("#139a: version-like tokens in query text do NOT trigger the legacy guard", () => {
   // "I am on DBR 9.6 and setLicenseKey stopped working" must not be blocked.
@@ -39,11 +39,36 @@ test("#139b: DBR legacy refusal is actionable (retry hint + licensing note)", ()
 });
 
 test("#139b: non-DBR refusals include the retry-without-version hint", () => {
-  for (const product of ["ddv", "mrz", "mds", "dwt"]) {
+  for (const product of ["ddv", "mrz", "mds", "dwt", "bbs"]) {
     const policy = ensureLatestMajor({ product, version: "2.0.0", latestMajor });
     assert.equal(policy.ok, false, `${product} legacy version should be refused`);
     assert.match(policy.message, /Retry without the version parameter/, `${product} refusal must be actionable`);
   }
+});
+
+test("BBS refusals name the latest BBS major", () => {
+  const policy = ensureLatestMajor({ product: "bbs", version: "2.0.0", latestMajor });
+  assert.equal(policy.ok, false);
+  assert.ok(/\bBBS\b/.test(policy.message) && policy.message.includes("v3"), policy.message);
+  assert.equal(ensureLatestMajor({ product: "bbs", version: "3.1.1", latestMajor }).ok, true);
+});
+
+test("BBS checks each app against its own current major when the apps diverge", () => {
+  // Android moved to v4 while iOS is still on v3.
+  const divergent = { ...latestMajor, bbs: 4 };
+  const bbsPlatformMajors = { android: 4, ios: 3 };
+  const check = (args) => ensureLatestMajor({ product: "bbs", latestMajor: divergent, bbsPlatformMajors, ...args });
+
+  const ios = check({ version: "3.1.0", platform: "ios" });
+  assert.equal(ios.ok, true, "current iOS release notes must stay readable");
+  assert.equal(ios.latestMajor, 3);
+  assert.equal(check({ version: "3", platform: "android" }).ok, false);
+  assert.equal(check({ version: "4.0.0", platform: "android" }).ok, true);
+  // Shared pages and platform-less requests keep the docs-set major.
+  assert.equal(check({ version: "4.0.0", platform: "mobile" }).ok, true);
+  assert.equal(check({ version: "3", platform: "mobile" }).ok, false);
+  assert.equal(check({ version: "3" }).ok, false);
+  assert.equal(check({ version: "3" }).message.includes("v4"), true);
 });
 
 test("#152: validatePlatform accepts known + alias, rejects unknown with suggestion", () => {

@@ -202,6 +202,10 @@ const mdsFeatureTerms = [
 
 const dwtFeatureTerms = ["dwt", "web twain", "webtwain", "twain", "wia", "ica", "sane"];
 
+// Whole-word "bbs" or the full product name. Checked before the other terms
+// because the DWT terms ("ica", "wia", "sane") also match inside common words.
+const bbsQueryPattern = /\bbbs\b|\bbatch[\s-]+barcode[\s-]+scanner\b/;
+
 let webFrameworkPlatformsGetter = null;
 
 function getWebFrameworkPlatformsInternal() {
@@ -274,6 +278,7 @@ function normalizeProduct(product) {
 
 function normalizeEdition(edition, platform, product) {
   if (product === "dwt" || product === "ddv") return "web";
+  if (product === "bbs") return "mobile";
   const normalizedPlatform = normalizePlatform(platform);
 
   if (!edition) {
@@ -382,6 +387,7 @@ function validateEdition(value) {
 function inferProductFromQuery(query) {
   if (!query) return "";
   const normalized = query.toLowerCase();
+  if (bbsQueryPattern.test(normalized)) return "bbs";
   const isDwtQuery = dwtFeatureTerms.some((term) => normalized.includes(term));
   if (isDwtQuery) return "dwt";
   const isMrzQuery = mrzFeatureTerms.some((term) => normalized.includes(term));

@@ -68,7 +68,8 @@ test("#155 quickstart matrix: mainstream cells return code or an explicit redire
     { product: "mrz", platform: "js" },
     { product: "mds", platform: "js" },
     { product: "dwt", platform: "js" },
-    { product: "ddv", platform: "js" }
+    { product: "ddv", platform: "js" },
+    { product: "bbs", platform: "android" }
   ];
   await withClient(async (client) => {
     const problems = [];

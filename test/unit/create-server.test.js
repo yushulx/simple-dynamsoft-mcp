@@ -79,11 +79,11 @@ test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurren
   const expectations = {
     get_index: {
       minLines: 10,
-      requiredPhrases: ["products", "editions", "versions", "DBR", "MRZ", "MDS", "get_index", "search"]
+      requiredPhrases: ["products", "editions", "versions", "DBR", "MRZ", "MDS", "BBS", "get_index", "search"]
     },
     search: {
       minLines: 10,
-      requiredPhrases: ["query", "keyword", "sample", "doc", "resource_link", "get_index", "list_samples", "read_document", "get_sample_files"]
+      requiredPhrases: ["query", "keyword", "sample", "doc", "resource_link", "bbs", "get_index", "list_samples", "read_document", "get_sample_files"]
     },
     read_document: {
       minLines: 10,
@@ -91,19 +91,19 @@ test("tool descriptions are comprehensive (10+ lines, key phrases)", { concurren
     },
     list_samples: {
       minLines: 10,
-      requiredPhrases: ["sample", "product", "edition", "platform", "search", "get_sample_files"]
+      requiredPhrases: ["sample", "product", "edition", "platform", "bbs", "search", "get_sample_files"]
     },
     resolve_version: {
       minLines: 10,
-      requiredPhrases: ["version", "product", "mrz", "mds", "dbr", "dwt", "ddv"]
+      requiredPhrases: ["version", "product", "mrz", "mds", "dbr", "dwt", "ddv", "bbs"]
     },
     get_quickstart: {
       minLines: 10,
-      requiredPhrases: ["quickstart", "product", "edition", "platform", "scenario", "search"]
+      requiredPhrases: ["quickstart", "product", "edition", "platform", "scenario", "bbs", "search"]
     },
     get_sample_files: {
       minLines: 10,
-      requiredPhrases: ["sample_id", "resource_uri", "list_samples", "search", "inline"]
+      requiredPhrases: ["sample_id", "resource_uri", "list_samples", "search", "inline", "bbs"]
     }
   };
   const requiredSections = ["WHEN TO USE:", "PARAMETERS:", "RETURNS:", "RELATED TOOLS:"];
@@ -151,6 +151,7 @@ test("server and tool descriptions advertise only public offerings", { concurren
   const serverDescription = server.server._serverInfo.description;
   assert.match(serverDescription, /MRZ/i);
   assert.match(serverDescription, /MDS/i);
+  assert.match(serverDescription, /BBS/i);
   assert.doesNotMatch(serverDescription, /Capture Vision/i);
   assert.doesNotMatch(serverDescription, /DCV/i);
 

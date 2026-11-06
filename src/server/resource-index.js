@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createHash } from "node:crypto";
 import {
   normalizeSdkId,
@@ -25,6 +26,7 @@ import {
   SAMPLE_ROOTS,
   readManifestRepoCommit
 } from "./resource-index/paths.js";
+import { bundledDataRoot } from "../data/root.js";
 import {
   getCodeFileExtensions,
   isCodeFile,
@@ -90,6 +92,11 @@ const registrySha256 = createHash("sha256")
   .update(readFileSync(registryPath, "utf8").replace(/\r\n/g, "\n"))
   .digest("hex");
 
+function readBundledSdkEntry(sdkId) {
+  const bundledRegistry = JSON.parse(readFileSync(join(bundledDataRoot, "metadata", "dynamsoft_sdks.json"), "utf8"));
+  return bundledRegistry.sdks[sdkId];
+}
+
 function inferDbrMobilePlatform(articlePath) {
   const normalized = String(articlePath || "").replace(/\\/g, "/").toLowerCase();
   const match = normalized.match(/^programming\/([^/]+)\//);
@@ -110,6 +117,16 @@ function inferDbrServerPlatform(articlePath) {
   if (segment === "cplusplus") return "cpp";
   if (segment === "python" || segment === "java" || segment === "dotnet" || segment === "cpp") return segment;
   return "server";
+}
+
+// BBS is one app on two platforms: only its release notes are per-platform,
+// every other page applies to both.
+const BBS_APP_PLATFORMS = ["android", "ios"];
+
+function inferBbsPlatform(articlePath) {
+  const normalized = String(articlePath || "").replace(/\\/g, "/").toLowerCase();
+  const match = normalized.match(/^app\/release-notes\/(android|ios)\.md$/);
+  return match ? match[1] : "mobile";
 }
 
 function withEditionScope(articles, edition, platformResolver) {
@@ -155,6 +172,7 @@ let dcvMobileDocs = [];
 let dcvServerDocs = [];
 let dwtDocs = { articles: [] };
 let ddvDocs = { articles: [] };
+let bbsMobileDocs = [];
 let dbrSharedDocs = { web: [], mobile: [], server: [] };
 
 function loadDbrDocs(key, edition, platformResolver) {
@@ -277,6 +295,17 @@ function loadDocumentationSets() {
     excludeFiles: DOCS_CONFIG.ddv.excludeFiles
   });
 
+  bbsMobileDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.bbsMobile,
+      urlBase: DOCS_CONFIG.bbsMobile.urlBase,
+      excludeDirs: DOCS_CONFIG.bbsMobile.excludeDirs,
+      excludeFiles: DOCS_CONFIG.bbsMobile.excludeFiles
+    }).articles,
+    "mobile",
+    inferBbsPlatform
+  ).map((article) => (article.platform === "mobile" ? { ...article, platforms: BBS_APP_PLATFORMS } : article));
+
   dbrSharedDocs = {
     web: selectDbrSharedDocs("dbrWeb", "web", dbrWeb, dcvWebDocs),
     mobile: selectDbrSharedDocs("dbrMobile", "mobile", dbrMobile, dcvMobileDocs),
@@ -291,6 +320,10 @@ const dcvServerSdk = registry.sdks["dcv-server"];
 const dcvCoreSdk = registry.sdks["dcv-core"];
 const mrzWebSdk = registry.sdks["mrz-web"] || dcvWebSdk;
 const mdsWebSdk = registry.sdks["mds-web"] || dcvWebSdk;
+// A custom MCP_DATA_DIR prepared before BBS existed passes the data readiness
+// check with its own registry, which lacks bbs-mobile; use the bundled entry
+// then so existing products still start.
+const bbsMobileSdk = registry.sdks["bbs-mobile"] || readBundledSdkEntry("bbs-mobile");
 
 const LATEST_VERSIONS = {
   dbr: {
@@ -316,6 +349,12 @@ const LATEST_VERSIONS = {
   },
   mds: {
     web: mdsWebSdk.version
+  },
+  bbs: {
+    // Docs-set label (the highest app version); each app's own version follows.
+    mobile: bbsMobileSdk.version,
+    android: bbsMobileSdk.platforms?.android?.version || bbsMobileSdk.version,
+    ios: bbsMobileSdk.platforms?.ios?.version || bbsMobileSdk.version
   }
 };
 
@@ -325,13 +364,19 @@ const LATEST_MAJOR = {
   dwt: parseMajorVersion(registry.sdks.dwt.version),
   ddv: parseMajorVersion(registry.sdks.ddv.version),
   mrz: parseMajorVersion(mrzWebSdk.version),
-  mds: parseMajorVersion(mdsWebSdk.version)
+  mds: parseMajorVersion(mdsWebSdk.version),
+  bbs: parseMajorVersion(bbsMobileSdk.version)
+};
+
+const BBS_PLATFORM_MAJORS = {
+  android: parseMajorVersion(LATEST_VERSIONS.bbs.android),
+  ios: parseMajorVersion(LATEST_VERSIONS.bbs.ios)
 };
 
 setWebFrameworkPlatformsGetter(getWebFrameworkPlatforms);
 
 function ensureLatestMajor(args) {
-  return ensureLatestMajorWithPolicy({ ...args, latestMajor: LATEST_MAJOR });
+  return ensureLatestMajorWithPolicy({ ...args, latestMajor: LATEST_MAJOR, bbsPlatformMajors: BBS_PLATFORM_MAJORS });
 }
 
 function buildVersionPolicyText() {
@@ -362,6 +407,7 @@ function buildIndexData() {
     dbrSharedDocs,
     dwtDocs,
     ddvDocs,
+    bbsMobileDocs,
     discoverDcvWebSamples,
     getDcvWebFrameworkPlatforms,
     discoverMrzWebSamples,
@@ -404,6 +450,7 @@ function buildResourceIndex() {
     dbrSharedDocs,
     dwtDocs,
     ddvDocs,
+    bbsMobileDocs,
     discoverDcvMobileSamples,
     getDcvMobilePlatforms,
     getDcvMobileSamplePath,
@@ -588,6 +635,7 @@ function getRagSignatureData() {
     dbrSharedDocCount: dbrSharedDocs.web.length + dbrSharedDocs.mobile.length + dbrSharedDocs.server.length,
     dwtDocCount: dwtDocs.articles.length,
     ddvDocCount: ddvDocs.articles.length,
+    bbsMobileDocCount: bbsMobileDocs.length,
     versions: LATEST_VERSIONS,
     dataSources: {
       dbrWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrWeb),
@@ -625,6 +673,8 @@ function getRagSignatureData() {
       dcvServerDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvServer),
       dwtDocsHead: readManifestRepoCommit(DOC_ROOTS.dwt),
       ddvDocsHead: readManifestRepoCommit(DOC_ROOTS.ddv),
+      // Optional: a custom data dir prepared before BBS has no manifest entry for it.
+      bbsMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.bbsMobile, { optional: true }),
       registrySha256
     }
   };

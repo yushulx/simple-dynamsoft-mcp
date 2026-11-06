@@ -12,7 +12,7 @@ function detectMajorFromQuery(query) {
   if (!query) return null;
   const text = String(query);
   const explicit = text.match(/(?:\bv|\bversion\s*)(\d{1,2})(?:\.\d+)?/i);
-  const productScoped = text.match(/(?:dbr|dcv|dwt|ddv|mrz|mds)[^0-9]*(\d{1,2})(?:\.\d+)?/i);
+  const productScoped = text.match(/(?:dbr|dcv|dwt|ddv|mrz|mds|bbs)[^0-9]*(\d{1,2})(?:\.\d+)?/i);
   const match = explicit || productScoped;
   if (!match) return null;
   const major = Number.parseInt(match[1], 10);
@@ -69,7 +69,14 @@ function retryWithoutVersionHint(currentMajor) {
   return `Retry without the version parameter to get v${currentMajor} content.`;
 }
 
-function ensureLatestMajor({ product, version, query, edition, platform, latestMajor }) {
+// BBS Android and iOS apps release independently, so each platform has its own
+// current major. An explicit android/ios request is checked against that app;
+// shared pages and platform-less requests keep the docs-set major.
+function resolveBbsCurrentMajor({ platform, latestMajor, bbsPlatformMajors = {} }) {
+  return bbsPlatformMajors[normalizePlatform(platform)] || latestMajor.bbs;
+}
+
+function ensureLatestMajor({ product, version, query, edition, platform, latestMajor, bbsPlatformMajors }) {
   const inferredProduct = product || inferProductFromQuery(query);
   if (!inferredProduct) return { ok: true };
 
@@ -83,9 +90,12 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
     return { ok: true, latestMajor: latestMajor.dcv };
   }
 
-  const currentMajor = inferredProduct === "mrz" && normalizedEdition === "mobile"
+  let currentMajor = inferredProduct === "mrz" && normalizedEdition === "mobile"
     ? latestMajor.dcv
     : latestMajor[inferredProduct];
+  if (inferredProduct === "bbs") {
+    currentMajor = resolveBbsCurrentMajor({ platform, latestMajor, bbsPlatformMajors });
+  }
 
   if (!requestedMajor || requestedMajor === currentMajor) {
     return { ok: true, latestMajor: currentMajor };
@@ -111,7 +121,7 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
     };
   }
 
-  if (inferredProduct === "mrz" || inferredProduct === "mds") {
+  if (inferredProduct === "mrz" || inferredProduct === "mds" || inferredProduct === "bbs") {
     return {
       ok: false,
       message: [
@@ -183,12 +193,14 @@ function buildVersionPolicyText(latestMajor) {
     `- DBR latest major: v${latestMajor.dbr}`,
     `- MRZ latest major: v${latestMajor.mrz}`,
     `- MDS latest major: v${latestMajor.mds}`,
+    `- BBS latest major: v${latestMajor.bbs}`,
     `- DWT latest major: v${latestMajor.dwt}`,
     `- DDV latest major: v${latestMajor.ddv}`,
     "",
     "Legacy support:",
     "- DBR v9 and v10 docs are linked when requested.",
     "- MRZ and MDS do not publish separate legacy archive links in this server.",
+    "- BBS has no legacy archive links in this server.",
     `- DWT archived docs available: ${dwtLegacyVersions || "none"}.`,
     "- DDV has no legacy archive links in this server.",
     "",
