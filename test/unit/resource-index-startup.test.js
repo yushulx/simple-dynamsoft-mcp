@@ -116,6 +116,43 @@ test("resource index falls back when mrz-web and mds-web metadata entries are mi
   assert.equal(parsed.mdsMajor, parsed.dcvMajor);
 });
 
+test("resource index starts from a custom data dir prepared before BBS existed", () => {
+  const tempDataRoot = mkdtempSync(`${os.tmpdir()}/mcp-data-`);
+  const sourceRegistry = JSON.parse(readFileSync(new URL("../../data/metadata/dynamsoft_sdks.json", import.meta.url), "utf8"));
+  const sourceManifest = JSON.parse(readFileSync(new URL("../../data/metadata/data-manifest.json", import.meta.url), "utf8"));
+  const bundledBbs = sourceRegistry.sdks["bbs-mobile"];
+  delete sourceRegistry.sdks["bbs-mobile"];
+  sourceManifest.repos = sourceManifest.repos.filter((repo) => repo.path !== "documentation/batch-barcode-scanner-docs");
+
+  mkdirSync(`${tempDataRoot}/metadata`, { recursive: true });
+  writeFileSync(`${tempDataRoot}/metadata/dynamsoft_sdks.json`, `${JSON.stringify(sourceRegistry, null, 2)}\n`);
+  writeFileSync(`${tempDataRoot}/metadata/data-manifest.json`, `${JSON.stringify(sourceManifest, null, 2)}\n`);
+
+  const script = `
+    process.env.MCP_DATA_DIR = ${JSON.stringify(tempDataRoot)};
+    const api = await import(${JSON.stringify(new URL("../../src/server/resource-index.js", import.meta.url).href)});
+    const signature = api.getRagSignatureData();
+    console.log(JSON.stringify({
+      bbs: api.LATEST_VERSIONS.bbs,
+      bbsMajor: api.LATEST_MAJOR.bbs,
+      dwtWeb: api.LATEST_VERSIONS.dwt.web,
+      bbsDocsHead: signature.dataSources.bbsMobileDocsHead
+    }));
+  `;
+
+  const output = execFileSync("node", ["--input-type=module", "--eval", script], {
+    cwd: process.cwd(),
+    encoding: "utf8"
+  });
+  const parsed = JSON.parse(output.trim());
+
+  assert.equal(parsed.dwtWeb, sourceRegistry.sdks.dwt.version);
+  assert.equal(parsed.bbs.mobile, bundledBbs.version);
+  assert.equal(parsed.bbs.ios, bundledBbs.platforms.ios.version);
+  assert.equal(parsed.bbsMajor, Number.parseInt(bundledBbs.version, 10));
+  assert.equal(parsed.bbsDocsHead, null);
+});
+
 test("ensureLatestMajor accepts MRZ mobile resources using the DCV mobile major", () => {
   const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1, bbs: 3 };
 

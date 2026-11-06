@@ -17,7 +17,6 @@ import {
   registry,
   resourceIndex
 } from "../../src/server/resource-index.js";
-import { resolveRepoPathsForScopes } from "../../src/data/repo-map.js";
 import { createIndexedResourceReader } from "../../src/server/resources/read-indexed-resource.js";
 import { registerProjectTools } from "../../src/server/tools/register-project-tools.js";
 import { registerQuickstartTools } from "../../src/server/tools/register-quickstart-tools.js";
@@ -86,9 +85,11 @@ test("BBS requests for an older major are refused with the latest BBS major", as
   assert.equal(version.isError, true);
   assert.ok(/\bBBS\b/.test(version.content[0].text) && version.content[0].text.includes(`v${LATEST_MAJOR.bbs}`), version.content[0].text);
 
-  const quickstart = await handlers.get("get_quickstart")({ product: "bbs", version: "2" });
-  assert.equal(quickstart.isError, true);
-  assert.match(quickstart.content[0].text, /\bBBS\b/);
+  for (const [tool, args] of [["get_quickstart", { product: "bbs", version: "2" }], ["get_sample_files", { product: "bbs", version: "2" }]]) {
+    const result = await handlers.get(tool)(args);
+    assert.equal(result.isError, true, tool);
+    assert.match(result.content[0].text, /\bBBS\b/, tool);
+  }
 });
 
 test("BBS quickstart, sample listing, and sample files return reference links instead of code", async () => {
@@ -108,8 +109,8 @@ test("BBS quickstart, sample listing, and sample files return reference links in
     assert.ok(!text.includes("```") && !text.includes("JSON:"), `${tool}: ${text}`);
   }
 
-  // Whatever the tools hydrate for BBS is its docs repo only.
-  assert.deepEqual(resolveRepoPathsForScopes(hydrated), ["documentation/batch-barcode-scanner-docs"]);
+  // Reference replies need no local content, so they never wait on a docs download.
+  assert.deepEqual(hydrated, []);
 });
 
 test("BBS pages that apply to both apps match either platform filter; release notes only their own", () => {

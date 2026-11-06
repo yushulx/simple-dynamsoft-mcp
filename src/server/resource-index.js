@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createHash } from "node:crypto";
 import {
   normalizeSdkId,
@@ -25,6 +26,7 @@ import {
   SAMPLE_ROOTS,
   readManifestRepoCommit
 } from "./resource-index/paths.js";
+import { bundledDataRoot } from "../data/root.js";
 import {
   getCodeFileExtensions,
   isCodeFile,
@@ -89,6 +91,11 @@ const registry = JSON.parse(readFileSync(registryPath, "utf8"));
 const registrySha256 = createHash("sha256")
   .update(readFileSync(registryPath, "utf8").replace(/\r\n/g, "\n"))
   .digest("hex");
+
+function readBundledSdkEntry(sdkId) {
+  const bundledRegistry = JSON.parse(readFileSync(join(bundledDataRoot, "metadata", "dynamsoft_sdks.json"), "utf8"));
+  return bundledRegistry.sdks[sdkId];
+}
 
 function inferDbrMobilePlatform(articlePath) {
   const normalized = String(articlePath || "").replace(/\\/g, "/").toLowerCase();
@@ -313,7 +320,10 @@ const dcvServerSdk = registry.sdks["dcv-server"];
 const dcvCoreSdk = registry.sdks["dcv-core"];
 const mrzWebSdk = registry.sdks["mrz-web"] || dcvWebSdk;
 const mdsWebSdk = registry.sdks["mds-web"] || dcvWebSdk;
-const bbsMobileSdk = registry.sdks["bbs-mobile"];
+// A custom MCP_DATA_DIR prepared before BBS existed passes the data readiness
+// check with its own registry, which lacks bbs-mobile; use the bundled entry
+// then so existing products still start.
+const bbsMobileSdk = registry.sdks["bbs-mobile"] || readBundledSdkEntry("bbs-mobile");
 
 const LATEST_VERSIONS = {
   dbr: {
@@ -658,7 +668,8 @@ function getRagSignatureData() {
       dcvServerDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvServer),
       dwtDocsHead: readManifestRepoCommit(DOC_ROOTS.dwt),
       ddvDocsHead: readManifestRepoCommit(DOC_ROOTS.ddv),
-      bbsMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.bbsMobile),
+      // Optional: a custom data dir prepared before BBS has no manifest entry for it.
+      bbsMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.bbsMobile, { optional: true }),
       registrySha256
     }
   };

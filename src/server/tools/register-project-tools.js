@@ -166,12 +166,25 @@ export function registerProjectTools({
         return buildUnknownPublicProductResponse(sampleInfo?.product || product);
       }
 
+      const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
+      const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
+
+      // BBS has no samples; enforce the same version policy as get_quickstart
+      // and resolve_version, without hydrating content the reply never uses.
       if (normalizedProduct === "bbs") {
+        const bbsPolicy = ensureLatestMajor({
+          product: normalizedProduct,
+          version,
+          query: sample_id,
+          edition: normalizedEdition,
+          platform: normalizedPlatform
+        });
+        if (!bbsPolicy.ok) {
+          return { isError: true, content: [{ type: "text", text: bbsPolicy.message }] };
+        }
         return buildBbsAppReferenceResponse();
       }
 
-      const normalizedPlatform = normalizePlatform(sampleInfo?.platform || platform);
-      const normalizedEdition = normalizeEdition(sampleInfo?.edition || edition, normalizedPlatform, normalizedProduct);
       // A concrete sample:// URI names a hydrated sample we can serve inline, so
       // it must bypass the scope-level redirect (which is for scope-only asks).
       // Without this, search emits mrz/mds mobile/server URIs that this tool then

@@ -189,6 +189,22 @@ export function registerQuickstartTools({
       const effectiveProduct = isPublicDcvProduct ? "dcv" : normalizedProduct;
       const publicProductLabel = getPublicProductLabel(normalizedProduct);
 
+      // BBS has no SDK: its reference reply needs no local content, so it must
+      // not wait on (or fail with) a lazy docs download.
+      if (normalizedProduct === "bbs") {
+        const bbsPolicy = ensureLatestMajor({
+          product: normalizedProduct,
+          version,
+          query: scenario,
+          edition: normalizedEdition,
+          platform: normalizedPlatform
+        });
+        if (!bbsPolicy.ok) {
+          return { isError: true, content: [{ type: "text", text: bbsPolicy.message }] };
+        }
+        return buildBbsAppReferenceResponse();
+      }
+
       await ensureScopeHydrated({
         product: normalizedProduct,
         edition: normalizedEdition,
@@ -206,10 +222,6 @@ export function registerQuickstartTools({
 
       if (!policy.ok) {
         return { isError: true, content: [{ type: "text", text: policy.message }] };
-      }
-
-      if (normalizedProduct === "bbs") {
-        return buildBbsAppReferenceResponse();
       }
 
       if (effectiveProduct === "dcv") {

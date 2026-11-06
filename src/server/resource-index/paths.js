@@ -147,6 +147,7 @@ function readManifestRepoCommit(repoPath, options = {}) {
   const commit = commitLookup.get(manifestRepoPath);
 
   if (!commit) {
+    if (options.optional) return null;
     throw new Error(
       `Missing commit for ${manifestRepoPath} in data manifest ${resolve(manifestPath)}`
     );
