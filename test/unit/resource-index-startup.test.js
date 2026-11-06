@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { basename } from "node:path";
 import test from "node:test";
-import { inferProductFromQuery, normalizeProduct } from "../../src/server/normalizers.js";
+import { inferProductFromQuery, normalizeEdition, normalizeProduct } from "../../src/server/normalizers.js";
 import { DOC_DIRS, SAMPLE_DIRS } from "../../src/server/resource-index/config.js";
 import { DOC_ROOTS, SAMPLE_ROOTS } from "../../src/server/resource-index/paths.js";
 import { ensureLatestMajor as ensureLatestMajorWithPolicy } from "../../src/server/resource-index/version-policy.js";
@@ -39,6 +39,24 @@ test("inferProductFromQuery recognizes MRZ and MDS queries", () => {
   assert.equal(inferProductFromQuery("document scanner"), "mds");
 });
 
+test("BBS aliases normalize to bbs and its edition is always mobile", () => {
+  for (const alias of ["bbs", "BBS", "batch barcode scanner", "Batch-Barcode-Scanner", "dynamsoft batch barcode scanner"]) {
+    assert.equal(normalizeProduct(alias), "bbs", alias);
+  }
+  for (const edition of [undefined, "", "mobile", "web", "app"]) {
+    assert.equal(normalizeEdition(edition, "ios", "bbs"), "mobile", String(edition));
+  }
+});
+
+test("inferProductFromQuery recognizes BBS queries before the generic barcode rule", () => {
+  assert.equal(inferProductFromQuery("batch barcode scanner export to CSV"), "bbs");
+  assert.equal(inferProductFromQuery("BBS panorama mode"), "bbs");
+  // "application" contains the DWT term "ica"; the BBS name must still win.
+  assert.equal(inferProductFromQuery("Batch Barcode Scanner application"), "bbs");
+  assert.equal(inferProductFromQuery("barcode scanner for my phone"), "dbr");
+  assert.equal(inferProductFromQuery("bbsfoo"), "");
+});
+
 test("resource index config routes MRZ and MDS web roots to dedicated repos", async () => {
   assert.equal(DOC_DIRS.mrzWeb, "mrz-scanner-docs-js");
   assert.equal(SAMPLE_DIRS.mrzWeb, "mrz-scanner-javascript");
@@ -53,6 +71,11 @@ test("resource index config routes MRZ and MDS web roots to dedicated repos", as
   const resourceIndexApi = await import(freshResourceIndexImportUrl());
   assert.doesNotThrow(() => resourceIndexApi.ensureResourceIndexReady());
   assert.doesNotThrow(() => resourceIndexApi.getRagSignatureData());
+});
+
+test("resource index config routes BBS docs to the batch barcode scanner repo", () => {
+  assert.equal(DOC_DIRS.bbsMobile, "batch-barcode-scanner-docs");
+  assert.equal(basename(DOC_ROOTS.bbsMobile), "batch-barcode-scanner-docs");
 });
 
 test("resource index falls back when mrz-web and mds-web metadata entries are missing", async () => {
@@ -94,7 +117,7 @@ test("resource index falls back when mrz-web and mds-web metadata entries are mi
 });
 
 test("ensureLatestMajor accepts MRZ mobile resources using the DCV mobile major", () => {
-  const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+  const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1, bbs: 3 };
 
   const policy = ensureLatestMajorWithPolicy({
     product: "mrz",
@@ -109,7 +132,7 @@ test("ensureLatestMajor accepts MRZ mobile resources using the DCV mobile major"
 });
 
 test("ensureLatestMajor accepts edition-agnostic MRZ requests that match the mobile major", () => {
-  const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+  const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1, bbs: 3 };
 
   assert.equal(
     ensureLatestMajorWithPolicy({ product: "mrz", version: "4.0.0", latestMajor }).ok,

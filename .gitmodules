@@ -134,3 +134,7 @@
 	path = data/documentation/capture-vision-docs-mobile
 	url = https://github.com/dynamsoft-docs/capture-vision-docs-mobile.git
 	branch = main
+[submodule "data/documentation/batch-barcode-scanner-docs"]
+	path = data/documentation/batch-barcode-scanner-docs
+	url = https://github.com/dynamsoft-docs/batch-barcode-scanner-docs.git
+	branch = main

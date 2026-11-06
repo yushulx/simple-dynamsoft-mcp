@@ -68,20 +68,20 @@ export function registerVersionTools({
         "- For browsing docs or samples, use search or list_samples (they already scope to latest major).",
         "",
         "PARAMETERS:",
-        "- product (required): dbr, dwt, ddv, mrz, or mds.",
+        "- product (required): dbr, dwt, ddv, mrz, mds, or bbs.",
         `- edition: core, mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE} Omit to see all editions for the product.`,
         `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, etc.). ${WEB_ONLY_OMIT_NOTE} Helps narrow edition when ambiguous.`,
         "- constraint: Version constraint like 'latest', '11.x', '10'. Only latest major version is served; legacy versions (e.g. DBR v9) return an error with migration guidance.",
         "- feature: Optional feature hint for version policy checks.",
         "",
-        "RETURNS: A text block showing the resolved version. For MRZ/MDS without an edition, returns the backed public version matrix. For DBR without an edition, returns all edition versions. For DWT/DDV, returns the single web version.",
+        "RETURNS: A text block showing the resolved version. For MRZ/MDS without an edition, returns the backed public version matrix. For DBR without an edition, returns all edition versions. For DWT/DDV, returns the single web version. For BBS (an Android/iOS app), returns the Android and iOS app versions, or one of them when platform is android or ios.",
         "",
         "EXAMPLE: resolve_version with product='dbr', edition='web' returns the latest DBR web SDK version string.",
         "",
         "RELATED TOOLS: get_quickstart (includes version in starter code), get_index (shows version overview)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds"),
+        product: z.string().trim().min(1, "Product is required.").describe("Product: dbr, dwt, ddv, mrz, mds, bbs"),
         edition: z.string().optional().describe(`Edition: core, mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
         platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         constraint: z.string().optional().describe("Version constraint, e.g., latest, 11.x, 10"),
@@ -158,6 +158,37 @@ export function registerVersionTools({
           "# DWT Version Resolution",
           `- Latest major: v${LATEST_MAJOR.dwt}`,
           `- Resolved version: ${LATEST_VERSIONS.dwt.web}`
+        ];
+        return { content: [{ type: "text", text: lines.join("\n") }] };
+      }
+
+      if (normalizedProduct === "bbs") {
+        // Android and iOS are separate app releases, so each has its own version.
+        const platformVersions = { android: LATEST_VERSIONS.bbs.android, ios: LATEST_VERSIONS.bbs.ios };
+        if (!normalizedPlatform) {
+          const lines = [
+            "# BBS Version Resolution",
+            `- Latest major: v${LATEST_MAJOR.bbs}`,
+            `- Android: ${platformVersions.android}`,
+            `- iOS: ${platformVersions.ios}`,
+            "",
+            "Specify platform (android or ios) to resolve a single version."
+          ];
+          return { content: [{ type: "text", text: lines.join("\n") }] };
+        }
+
+        if (!Object.hasOwn(platformVersions, normalizedPlatform)) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: `Platform "${normalizedPlatform}" is not available for BBS. Supported platforms: android, ios.` }]
+          };
+        }
+
+        const lines = [
+          "# BBS Version Resolution",
+          `- Platform: ${normalizedPlatform}`,
+          `- Latest major: v${LATEST_MAJOR.bbs}`,
+          `- Resolved version: ${platformVersions[normalizedPlatform]}`
         ];
         return { content: [{ type: "text", text: lines.join("\n") }] };
       }

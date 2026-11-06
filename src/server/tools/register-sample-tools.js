@@ -5,7 +5,7 @@ import {
   DBR_ONLY_EDITIONS_NOTE,
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
-import { buildUnsupportedPublicScopeResponse } from "./public-routing.js";
+import { buildBbsAppReferenceResponse, buildUnsupportedPublicScopeResponse } from "./public-routing.js";
 
 export function registerSampleTools({
   server,
@@ -36,9 +36,10 @@ export function registerSampleTools({
         "WHEN NOT TO USE:",
         "- If you have a specific keyword or topic, use search instead (it ranks results by relevance).",
         "- If you already have a sample ID or URI, go directly to get_sample_files.",
+        "- BBS is an Android/iOS app, not an SDK, so it has no code samples; list_samples only returns its docs and integration links.",
         "",
         "PARAMETERS:",
-        "- product: dbr, dwt, ddv, mrz, or mds. Omit to list across all public offerings.",
+        "- product: dbr, dwt, ddv, mrz, mds, or bbs. Omit to list across all public offerings.",
         `- edition: core, mobile, web, or server. ${DBR_ONLY_EDITIONS_NOTE} Omit to list across all editions.`,
         `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- limit: 1-200 (default 50). Max number of results.",
@@ -50,7 +51,7 @@ export function registerSampleTools({
         "RELATED TOOLS: search (keyword-based discovery), get_sample_files (retrieve full project files for a sample), get_index (discover valid product/edition/platform combinations)."
       ].join("\n"),
       inputSchema: {
-        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds"),
+        product: z.string().optional().describe("Product: dbr, dwt, ddv, mrz, mds, bbs"),
         edition: z.string().optional().describe(`Edition: core, mobile, web, server/desktop. ${DBR_ONLY_EDITIONS_NOTE}`),
         platform: z.string().optional().describe(`Platform (DBR only spans multiple): android, ios, maui, react-native, flutter, js, python, cpp, java, dotnet, nodejs, angular, blazor, capacitor, electron, es6, native-ts, next, nuxt, pwa, react, requirejs, svelte, vue, webview, spm, core. ${WEB_ONLY_OMIT_NOTE}`),
         limit: z.number().int().min(1).max(200).optional().describe("Max results (default 50)")
@@ -66,6 +67,10 @@ export function registerSampleTools({
       const normalizedProduct = normalizeProduct(product);
       if (product && !isKnownPublicOffering(normalizedProduct)) {
         return buildUnknownPublicProductResponse(product);
+      }
+
+      if (normalizedProduct === "bbs") {
+        return buildBbsAppReferenceResponse();
       }
 
       const normalizedPlatform = normalizePlatform(platform);

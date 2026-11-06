@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildIndexData, buildResourceIndex } from "../../src/server/resource-index/builders.js";
+import { CAPABILITY_FACTS } from "../../src/server/public-offerings.js";
 import {
   discoverMdsWebSamples,
   discoverMrzWebSamples
@@ -12,10 +13,11 @@ const TEST_LATEST_VERSIONS = {
   dwt: { web: "19.0.0" },
   ddv: { web: "3.0.0" },
   mrz: { web: "3.1.0" },
-  mds: { web: "1.4.2" }
+  mds: { web: "1.4.2" },
+  bbs: { mobile: "3.1.1", android: "3.1.1", ios: "3.1.0" }
 };
 
-const TEST_LATEST_MAJOR = { dcv: 3, dbr: 10, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+const TEST_LATEST_MAJOR = { dcv: 3, dbr: 10, dwt: 19, ddv: 3, mrz: 3, mds: 1, bbs: 3 };
 
 function buildExpectedSampleUri(product, version, group, name) {
   return `sample://${product}/web/web/${version}/${group}/${name}`;
@@ -39,6 +41,7 @@ function createBuilderArgs(addResourceToIndex, overrides = {}) {
     dbrServerDocs: [],
     dwtDocs: { articles: [] },
     ddvDocs: { articles: [] },
+    bbsMobileDocs: [],
     discoverDcvMobileSamples: () => [],
     getDcvMobilePlatforms: () => [],
     getDcvMobileSamplePath: () => "",
@@ -112,7 +115,7 @@ test("buildResourceIndex does not expose MRZ server docs from DCV resources", ()
   assert.equal(mrzServerDoc, undefined);
 });
 
-test("buildResourceIndex publishes richer public product-selection guidance without DCV wording", async () => {
+test("buildResourceIndex publishes richer public product-selection guidance", async () => {
   const entries = [];
 
   buildResourceIndex(createBuilderArgs((entry) => entries.push(entry)));
@@ -122,8 +125,7 @@ test("buildResourceIndex publishes richer public product-selection guidance with
   assert.match(guidance.summary, /Dynamic Web TWAIN/i);
   assert.match(guidance.summary, /MRZ/i);
   assert.match(guidance.summary, /MDS/i);
-  assert.doesNotMatch(guidance.summary, /DCV/i);
-  assert.doesNotMatch(guidance.summary, /Capture Vision/i);
+  assert.match(guidance.summary, /BBS/i);
 
   const content = await guidance.loadContent();
   assert.match(content.text, /Dynamic Web TWAIN \(DWT\)/i);
@@ -138,8 +140,8 @@ test("buildResourceIndex publishes richer public product-selection guidance with
   assert.match(content.text, /foundational subset/i);
   assert.match(content.text, /BarcodeScanner RTU/i);
   assert.match(content.text, /web\/mobile solution\/RTU only/i);
-  assert.doesNotMatch(content.text, /\bDCV\b/i);
-  assert.doesNotMatch(content.text, /Capture Vision/i);
+  assert.match(content.text, /\bBBS\b/);
+  assert.ok(content.text.includes(CAPABILITY_FACTS.batchScanning), "Known Capability Facts should render the batch scanning fact");
 });
 
 test("buildIndexData public product selection omits deprecated DCV metadata", () => {
@@ -151,14 +153,13 @@ test("buildIndexData public product selection omits deprecated DCV metadata", ()
       { type: "doc", product: "dwt", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dwt.web },
       { type: "doc", product: "ddv", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.ddv.web },
       { type: "doc", product: "mrz", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dcv.web },
-      { type: "doc", product: "mds", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dcv.web }
+      { type: "doc", product: "mds", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dcv.web },
+      { type: "doc", product: "bbs", edition: "mobile", platform: "mobile", platforms: ["android", "ios"], version: TEST_LATEST_VERSIONS.bbs.mobile }
     ]
   });
 
-  assert.deepEqual(indexData.productSelection.publicOfferings, ["dwt", "ddv", "dbr", "mrz", "mds"]);
+  assert.deepEqual(indexData.productSelection.publicOfferings, ["dwt", "ddv", "dbr", "mrz", "mds", "bbs"]);
   assert.ok(!("dcvBackedOfferings" in indexData.productSelection), "Should not expose dcvBackedOfferings");
-  assert.equal(JSON.stringify(indexData.productSelection).includes("DCV"), false, "Should not expose DCV wording");
-  assert.equal(JSON.stringify(indexData.productSelection).includes("Capture Vision"), false, "Should not expose Capture Vision wording");
 });
 
 test("buildIndexData uses public MRZ and MDS web versions and hides MRZ mobile from the compact index", () => {
@@ -177,6 +178,34 @@ test("buildIndexData uses public MRZ and MDS web versions and hides MRZ mobile f
   assert.equal(indexData.products.mrz.editions.mobile, undefined, "Should not expose MRZ mobile in the compact index");
   assert.equal(indexData.products.mrz.latestMajor, TEST_LATEST_MAJOR.mrz, "Should derive MRZ latestMajor from the public web version");
   assert.equal(indexData.products.mds.latestMajor, TEST_LATEST_MAJOR.mds, "Should derive MDS latestMajor from the public web version");
+});
+
+test("buildIndexData lists only android and ios for BBS with each app's own version", () => {
+  const { mobile: docsVersion, android, ios } = TEST_LATEST_VERSIONS.bbs;
+  const indexData = buildIndexData({
+    LATEST_VERSIONS: TEST_LATEST_VERSIONS,
+    LATEST_MAJOR: TEST_LATEST_MAJOR,
+    // The iOS notes come first: the edition version must not follow whichever entry is seen first.
+    resourceIndex: [
+      { type: "doc", product: "bbs", edition: "mobile", platform: "ios", version: ios },
+      { type: "doc", product: "bbs", edition: "mobile", platform: "android", version: android },
+      { type: "doc", product: "bbs", edition: "mobile", platform: "mobile", platforms: ["android", "ios"], version: docsVersion },
+      { type: "doc", product: "dbr", edition: "web", platform: "web", version: TEST_LATEST_VERSIONS.dbr.web }
+    ]
+  });
+
+  const mobile = indexData.products.bbs.editions.mobile;
+  assert.deepEqual(Object.keys(indexData.products.bbs.editions), ["mobile"]);
+  assert.deepEqual(mobile.platforms, ["android", "ios"]);
+  assert.equal(mobile.version, docsVersion);
+  assert.deepEqual(mobile.platformVersions, { android, ios });
+  assert.notEqual(mobile.platformVersions.ios, mobile.platformVersions.android);
+  assert.equal(mobile.docCount, 3);
+  assert.equal(mobile.sampleCount, 0);
+  assert.equal(indexData.products.bbs.latestMajor, TEST_LATEST_MAJOR.bbs);
+  assert.equal("platformVersions" in indexData.products.dbr.editions.web, false, "Only BBS exposes per-platform versions");
+  assert.deepEqual(indexData.productSelection.offerings.bbs.editions, ["mobile"]);
+  assert.equal(indexData.productSelection.capabilities.batchScanning, CAPABILITY_FACTS.batchScanning);
 });
 
 test("buildIndexData folds DBR python entries into server and preserves web frameworks", () => {
@@ -307,6 +336,51 @@ test("buildResourceIndex indexes mds web docs and samples from dedicated MDS roo
   ]);
   assert.ok(mdsSamples.every((entry) => entry.version === TEST_LATEST_VERSIONS.mds.web));
   assert.ok(mdsSamples.every((entry) => entry.majorVersion === TEST_LATEST_MAJOR.mds));
+});
+
+test("buildResourceIndex indexes bbs docs per platform and never adds samples", () => {
+  const { mobile: docsVersion, ios } = TEST_LATEST_VERSIONS.bbs;
+  const entries = [];
+
+  buildResourceIndex(createBuilderArgs((entry) => entries.push(entry), {
+    bbsMobileDocs: [
+      {
+        title: "Three Scanning Modes",
+        breadcrumb: "Three Scanning Modes",
+        content: "Field of View, Snap & Scan, and Panorama",
+        path: "app/guide/three-scanning-modes.md",
+        platform: "mobile",
+        platforms: ["android", "ios"],
+        url: "https://www.dynamsoft.com/batch-barcode-scanner/docs/app/guide/three-scanning-modes.html"
+      },
+      {
+        title: "Release Notes of iOS App",
+        breadcrumb: "Release Notes of iOS App",
+        content: "3.1.0",
+        path: "app/release-notes/ios.md",
+        platform: "ios",
+        url: "https://www.dynamsoft.com/batch-barcode-scanner/docs/app/release-notes/ios.html"
+      }
+    ]
+  }));
+
+  const bbsEntries = entries.filter((entry) => entry.product === "bbs");
+  assert.equal(bbsEntries.length, 2);
+  assert.ok(bbsEntries.every((entry) => entry.type === "doc" && entry.edition === "mobile"));
+  assert.ok(bbsEntries.every((entry) => entry.majorVersion === TEST_LATEST_MAJOR.bbs));
+
+  const modes = bbsEntries.find((entry) => entry.title === "Three Scanning Modes");
+  const iosNotes = bbsEntries.find((entry) => entry.title === "Release Notes of iOS App");
+  // Platform release notes carry their own app version; other pages the docs-set version.
+  assert.equal(modes.uri, `doc://bbs/mobile/mobile/${docsVersion}/app/guide/three-scanning-modes`);
+  assert.equal(modes.version, docsVersion);
+  assert.equal(iosNotes.uri, `doc://bbs/mobile/ios/${ios}/app/release-notes/ios`);
+  assert.equal(iosNotes.version, "3.1.0");
+  assert.notEqual(iosNotes.version, modes.version);
+
+  assert.deepEqual(modes.platforms, ["android", "ios"]);
+  assert.ok(modes.tags.includes("android") && modes.tags.includes("ios"));
+  assert.equal(iosNotes.platforms, undefined);
 });
 
 test("buildResourceIndex does not reclassify dcv web docs into public mrz or mds web entries", () => {

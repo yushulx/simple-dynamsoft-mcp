@@ -119,6 +119,34 @@ function detectFromLatestVersionJs(docRoot, relativeFile) {
   return { version: normalizeVersion(match[1]), detail: `parsed ${relativeFile}` };
 }
 
+// Reads only "## x.y[.z]" headings so version-like text inside release-note
+// bodies (for example "Updated DBR to 11.2.5000") is never taken as the app version.
+// Each platform's version comes from its own file; `version` is the highest of them.
+function detectFromReleaseNotesHeadings(docRoot, platformFiles) {
+  const platformVersions = {};
+  let candidates = 0;
+  for (const [platform, relativeFile] of Object.entries(platformFiles)) {
+    const filePath = join(docRoot, ...relativeFile.split("/"));
+    const versions = [];
+    if (existsSync(filePath)) {
+      for (const line of readFileSync(filePath, "utf8").split(/\r?\n/)) {
+        const match = line.match(/^##\s+(\d+\.\d+(?:\.\d+)?)/);
+        if (match) versions.push(match[1]);
+      }
+    }
+    candidates += versions.length;
+    platformVersions[platform] = getHighestVersion(versions);
+  }
+  const summary = Object.entries(platformVersions).map(([platform, version]) => `${platform}=${version || "none"}`).join(" ");
+  // The source version is only trustworthy when every platform resolved.
+  const allResolved = Object.values(platformVersions).every(Boolean);
+  return {
+    version: allResolved ? getHighestVersion(Object.values(platformVersions)) : "",
+    platformVersions,
+    detail: `release-note headings ${summary} candidates=${candidates}`
+  };
+}
+
 function detectFromStrategies(strategies, source, resolvedVersions, metadata) {
   const docsRoot = source.docsPath ? join(projectRoot, source.docsPath) : "";
   const attempts = [];
@@ -159,6 +187,24 @@ function detectFromStrategies(strategies, source, resolvedVersions, metadata) {
       attempts.push(`latest-version-js(${strategy.file}): ${result.detail}`);
       if (result.version) {
         return { version: result.version, strategy: `latest-version-js(${strategy.file})`, attempts };
+      }
+      continue;
+    }
+
+    if (typeof strategy === "object" && strategy.type === "release-notes-headings") {
+      if (!docsRoot || !existsSync(docsRoot)) {
+        attempts.push("release-notes-headings: docs root missing");
+        continue;
+      }
+      const result = detectFromReleaseNotesHeadings(docsRoot, strategy.platforms || {});
+      attempts.push(`release-notes-headings: ${result.detail}`);
+      if (result.version) {
+        return {
+          version: result.version,
+          platformVersions: result.platformVersions,
+          strategy: "release-notes-headings",
+          attempts
+        };
       }
       continue;
     }
@@ -246,6 +292,30 @@ for (const source of sdkVersionSources) {
       version: current,
       strategy: detection.strategy
     });
+  }
+
+  // Sources with per-platform versions keep each one in platforms.<platform>.version
+  // so drift of either platform is detected like the source version.
+  for (const [platform, detected] of Object.entries(detection.platformVersions || {})) {
+    const platformEntry = sdkEntry.platforms?.[platform];
+    const label = `${source.sdkId}.${platform}`;
+    if (!platformEntry) {
+      skipped.push(`${label} (missing platform metadata entry)`);
+      continue;
+    }
+    const currentPlatform = String(platformEntry.version || "");
+    if (currentPlatform !== detected) {
+      updates.push({
+        sdkId: label,
+        from: currentPlatform,
+        to: detected,
+        docsPath: source.docsPath || "n/a",
+        strategy: detection.strategy
+      });
+      platformEntry.version = detected;
+    } else {
+      unchanged.push({ sdkId: label, version: currentPlatform, strategy: detection.strategy });
+    }
   }
 }
 

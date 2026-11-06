@@ -559,6 +559,28 @@
           }
         }
       }
+    },
+    "bbs-mobile": {
+      "name": "Dynamsoft Batch Barcode Scanner",
+      "description": "Ready-to-use Android and iOS app for scanning many barcodes at once (inventory boxes, lab tubes). Distributed as an app; there is no SDK.",
+      "version": "3.1.1",
+      "default_platform": "android",
+      "platforms": {
+        "android": {
+          "version": "3.1.1",
+          "docs": {
+            "introduction": "https://www.dynamsoft.com/batch-barcode-scanner/docs/introduction.html",
+            "release-notes": "https://www.dynamsoft.com/batch-barcode-scanner/docs/app/release-notes/android.html"
+          }
+        },
+        "ios": {
+          "version": "3.1.0",
+          "docs": {
+            "introduction": "https://www.dynamsoft.com/batch-barcode-scanner/docs/introduction.html",
+            "release-notes": "https://www.dynamsoft.com/batch-barcode-scanner/docs/app/release-notes/ios.html"
+          }
+        }
+      }
     }
   }
 }

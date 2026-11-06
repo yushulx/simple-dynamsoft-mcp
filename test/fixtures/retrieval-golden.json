@@ -215,6 +215,27 @@
       }
     },
     {
+      "id": "R-bbs-scan-modes",
+      "query": "how does Panorama scan mode differ from Snap & Scan",
+      "filters": { "product": "bbs", "type": "doc" },
+      "answerTerms": [["Panorama"], ["Snap & Scan"]],
+      "relevant": {
+        "https://www.dynamsoft.com/batch-barcode-scanner/docs/app/guide/three-scanning-modes.html": 3,
+        "https://www.dynamsoft.com/batch-barcode-scanner/docs/introduction.html": 1
+      }
+    },
+    {
+      "id": "R-bbs-integrate-workflow",
+      "query": "how can I integrate Batch Barcode Scanner in my own workflow",
+      "filters": { "product": "bbs", "type": "doc" },
+      "answerTerms": [["export"], ["system sharing"]],
+      "relevant": {
+        "https://www.dynamsoft.com/batch-barcode-scanner/docs/FAQ.html": 3,
+        "https://www.dynamsoft.com/batch-barcode-scanner/docs/samples.html": 2
+      },
+      "note": "BBS is an app with no SDK; integration is by exporting results."
+    },
+    {
       "id": "S-dbr-web-from-query",
       "query": "Dynamsoft Barcode Reader web product page",
       "filters": { "product": "dbr", "type": "doc" },

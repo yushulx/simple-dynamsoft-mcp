@@ -152,6 +152,12 @@ const REPO_MAP = {
     samples: {
       any: ["samples/dynamsoft-document-viewer"]
     }
+  },
+  // BBS is an app: documentation only, no code samples.
+  bbs: {
+    docs: {
+      any: ["documentation/batch-barcode-scanner-docs"]
+    }
   }
 };
 

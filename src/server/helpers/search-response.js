@@ -80,7 +80,7 @@ function buildSearchResultsResponse({ query, product, scopeNote = "", results, c
   // product; steer the agent to the right offering (issue #150).
   const dcvUmbrella = /\b(capture[\s-]?vision|dcv)\b/i.test(query) && !product;
   const leadText = dcvUmbrella
-    ? `"Capture Vision" (DCV) is Dynamsoft's umbrella framework — pick the public product for your task: DBR (barcodes), MRZ (passports/IDs), MDS (document capture), DWT (scanner hardware), DDV (document viewer). Results below span the closest matches.\n${found}`
+    ? `"Capture Vision" (DCV) is Dynamsoft's umbrella framework — pick the public product for your task: DBR (barcodes), MRZ (passports/IDs), MDS (document capture), DWT (scanner hardware), DDV (document viewer), BBS (batch barcode scanning app). Results below span the closest matches.\n${found}`
     : found;
 
   const content = [{ type: "text", text: leadText }];

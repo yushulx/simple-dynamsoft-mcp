@@ -5,6 +5,7 @@ import { resolveRepoPathsForScopes } from "../../src/data/repo-map.js";
 const manifest = {
   repos: [
     { path: "documentation/barcode-reader-docs-js" },
+    { path: "documentation/batch-barcode-scanner-docs" },
     { path: "documentation/capture-vision-docs-js" },
     { path: "documentation/capture-vision-docs" },
     { path: "documentation/mobile-document-scanner-docs-js" },
@@ -141,4 +142,14 @@ test("resolveRepoPathsForScopes maps MDS any-scope samples to dedicated web repo
   );
 
   assert.deepEqual(paths, ["samples/document-scanner-javascript"]);
+});
+
+test("resolveRepoPathsForScopes maps BBS to its docs repo and never to samples", () => {
+  for (const edition of ["mobile", ""]) {
+    assert.deepEqual(
+      resolveRepoPathsForScopes([{ product: "bbs", edition, type: "any" }], manifest),
+      ["documentation/batch-barcode-scanner-docs"]
+    );
+  }
+  assert.deepEqual(resolveRepoPathsForScopes([{ product: "bbs", edition: "mobile", type: "sample" }], manifest), []);
 });

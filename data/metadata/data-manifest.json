@@ -32,6 +32,16 @@
       "archiveUrl": "https://codeload.github.com/dynamsoft-docs/barcode-reader-docs-server/zip/f82b5b92fb039064be3d355f9aeaacf0947b7096"
     },
     {
+      "name": "data/documentation/batch-barcode-scanner-docs",
+      "path": "documentation/batch-barcode-scanner-docs",
+      "url": "https://github.com/dynamsoft-docs/batch-barcode-scanner-docs.git",
+      "branch": "main",
+      "owner": "dynamsoft-docs",
+      "repo": "batch-barcode-scanner-docs",
+      "commit": "94f12c0549c916542792e9dd167a737cea789f40",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/batch-barcode-scanner-docs/zip/94f12c0549c916542792e9dd167a737cea789f40"
+    },
+    {
       "name": "data/documentation/capture-vision-docs",
       "path": "documentation/capture-vision-docs",
       "url": "https://github.com/dynamsoft-docs/capture-vision-docs.git",

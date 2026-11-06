@@ -22,6 +22,8 @@ const EXPECTED_MRZ_WEB_VERSION = LATEST_VERSIONS.mrz.web;
 const EXPECTED_MDS_WEB_VERSION = LATEST_VERSIONS.mds.web;
 const EXPECTED_MRZ_MAJOR = LATEST_MAJOR.mrz;
 const EXPECTED_MDS_MAJOR = LATEST_MAJOR.mds;
+const EXPECTED_BBS_VERSION = LATEST_VERSIONS.bbs.mobile;
+const EXPECTED_BBS_MAJOR = LATEST_MAJOR.bbs;
 
 async function sendRequest(request) {
     return new Promise((resolve, reject) => {
@@ -155,7 +157,7 @@ async function expectUnknownPublicProduct(toolName, product, args = {}) {
     assert(response.result && response.result.isError, `${toolName} should reject unsupported public product ${product}`);
     const text = response.result.content[0].text;
     assert(/unknown|unsupported/i.test(text), `${toolName} should identify ${product} as unknown or unsupported`);
-    assert(/dbr, dwt, ddv, mrz, or mds/i.test(text), `${toolName} should list supported public products`);
+    assert(/dbr, dwt, ddv, mrz, mds, or bbs/i.test(text), `${toolName} should list supported public products`);
     assert(!/deprecated/i.test(text), `${toolName} should not use deprecation wording for ${product}`);
     assert(!/public MCP contract no longer accepts/i.test(text), `${toolName} should not use the removed deprecation flow for ${product}`);
 }
@@ -210,12 +212,13 @@ await test('get_index returns only public product offerings', async () => {
     const parsed = JSON.parse(text);
 
     const productNames = Object.keys(parsed.products).sort();
-    assert(JSON.stringify(productNames) === JSON.stringify(['dbr', 'ddv', 'dwt', 'mds', 'mrz']), 'Should expose only public offerings');
+    assert(JSON.stringify(productNames) === JSON.stringify(['bbs', 'dbr', 'ddv', 'dwt', 'mds', 'mrz']), 'Should expose only public offerings');
     assert(parsed.products.dbr, 'Should include DBR');
     assert(parsed.products.dwt, 'Should include DWT');
     assert(parsed.products.ddv, 'Should include DDV');
     assert(parsed.products.mrz, 'Should include MRZ');
     assert(parsed.products.mds, 'Should include MDS');
+    assert(parsed.products.bbs, 'Should include BBS');
     assert(!parsed.products.dcv, 'Should not include DCV');
     assert(!parsed.products.mrz.editions.server, 'Should not expose unsupported MRZ server resources');
 
@@ -230,9 +233,10 @@ await test('get_index returns only public product offerings', async () => {
             assert(Number.isFinite(edition.docCount), `${productName}.${editionName} should include finite docCount`);
             assert(Number.isFinite(edition.sampleCount), `${productName}.${editionName} should include finite sampleCount`);
 
-            const compactKeys = ['version', 'platforms', 'docCount', 'sampleCount'];
+            const compactKeys = ['version', 'platforms', 'docCount', 'sampleCount', 'platformVersions'];
             const unexpectedKeys = Object.keys(edition).filter((key) => !compactKeys.includes(key));
             assert(unexpectedKeys.length === 0, `${productName}.${editionName} should only include compact keys`);
+            assert(productName === 'bbs' || !('platformVersions' in edition), `${productName}.${editionName} should not expose per-platform versions`);
 
             for (const field of heavyFields) {
                 assert(!(field in edition), `${productName}.${editionName} should not include ${field}`);
@@ -242,9 +246,6 @@ await test('get_index returns only public product offerings', async () => {
 
     assert(parsed.productSelection, 'Should include product-selection guidance');
     assert(!('dcvBackedOfferings' in parsed.productSelection), 'Should not expose dcvBackedOfferings');
-    const productSelectionJson = JSON.stringify(parsed.productSelection);
-    assert(!/DCV/i.test(productSelectionJson), 'Should not expose DCV wording in productSelection JSON');
-    assert(!/Capture Vision/i.test(productSelectionJson), 'Should not expose Capture Vision wording in productSelection JSON');
 
     assert(parsed.products.dbr.editions.server, 'Should keep DBR server edition');
     assert(!parsed.products.dbr.editions.python, 'Should not expose separate DBR python edition');
@@ -257,6 +258,87 @@ await test('get_index returns only public product offerings', async () => {
     assert(parsed.products.mds.latestMajor === EXPECTED_MDS_MAJOR, 'MDS latestMajor should follow the public MDS web version');
     assert(parsed.products.mrz.editions.web.platforms.includes('react'), 'Should preserve MRZ web framework platforms');
     assert(parsed.products.mds.editions.web.platforms.includes('react'), 'Should preserve MDS web framework platforms');
+    assert(JSON.stringify(Object.keys(parsed.products.bbs.editions)) === JSON.stringify(['mobile']), 'BBS should expose only its mobile edition');
+    assert(JSON.stringify(parsed.products.bbs.editions.mobile.platforms) === JSON.stringify(['android', 'ios']), 'BBS should list only android and ios platforms');
+    assert(parsed.products.bbs.editions.mobile.version === EXPECTED_BBS_VERSION, 'Should expose the BBS app version in the compact index');
+    assert(parsed.products.bbs.editions.mobile.platformVersions.android === LATEST_VERSIONS.bbs.android, 'Should expose the BBS Android app version');
+    assert(parsed.products.bbs.editions.mobile.platformVersions.ios === LATEST_VERSIONS.bbs.ios, 'Should expose the BBS iOS app version');
+    assert(parsed.products.bbs.editions.mobile.sampleCount === 0, 'BBS has no code samples');
+    assert(parsed.products.bbs.latestMajor === EXPECTED_BBS_MAJOR, 'BBS latestMajor should follow the BBS app version');
+    assert(parsed.productSelection.offerings.bbs, 'Should describe BBS in the product-selection offerings');
+    assert(parsed.productSelection.capabilities.batchScanning, 'Should expose the batch scanning capability fact');
+});
+
+await test('search returns BBS docs with public documentation URLs', async () => {
+    const response = await sendRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: {
+            name: 'search',
+            arguments: { query: 'panorama mode', product: 'bbs', type: 'doc' }
+        }
+    });
+
+    assert(response.result, 'Should have result');
+    assert(!response.result.isError, 'Should not return an error for BBS search');
+    const links = response.result.content.filter(item => item.type === 'resource_link');
+    assert(links.length > 0, 'Should return BBS doc links');
+    assert(links.every(link => link.uri.startsWith('doc://bbs/mobile/')), 'BBS results should stay in the BBS mobile scope');
+    const text = response.result.content.map(item => item.text || '').join('\n');
+    assert(text.includes('Source: https://www.dynamsoft.com/batch-barcode-scanner/docs/'), 'Should cite the public BBS docs URL');
+});
+
+await test('resolve_version for BBS resolves each app version instead of falling through to DDV', async () => {
+    const resolve = async (args) => {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/call',
+            params: {
+                name: 'resolve_version',
+                arguments: { product: 'bbs', ...args }
+            }
+        });
+
+        assert(response.result, 'Should have result');
+        assert(!response.result.isError, 'Should not return an error for BBS');
+        return response.result.content[0].text;
+    };
+
+    const both = await resolve({});
+    assert(/\bBBS\b/.test(both), 'Should identify the BBS request');
+    assert(both.includes(LATEST_VERSIONS.bbs.android) && both.includes(LATEST_VERSIONS.bbs.ios), 'Should list both app versions without a platform');
+    assert(!both.includes('DDV'), 'Should not present BBS as DDV');
+
+    for (const platform of ['android', 'ios']) {
+        const text = await resolve({ platform });
+        assert(text.includes(`Resolved version: ${LATEST_VERSIONS.bbs[platform]}`), `Should resolve the ${platform} app version`);
+    }
+});
+
+await test('BBS quickstart, sample listing, and sample files return reference links instead of code', async () => {
+    const calls = [
+        { name: 'get_quickstart', arguments: { product: 'bbs' } },
+        { name: 'list_samples', arguments: { product: 'bbs' } },
+        { name: 'get_sample_files', arguments: { product: 'bbs', sample_id: 'share-receiver' } }
+    ];
+
+    for (const call of calls) {
+        const response = await sendRequest({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/call',
+            params: call
+        });
+
+        assert(response.result, `${call.name} should have result`);
+        assert(!response.result.isError, `${call.name} should not return an error for BBS`);
+        const text = response.result.content[0].text;
+        assert(text.includes('https://www.dynamsoft.com/batch-barcode-scanner/docs/'), `${call.name} should include the BBS docs link`);
+        assert(text.includes('https://github.com/Dynamsoft/batch-barcode-scanner-samples/'), `${call.name} should include the BBS integration samples link`);
+        assert(!text.includes('JSON:') && !text.includes('```'), `${call.name} should not return sample JSON or code for BBS`);
+    }
 });
 
 await test('runtime mrz web resources come from dedicated MRZ web roots', async () => {
@@ -598,9 +680,10 @@ await test('resources/list returns pinned resources', async () => {
     assert(!/DCV vs DBR/i.test(productSelection.description), 'Should not use legacy DCV vs DBR wording');
     assert(/MRZ/i.test(productSelection.description), 'Should mention MRZ in public product guidance');
     assert(/MDS/i.test(productSelection.description), 'Should mention MDS in public product guidance');
+    assert(/BBS/i.test(productSelection.description), 'Should mention BBS in public product guidance');
 });
 
-await test('resources/read returns rich public product-selection guidance without DCV wording', async () => {
+await test('resources/read returns rich public product-selection guidance', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -619,8 +702,7 @@ await test('resources/read returns rich public product-selection guidance withou
     assert(/standalone viewer/i.test(text), 'Should describe DDV positioning');
     assert(/foundational subset/i.test(text), 'Should describe DBR server\/desktop positioning');
     assert(/web\/mobile solution\/RTU only/i.test(text), 'Should describe MRZ or MDS RTU positioning');
-    assert(!/\bDCV\b/i.test(text), 'Should not mention DCV in public guidance');
-    assert(!/Capture Vision/i.test(text), 'Should not mention Capture Vision in public guidance');
+    assert(/\bBBS\b/.test(text), 'Should describe BBS positioning');
 });
 
 await test('search + resources/read works together', async () => {

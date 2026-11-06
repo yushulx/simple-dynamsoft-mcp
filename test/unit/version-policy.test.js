@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { ensureLatestMajor } from "../../src/server/resource-index/version-policy.js";
 import { validatePlatform, validateEdition } from "../../src/server/normalizers.js";
 
-const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1 };
+const latestMajor = { dbr: 11, dcv: 4, dwt: 19, ddv: 3, mrz: 3, mds: 1, bbs: 3 };
 
 test("#139a: version-like tokens in query text do NOT trigger the legacy guard", () => {
   // "I am on DBR 9.6 and setLicenseKey stopped working" must not be blocked.
@@ -39,11 +39,18 @@ test("#139b: DBR legacy refusal is actionable (retry hint + licensing note)", ()
 });
 
 test("#139b: non-DBR refusals include the retry-without-version hint", () => {
-  for (const product of ["ddv", "mrz", "mds", "dwt"]) {
+  for (const product of ["ddv", "mrz", "mds", "dwt", "bbs"]) {
     const policy = ensureLatestMajor({ product, version: "2.0.0", latestMajor });
     assert.equal(policy.ok, false, `${product} legacy version should be refused`);
     assert.match(policy.message, /Retry without the version parameter/, `${product} refusal must be actionable`);
   }
+});
+
+test("BBS refusals name the latest BBS major", () => {
+  const policy = ensureLatestMajor({ product: "bbs", version: "2.0.0", latestMajor });
+  assert.equal(policy.ok, false);
+  assert.ok(/\bBBS\b/.test(policy.message) && policy.message.includes("v3"), policy.message);
+  assert.equal(ensureLatestMajor({ product: "bbs", version: "3.1.1", latestMajor }).ok, true);
 });
 
 test("#152: validatePlatform accepts known + alias, rejects unknown with suggestion", () => {

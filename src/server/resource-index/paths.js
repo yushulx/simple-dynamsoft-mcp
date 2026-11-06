@@ -56,7 +56,8 @@ const DOC_ROOTS = {
   dcvCore: join(docsRoot, DOC_DIRS.dcvCore),
   dwt: join(docsRoot, DOC_DIRS.dwt),
   dwtArticles: join(docsRoot, DOC_DIRS.dwt, "_articles"),
-  ddv: join(docsRoot, DOC_DIRS.ddv)
+  ddv: join(docsRoot, DOC_DIRS.ddv),
+  bbsMobile: join(docsRoot, DOC_DIRS.bbsMobile)
 };
 
 function getExistingPath(...candidates) {

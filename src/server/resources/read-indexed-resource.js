@@ -1,5 +1,5 @@
 // Products whose versioned doc/sample URIs are subject to the latest-major policy.
-const VERSION_POLICY_PRODUCTS = ["dbr", "dwt", "ddv", "mrz", "mds"];
+const VERSION_POLICY_PRODUCTS = ["dbr", "dwt", "ddv", "mrz", "mds", "bbs"];
 
 // Shared read path for doc:// and sample:// URIs. Used by the MCP resource
 // templates (resources/read) and the read_document tool so both enforce the

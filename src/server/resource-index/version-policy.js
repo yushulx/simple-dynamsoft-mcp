@@ -12,7 +12,7 @@ function detectMajorFromQuery(query) {
   if (!query) return null;
   const text = String(query);
   const explicit = text.match(/(?:\bv|\bversion\s*)(\d{1,2})(?:\.\d+)?/i);
-  const productScoped = text.match(/(?:dbr|dcv|dwt|ddv|mrz|mds)[^0-9]*(\d{1,2})(?:\.\d+)?/i);
+  const productScoped = text.match(/(?:dbr|dcv|dwt|ddv|mrz|mds|bbs)[^0-9]*(\d{1,2})(?:\.\d+)?/i);
   const match = explicit || productScoped;
   if (!match) return null;
   const major = Number.parseInt(match[1], 10);
@@ -111,7 +111,7 @@ function ensureLatestMajor({ product, version, query, edition, platform, latestM
     };
   }
 
-  if (inferredProduct === "mrz" || inferredProduct === "mds") {
+  if (inferredProduct === "mrz" || inferredProduct === "mds" || inferredProduct === "bbs") {
     return {
       ok: false,
       message: [
@@ -183,12 +183,14 @@ function buildVersionPolicyText(latestMajor) {
     `- DBR latest major: v${latestMajor.dbr}`,
     `- MRZ latest major: v${latestMajor.mrz}`,
     `- MDS latest major: v${latestMajor.mds}`,
+    `- BBS latest major: v${latestMajor.bbs}`,
     `- DWT latest major: v${latestMajor.dwt}`,
     `- DDV latest major: v${latestMajor.ddv}`,
     "",
     "Legacy support:",
     "- DBR v9 and v10 docs are linked when requested.",
     "- MRZ and MDS do not publish separate legacy archive links in this server.",
+    "- BBS has no legacy archive links in this server.",
     `- DWT archived docs available: ${dwtLegacyVersions || "none"}.`,
     "- DDV has no legacy archive links in this server.",
     "",

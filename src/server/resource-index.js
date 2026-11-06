@@ -112,6 +112,16 @@ function inferDbrServerPlatform(articlePath) {
   return "server";
 }
 
+// BBS is one app on two platforms: only its release notes are per-platform,
+// every other page applies to both.
+const BBS_APP_PLATFORMS = ["android", "ios"];
+
+function inferBbsPlatform(articlePath) {
+  const normalized = String(articlePath || "").replace(/\\/g, "/").toLowerCase();
+  const match = normalized.match(/^app\/release-notes\/(android|ios)\.md$/);
+  return match ? match[1] : "mobile";
+}
+
 function withEditionScope(articles, edition, platformResolver) {
   return (articles || []).map((article) => ({
     ...article,
@@ -155,6 +165,7 @@ let dcvMobileDocs = [];
 let dcvServerDocs = [];
 let dwtDocs = { articles: [] };
 let ddvDocs = { articles: [] };
+let bbsMobileDocs = [];
 let dbrSharedDocs = { web: [], mobile: [], server: [] };
 
 function loadDbrDocs(key, edition, platformResolver) {
@@ -277,6 +288,17 @@ function loadDocumentationSets() {
     excludeFiles: DOCS_CONFIG.ddv.excludeFiles
   });
 
+  bbsMobileDocs = withEditionScope(
+    loadMarkdownDocs({
+      rootDir: DOC_ROOTS.bbsMobile,
+      urlBase: DOCS_CONFIG.bbsMobile.urlBase,
+      excludeDirs: DOCS_CONFIG.bbsMobile.excludeDirs,
+      excludeFiles: DOCS_CONFIG.bbsMobile.excludeFiles
+    }).articles,
+    "mobile",
+    inferBbsPlatform
+  ).map((article) => (article.platform === "mobile" ? { ...article, platforms: BBS_APP_PLATFORMS } : article));
+
   dbrSharedDocs = {
     web: selectDbrSharedDocs("dbrWeb", "web", dbrWeb, dcvWebDocs),
     mobile: selectDbrSharedDocs("dbrMobile", "mobile", dbrMobile, dcvMobileDocs),
@@ -291,6 +313,7 @@ const dcvServerSdk = registry.sdks["dcv-server"];
 const dcvCoreSdk = registry.sdks["dcv-core"];
 const mrzWebSdk = registry.sdks["mrz-web"] || dcvWebSdk;
 const mdsWebSdk = registry.sdks["mds-web"] || dcvWebSdk;
+const bbsMobileSdk = registry.sdks["bbs-mobile"];
 
 const LATEST_VERSIONS = {
   dbr: {
@@ -316,6 +339,12 @@ const LATEST_VERSIONS = {
   },
   mds: {
     web: mdsWebSdk.version
+  },
+  bbs: {
+    // Docs-set label (the highest app version); each app's own version follows.
+    mobile: bbsMobileSdk.version,
+    android: bbsMobileSdk.platforms?.android?.version || bbsMobileSdk.version,
+    ios: bbsMobileSdk.platforms?.ios?.version || bbsMobileSdk.version
   }
 };
 
@@ -325,7 +354,8 @@ const LATEST_MAJOR = {
   dwt: parseMajorVersion(registry.sdks.dwt.version),
   ddv: parseMajorVersion(registry.sdks.ddv.version),
   mrz: parseMajorVersion(mrzWebSdk.version),
-  mds: parseMajorVersion(mdsWebSdk.version)
+  mds: parseMajorVersion(mdsWebSdk.version),
+  bbs: parseMajorVersion(bbsMobileSdk.version)
 };
 
 setWebFrameworkPlatformsGetter(getWebFrameworkPlatforms);
@@ -362,6 +392,7 @@ function buildIndexData() {
     dbrSharedDocs,
     dwtDocs,
     ddvDocs,
+    bbsMobileDocs,
     discoverDcvWebSamples,
     getDcvWebFrameworkPlatforms,
     discoverMrzWebSamples,
@@ -404,6 +435,7 @@ function buildResourceIndex() {
     dbrSharedDocs,
     dwtDocs,
     ddvDocs,
+    bbsMobileDocs,
     discoverDcvMobileSamples,
     getDcvMobilePlatforms,
     getDcvMobileSamplePath,
@@ -588,6 +620,7 @@ function getRagSignatureData() {
     dbrSharedDocCount: dbrSharedDocs.web.length + dbrSharedDocs.mobile.length + dbrSharedDocs.server.length,
     dwtDocCount: dwtDocs.articles.length,
     ddvDocCount: ddvDocs.articles.length,
+    bbsMobileDocCount: bbsMobileDocs.length,
     versions: LATEST_VERSIONS,
     dataSources: {
       dbrWebSamplesHead: readManifestRepoCommit(SAMPLE_ROOTS.dbrWeb),
@@ -625,6 +658,7 @@ function getRagSignatureData() {
       dcvServerDocsHead: readManifestRepoCommit(DOC_ROOTS.dcvServer),
       dwtDocsHead: readManifestRepoCommit(DOC_ROOTS.dwt),
       ddvDocsHead: readManifestRepoCommit(DOC_ROOTS.ddv),
+      bbsMobileDocsHead: readManifestRepoCommit(DOC_ROOTS.bbsMobile),
       registrySha256
     }
   };

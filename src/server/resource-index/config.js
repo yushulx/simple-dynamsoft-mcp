@@ -36,7 +36,8 @@ const DOC_DIRS = {
   dcvServer: "capture-vision-docs-server",
   dcvCore: "capture-vision-docs",
   dwt: "web-twain-docs",
-  ddv: "document-viewer-docs"
+  ddv: "document-viewer-docs",
+  bbsMobile: "batch-barcode-scanner-docs"
 };
 
 const DOCS_CONFIG = {
@@ -107,6 +108,11 @@ const DOCS_CONFIG = {
       "_v2.1",
       "assets"
     ],
+    excludeFiles: ["README.md", "search.md"]
+  },
+  bbsMobile: {
+    urlBase: "https://www.dynamsoft.com/batch-barcode-scanner/docs/",
+    excludeDirs: [".git", ".github", ".vscode", ".vs", "_data", "_includes", "_layouts", "_plugins", "assets"],
     excludeFiles: ["README.md", "search.md"]
   }
 };
