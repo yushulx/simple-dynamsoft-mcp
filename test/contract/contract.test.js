@@ -104,3 +104,20 @@ test("root demo samples return the whole project, not just index.html", async ()
     }
   });
 });
+
+test("Source links cover the whole sample: folder for folder-backed samples, file for standalone ones", async () => {
+  const repo = "https://github.com/Dynamsoft/barcode-reader-javascript-samples";
+  const cases = [
+    // index.html plus index.css and ReadQR.json in its own folder.
+    [{ product: "dbr", edition: "web", sample_id: "scenarios/scan-qr-code" }, `${repo}/tree/main/scenarios/scan-qr-code`],
+    // One self-contained page among other samples in basics/.
+    [{ product: "dbr", edition: "web", sample_id: "hello-world" }, `${repo}/blob/main/basics/hello-world.html`]
+  ];
+  await withClient(async (client) => {
+    for (const [args, expected] of cases) {
+      const r = await client.callTool({ name: "get_sample_files", arguments: { ...args, manifest_only: true } }, undefined, REQ);
+      const t = textOf(r);
+      assert.equal(t.match(/^Source: (\S+)/m)?.[1], expected, t.slice(0, 300));
+    }
+  });
+});

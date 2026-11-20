@@ -542,9 +542,19 @@ export function registerProjectTools({
         return { isError: true, content };
       }
 
+      // A file-backed sample owns its folder when the folder is named for it
+      // (scenarios/scan-qr-code/index.html, upload/upload.html) or the payload
+      // pulled in sibling files; link that folder so the Source URL covers the
+      // whole project. Standalone files (basics/hello-world.html) keep a file link.
+      const sampleFile = basename(samplePath);
+      const ownsFolder = !stat.isDirectory() && (
+        files.length > 1
+        || sampleFile === "index.html"
+        || basename(rootDir) === basename(sampleFile, extname(sampleFile))
+      );
       let sourceUrl = "";
       try {
-        sourceUrl = getRepoSourceUrl(samplePath);
+        sourceUrl = getRepoSourceUrl(ownsFolder ? rootDir : samplePath);
       } catch {
         // A missing or invalid data manifest only drops the link.
       }
