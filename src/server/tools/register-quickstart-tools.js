@@ -204,12 +204,17 @@ export function registerQuickstartTools({
         return buildBbsAppReferenceResponse();
       }
 
-      await ensureScopeHydrated({
-        product: normalizedProduct,
-        edition: normalizedEdition,
-        platform: normalizedPlatform,
-        type: "any"
-      });
+      // MDS quickstarts are reference links only (2.x ships no single-file
+      // starter), so they need no local content and must not wait on, or fail
+      // with, a lazy download of the MDS repos. The version policy still applies.
+      if (normalizedProduct !== "mds") {
+        await ensureScopeHydrated({
+          product: normalizedProduct,
+          edition: normalizedEdition,
+          platform: normalizedPlatform,
+          type: "any"
+        });
+      }
 
       const policy = ensureLatestMajor({
         product: normalizedProduct,

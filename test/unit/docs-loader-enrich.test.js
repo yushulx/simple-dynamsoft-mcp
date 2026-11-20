@@ -60,3 +60,24 @@ test("redirect stubs are skipped and {{ site.* }} links resolve to absolute URLs
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("VitePress root-relative links resolve to published pages under the docs base", () => {
+  const dir = makeDir();
+  try {
+    writeFileSync(
+      join(dir, "index.md"),
+      "# Intro\nSee [scan](/api/classes/DocumentScanner.md#scan), [guide](/guide/index.md \"Guide\"), [up](#self-host) and [ext](https://example.com/a.md)."
+    );
+    const base = "https://www.dynamsoft.com/mobile-document-scanner/docs/web/";
+    const [resolved] = loadMarkdownDocs({ rootDir: dir, urlBase: base, resolveRootLinks: true }).articles;
+    assert.match(resolved.content, /\[scan\]\(https:\/\/www\.dynamsoft\.com\/mobile-document-scanner\/docs\/web\/api\/classes\/DocumentScanner\.html#scan\)/);
+    assert.match(resolved.content, /\[guide\]\(https:\/\/www\.dynamsoft\.com\/mobile-document-scanner\/docs\/web\/guide\/index\.html "Guide"\)/);
+    assert.match(resolved.content, /\[up\]\(#self-host\)/, "in-page anchors stay local");
+    assert.match(resolved.content, /\[ext\]\(https:\/\/example\.com\/a\.md\)/, "absolute URLs stay untouched");
+
+    const [raw] = loadMarkdownDocs({ rootDir: dir, urlBase: base }).articles;
+    assert.match(raw.content, /\]\(\/api\/classes\/DocumentScanner\.md#scan\)/, "other doc sets keep their links");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

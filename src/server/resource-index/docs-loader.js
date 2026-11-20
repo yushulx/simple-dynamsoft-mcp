@@ -137,17 +137,33 @@ function resolveSiteLinks(text, siteVars) {
   return String(text).replace(/\{\{\s*site\.([A-Za-z0-9_-]+)\s*\}\}/g, (whole, key) => siteVars.get(key) ?? whole);
 }
 
+// VitePress pages link to each other site-root-relative with source paths
+// (`/api/classes/DocumentScanner.md#scan`). Rewrite those Markdown link targets
+// to the published pages under the docs base, keeping anchors and link titles.
+function resolveRootRelativeLinks(text, baseUrl) {
+  if (!text || !baseUrl) return text;
+  return String(text).replace(/\]\(\/([^)\s#]*)(#[^)\s]*)?(\s+"[^"]*")?\)/g, (whole, path, hash = "", title = "") => {
+    const page = path.replace(/\.md$/i, ".html");
+    return `](${baseUrl}${page}${hash}${title})`;
+  });
+}
+
 function loadMarkdownDocs({
   rootDir,
   urlBase,
   siteRoot = rootDir,
   includeDirNames = [],
   excludeDirs = [],
-  excludeFiles = []
+  excludeFiles = [],
+  resolveRootLinks = false
 }) {
   if (!existsSync(rootDir)) return { articles: [] };
 
   const siteVars = loadSiteVariables(siteRoot);
+  const resolveLinks = (body) => {
+    const withSiteVars = resolveSiteLinks(body, siteVars);
+    return resolveRootLinks ? resolveRootRelativeLinks(withSiteVars, urlBase) : withSiteVars;
+  };
   const files = collectMarkdownFiles(rootDir, { includeDirNames, excludeDirs, excludeFiles });
   const articles = [];
 
@@ -171,7 +187,7 @@ function loadMarkdownDocs({
     articles.push({
       title,
       url: markdownPathToUrl(urlBase, relativePath),
-      content: resolveSiteLinks(parsed.body.trim(), siteVars),
+      content: resolveLinks(parsed.body.trim()),
       breadcrumb,
       description,
       keywords,

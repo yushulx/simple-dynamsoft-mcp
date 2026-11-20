@@ -389,6 +389,10 @@ function getDedicatedWebSamplePath(root, category, sampleName) {
 
     const dirPath = join(webPath, sampleName);
     if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
+      // A root sample with its own package.json (e.g. the Vite `demo`) is a
+      // multi-file project: return the directory so get_sample_files walks all
+      // of it instead of following only index.html's references.
+      if (existsSync(join(dirPath, "package.json"))) return dirPath;
       const indexPath = join(dirPath, "index.html");
       if (existsSync(indexPath)) return indexPath;
       const readmePath = join(dirPath, "README.md");

@@ -253,7 +253,8 @@ function loadDocumentationSets() {
       rootDir: DOC_ROOTS.mdsWebDocs,
       urlBase: DOCS_CONFIG.mdsWeb.urlBase,
       excludeDirs: DOCS_CONFIG.mdsWeb.excludeDirs,
-      excludeFiles: DOCS_CONFIG.mdsWeb.excludeFiles
+      excludeFiles: DOCS_CONFIG.mdsWeb.excludeFiles,
+      resolveRootLinks: DOCS_CONFIG.mdsWeb.resolveRootLinks
     }).articles,
     "web",
     () => "web"
