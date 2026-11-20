@@ -79,7 +79,7 @@ export const sdkVersionSources = [
   },
   {
     sdkId: "mds-web",
-    strategies: [{ type: "package-json", file: "data/samples/document-scanner-javascript/package.json" }]
+    strategies: [{ type: "package-json", file: "data/documentation/document-scanner-javascript/package.json" }]
   },
   {
     sdkId: "bbs-mobile",

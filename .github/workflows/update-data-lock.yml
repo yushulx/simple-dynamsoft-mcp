@@ -279,8 +279,11 @@ jobs:
                 core.info(`Auto-merge already enabled for PR #${pullNumber}`);
                 return;
               }
-              if (normalized.includes("clean status")) {
-                core.info(`PR #${pullNumber} is already clean; attempting direct squash merge.`);
+              const noBranchProtection = normalized.includes("protected branch rules not configured");
+              if (normalized.includes("clean status") || noBranchProtection) {
+                core.info(noBranchProtection
+                  ? `Auto-merge needs branch protection, which main lacks; attempting direct squash merge of PR #${pullNumber}.`
+                  : `PR #${pullNumber} is already clean; attempting direct squash merge.`);
                 try {
                   await github.rest.pulls.merge({
                     owner,
@@ -288,10 +291,10 @@ jobs:
                     pull_number: pullNumber,
                     merge_method: "squash"
                   });
-                  core.info(`Merged PR #${pullNumber} directly because it was already clean.`);
+                  core.info(`Merged PR #${pullNumber} directly.`);
                   return;
                 } catch (mergeError) {
-                  core.warning(`PR #${pullNumber} is clean but could not be merged directly: ${String(mergeError?.message || mergeError)}`);
+                  core.setFailed(`PR #${pullNumber} could not be merged directly: ${String(mergeError?.message || mergeError)}`);
                   return;
                 }
               }

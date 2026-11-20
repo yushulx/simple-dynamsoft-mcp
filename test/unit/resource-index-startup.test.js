@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import test from "node:test";
 import { inferProductFromQuery, normalizeEdition, normalizeProduct } from "../../src/server/normalizers.js";
 import { DOC_DIRS, SAMPLE_DIRS } from "../../src/server/resource-index/config.js";
@@ -60,13 +60,14 @@ test("inferProductFromQuery recognizes BBS queries before the generic barcode ru
 test("resource index config routes MRZ and MDS web roots to dedicated repos", async () => {
   assert.equal(DOC_DIRS.mrzWeb, "mrz-scanner-docs-js");
   assert.equal(SAMPLE_DIRS.mrzWeb, "mrz-scanner-javascript");
-  assert.equal(DOC_DIRS.mdsWeb, "mobile-document-scanner-docs-js");
-  assert.equal(SAMPLE_DIRS.mdsWeb, "document-scanner-javascript");
+  assert.equal(DOC_DIRS.mdsWeb, "document-scanner-javascript");
+  assert.equal(SAMPLE_DIRS.mdsWeb, "document-scanner-javascript-samples");
 
   assert.equal(basename(DOC_ROOTS.mrzWeb), "mrz-scanner-docs-js");
   assert.equal(basename(SAMPLE_ROOTS.mrzWeb), "mrz-scanner-javascript");
-  assert.equal(basename(DOC_ROOTS.mdsWeb), "mobile-document-scanner-docs-js");
-  assert.equal(basename(SAMPLE_ROOTS.mdsWeb), "document-scanner-javascript");
+  assert.equal(basename(DOC_ROOTS.mdsWeb), "document-scanner-javascript");
+  assert.equal(DOC_ROOTS.mdsWebDocs, join(DOC_ROOTS.mdsWeb, "docs"));
+  assert.equal(basename(SAMPLE_ROOTS.mdsWeb), "document-scanner-javascript-samples");
 
   const resourceIndexApi = await import(freshResourceIndexImportUrl());
   assert.doesNotThrow(() => resourceIndexApi.ensureResourceIndexReady());

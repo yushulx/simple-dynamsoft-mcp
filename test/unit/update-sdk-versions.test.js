@@ -48,7 +48,7 @@ test("package.json detector normalizes versions and is only wired for public MRZ
       {
         sdkId: "mds-web",
         docsPath: undefined,
-        packagePath: "data/samples/document-scanner-javascript/package.json"
+        packagePath: "data/documentation/document-scanner-javascript/package.json"
       }
     ]
   );
@@ -65,7 +65,7 @@ test("update-sdk-versions script updates MRZ and MDS web from package manifests"
   const scriptsDir = join(tempRoot, "scripts");
   const metadataDir = join(tempRoot, "data", "metadata");
   const mrzDir = join(tempRoot, "data", "samples", "mrz-scanner-javascript");
-  const mdsDir = join(tempRoot, "data", "samples", "document-scanner-javascript");
+  const mdsDir = join(tempRoot, "data", "documentation", "document-scanner-javascript");
 
   mkdirSync(scriptsDir, { recursive: true });
   mkdirSync(metadataDir, { recursive: true });

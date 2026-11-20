@@ -542,7 +542,7 @@
     "mds-web": {
       "name": "Dynamsoft Document Scanner JavaScript SDK",
       "description": "Document scanning for web applications using JavaScript/TypeScript.",
-      "version": "1.5.0",
+      "version": "2.0.0",
       "default_platform": "web",
       "snippet_path": "dynamsoft-document-scanner/web",
       "platforms": {
@@ -552,10 +552,10 @@
             "TypeScript"
           ],
           "samples": {
-            "repo": "https://github.com/Dynamsoft/document-scanner-javascript"
+            "repo": "https://github.com/Dynamsoft/document-scanner-javascript-samples"
           },
           "installation": {
-            "npm": "npm install dynamsoft-document-scanner"
+            "npm": "npm install @dynamsoft/document-scanner"
           }
         }
       }

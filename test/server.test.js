@@ -1241,7 +1241,7 @@ await test('get_sample_files reads dedicated MRZ web sample repos from resource_
     assert(text.includes('## package.json'), 'Should include framework project files from the dedicated MRZ sample repo');
 });
 
-await test('get_sample_files reads dedicated MDS web sample files from resource_uri', async () => {
+await test('get_sample_files reads dedicated MDS web sample repos from resource_uri', async () => {
     const response = await sendRequest({
         jsonrpc: '2.0',
         id: 1,
@@ -1250,15 +1250,15 @@ await test('get_sample_files reads dedicated MDS web sample files from resource_
             name: 'get_sample_files',
             arguments: {
                 product: 'mds',
-                resource_uri: 'sample://mds/web/web/3.4.1000/scenarios/scanning-to-pdf'
+                resource_uri: 'sample://mds/web/web/2.0.0/frameworks/react-hooks'
             }
         }
     });
 
     assert(response.result, 'Should have result');
     const text = response.result.content[0].text;
-    assert(text.includes('# Sample Files: scanning-to-pdf'), 'Should resolve the dedicated MDS sample name from the URI tail');
-    assert(text.includes('scanning-to-pdf.html'), 'Should read the dedicated MDS web sample file instead of DCV web content');
+    assert(text.includes('# Sample Files: react-hooks'), 'Should resolve the dedicated MDS sample name from the URI tail');
+    assert(text.includes('## package.json'), 'Should include framework project files from the dedicated MDS sample repo');
 });
 
 await test('get_sample_files resolves MRZ web sample_id leaf names from list_samples', async () => {
@@ -1286,15 +1286,15 @@ await test('get_sample_files resolves MDS web sample_id leaf names from list_sam
         method: 'tools/call',
         params: {
             name: 'get_sample_files',
-            arguments: { product: 'mds', edition: 'web', sample_id: 'scanning-to-pdf' }
+            arguments: { product: 'mds', edition: 'web', sample_id: 'vue' }
         }
     });
 
     assert(response.result, 'Should have result');
     assert(!response.result.isError, 'Should resolve MDS web leaf sample ids from list_samples');
     const text = response.result.content[0].text;
-    assert(text.includes('# Sample Files: scanning-to-pdf'), 'Should use the requested MDS sample id');
-    assert(text.includes('scanning-to-pdf.html'), 'Should return the dedicated MDS scenario sample file');
+    assert(text.includes('# Sample Files: vue'), 'Should use the requested MDS sample id');
+    assert(text.includes('package.json'), 'Should return files from the dedicated MDS framework sample');
 });
 
 await test('get_quickstart defaults MRZ without edition to the supported public web path', async () => {

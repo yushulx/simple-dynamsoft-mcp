@@ -261,9 +261,9 @@ test("discoverMrzWebSamples ignores nested asset folders and route index pages",
 test("discoverMdsWebSamples ignores nested asset folders and route index pages", () => {
   const samples = discoverMdsWebSamples();
 
-  assert.deepEqual(samples.root, ["demo", "hello-world"]);
+  assert.deepEqual(samples.root, ["demo"]);
   assert.deepEqual(samples.frameworks, ["angular", "react-hooks", "vue"]);
-  assert.deepEqual(samples.scenarios, ["image-file-scanning", "multi-page-scanning", "scanning-to-pdf"]);
+  assert.equal(samples.scenarios, undefined);
   assert.ok(!Object.values(samples).flat().includes("assets"));
   assert.ok(!Object.values(samples).flat().includes("css"));
   assert.ok(!Object.values(samples).flat().includes("font"));

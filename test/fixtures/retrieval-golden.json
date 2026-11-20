@@ -211,7 +211,7 @@
       "filters": { "product": "mds", "type": "doc" },
       "answerTerms": [["DocumentScanner"]],
       "relevant": {
-        "https://www.dynamsoft.com/mobile-document-scanner/docs/web/guide/mobile-web-capture-customization.html": 3
+        "https://www.dynamsoft.com/mobile-document-scanner/docs/web/guide/index.html": 3
       }
     },
     {

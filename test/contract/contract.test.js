@@ -85,3 +85,18 @@ test("#155 quickstart matrix: mainstream cells return code or an explicit redire
     assert.deepEqual(problems, [], `quickstart matrix problems:\n${problems.join("\n")}`);
   });
 });
+
+test("root demo samples return the whole project, not just index.html", async () => {
+  await withClient(async (client) => {
+    for (const product of ["mds", "mrz"]) {
+      const r = await client.callTool({
+        name: "get_sample_files",
+        arguments: { product, edition: "web", sample_id: "demo" }
+      }, undefined, REQ);
+      const t = textOf(r);
+      assert.ok(!r.isError, `${product} demo should resolve: ${t.slice(0, 200)}`);
+      assert.match(t, /## package\.json/, `${product} demo should include package.json`);
+      assert.match(t, /## vite\.config\.ts/, `${product} demo should include vite.config.ts`);
+    }
+  });
+});
