@@ -27,7 +27,7 @@ Use this endpoint directly:
 
 - `https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp`
 
-Clients that cannot relay code to their users (for example a website chat widget) can connect to `/mcp?delivery=links`, or send the header `X-Sample-Delivery: links`. That connection gets documentation and GitHub sample links in place of code: tool results and resources omit code blocks (short install commands are kept as plain lines), `get_sample_files` returns only the Source link and file list, and `sample://` resources return their Source link. Other connections to the same server are unaffected.
+Clients that cannot relay code to their users (for example a website chat widget) can connect to `/mcp?delivery=links`, or send the header `X-Sample-Delivery: links`. That connection gets documentation and GitHub sample links in place of code: tool results and resources omit code blocks (short install commands are kept as plain lines), `search` returns links without matched snippets or passages, `get_sample_files` returns only the Source link and file list, and `sample://` resources return their Source link. Other connections to the same server are unaffected.
 
 ### 2) Local
 

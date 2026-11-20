@@ -116,6 +116,9 @@ test("[lexical] ?delivery=links serves sample and docs links but never code", as
       assert.ok(!responseText(result).includes("```"), `${tool} returned a code block on a links-only connection`);
     }
     assert.match(responseText(linkReplies.list_samples), /source: https:\/\/github\.com\/Dynamsoft\//);
+    // Excerpts can start mid-example with no fence to strip, so links-only search omits them but keeps public links.
+    assert.ok(!responseText(search).includes("Matched passages"), "links-only search must not include passages");
+    assert.match(responseText(search), /https:\/\/www\.dynamsoft\.com\/barcode-reader\/docs\//);
     assert.match(responseText(linkReplies.get_quickstart), /Sample source:\*\* https:\/\/github\.com\/Dynamsoft\//);
     assert.match(responseText(linkReplies.get_sample_files), /^Source: https:\/\/github\.com\/Dynamsoft\//m);
     assert.ok(!responseText(linkReplies.get_sample_files).includes("## HelloWorld.sln"), "links-only get_sample_files must not return file contents");

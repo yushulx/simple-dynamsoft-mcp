@@ -60,10 +60,21 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi, 
   } = resourceIndexApi;
 
   const {
-    searchResources,
-    getSampleSuggestions,
+    searchResources: searchAllResources,
+    getSampleSuggestions: suggestAllSamples,
     refreshRagIndexes
   } = ragApi;
+
+  // Search excerpts are cut at character offsets, so one can start inside a
+  // fenced example with no fence left to strip. Links-only connections get no
+  // excerpts; titles, summaries, and public links remain.
+  const withoutExcerpts = (entries) => entries.map(({ matchedSnippet, matchedPassage, ...entry }) => entry);
+  const searchResources = linksOnly
+    ? async (...args) => withoutExcerpts(await searchAllResources(...args))
+    : searchAllResources;
+  const getSampleSuggestions = linksOnly
+    ? async (...args) => withoutExcerpts(await suggestAllSamples(...args))
+    : suggestAllSamples;
 
   const ensureScopeHydrated = createScopeHydrator({
     ensureDataScopesHydrated,
@@ -107,7 +118,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi, 
 
   if (linksOnly) {
     // Every tool result passes through the same filter, so no tool can hand
-    // this connection a code block, including search passages and documents.
+    // this connection a fenced code block, including documents and quickstarts.
     const registerTool = server.registerTool.bind(server);
     server.registerTool = (name, config, handler) => registerTool(name, config, async (...args) => stripCodeFromToolResult(await handler(...args)));
   }

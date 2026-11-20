@@ -69,3 +69,32 @@ test("short install commands stay as plain lines; long shell scripts are omitted
   const script = ["```bash", "a", "b", "c", "d", "```"].join("\n");
   assert.equal(stripCodeBlocks(script), CODE_OMITTED_NOTE);
 });
+
+test("links-only search drops excerpts that start inside a code example but keeps every public link", async () => {
+  const { createMcpServerInstance } = await import("../../src/server/create-server.js");
+  const resourceIndexApi = await import("../../src/server/resource-index.js");
+  // A snippet cut mid-example: code with no fence left to strip.
+  const hit = {
+    type: "doc",
+    uri: "doc://dbr/server/dotnet/11/api-reference/file-fetcher",
+    title: "FileFetcher",
+    summary: "FileFetcher API reference.",
+    product: "dbr",
+    edition: "server",
+    platform: "dotnet",
+    version: "11",
+    url: "https://www.dynamsoft.com/capture-vision/docs/server/programming/dotnet/api-reference/file-fetcher.html",
+    matchedSnippet: "int SetFile(string path); ```",
+    matchedPassage: "int SetFile(string path);\nint SetFile(byte[] bytes);\n```\n**Parameters**"
+  };
+  const ragApi = { searchResources: async () => [hit], getSampleSuggestions: async () => [], refreshRagIndexes: async () => {} };
+  const search = (delivery) => createMcpServerInstance({ pkgVersion: "0", resourceIndexApi, ragApi, delivery })
+    ._registeredTools.search.handler({ query: "SetFile", product: "dbr", edition: "server", platform: "dotnet", content: "passage" }, {});
+  const text = (result) => result.content.map((item) => [item.text, item.description].filter(Boolean).join("\n")).join("\n");
+
+  const links = text(await search("links"));
+  assert.ok(!links.includes("SetFile(string path)"), links);
+  assert.ok(links.includes(hit.url), links);
+
+  assert.ok(text(await search("full")).includes("SetFile(string path)"));
+});
