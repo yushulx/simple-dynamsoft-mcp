@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
-import { basename, join } from "node:path";
+import { basename, join, resolve } from "node:path";
 import test from "node:test";
 import { inferProductFromQuery, normalizeEdition, normalizeProduct } from "../../src/server/normalizers.js";
 import { DOC_DIRS, SAMPLE_DIRS } from "../../src/server/resource-index/config.js";
@@ -152,6 +152,27 @@ test("resource index starts from a custom data dir prepared before BBS existed",
   assert.equal(parsed.bbs.ios, bundledBbs.platforms.ios.version);
   assert.equal(parsed.bbsMajor, Number.parseInt(bundledBbs.version, 10));
   assert.equal(parsed.bbsDocsHead, null);
+});
+
+test("loading the server factory does not pin the data root before lazy hydration resolves it", () => {
+  // src/index.js imports create-server.js statically, before ensureDataReady()
+  // sets MCP_RESOLVED_DATA_DIR; resource-index/paths.js reads the root at import.
+  const resolvedRoot = resolve(mkdtempSync(`${os.tmpdir()}/mcp-resolved-`));
+  const script = `
+    delete process.env.MCP_DATA_DIR;
+    await import(${JSON.stringify(new URL("../../src/server/create-server.js", import.meta.url).href)});
+    process.env.MCP_RESOLVED_DATA_DIR = ${JSON.stringify(resolvedRoot)};
+    const paths = await import(${JSON.stringify(new URL("../../src/server/resource-index/paths.js", import.meta.url).href)});
+    console.log(JSON.stringify({ dataRoot: paths.dataRoot }));
+  `;
+  const env = { ...process.env };
+  delete env.MCP_DATA_DIR;
+  delete env.MCP_RESOLVED_DATA_DIR;
+
+  const output = execFileSync("node", ["--input-type=module", "--eval", script], { cwd: process.cwd(), encoding: "utf8", env });
+  const parsed = JSON.parse(output.trim().split("\n").pop());
+
+  assert.equal(parsed.dataRoot, resolvedRoot);
 });
 
 test("ensureLatestMajor accepts MRZ mobile resources using the DCV mobile major", () => {

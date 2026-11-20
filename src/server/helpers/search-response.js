@@ -42,8 +42,9 @@ function formatSearchPassages(results, count = SEARCH_PASSAGE_COUNT) {
 
 // A resource_link description that lets an agent choose WITHOUT a follow-up
 // read: type | scope | version | score - summary, then the matched snippet and
-// canonical URL when available (issue #146).
-function createHitDescriber({ formatScopeLabel, getSampleIdFromUri }) {
+// canonical URL when available: the public page for docs, the GitHub source
+// for samples (issue #146).
+function createHitDescriber({ formatScopeLabel, getSampleIdFromUri, getSampleUriSourceUrl = () => "" }) {
   return function describeHit(entry) {
     const versionLabel = entry.version ? `v${entry.version}` : "n/a";
     const scopeLabel = formatScopeLabel(entry);
@@ -61,15 +62,31 @@ function createHitDescriber({ formatScopeLabel, getSampleIdFromUri }) {
     if (entry.type === "doc" && entry.url) {
       desc += ` | ${entry.url}`;
     }
+    const sourceUrl = entry.type === "sample" ? getSampleUriSourceUrl(entry.uri) : "";
+    if (sourceUrl) {
+      desc += ` | ${sourceUrl}`;
+    }
     return desc;
   };
+}
+
+// One "Plain URIs" line: the URI, its sample_id, score, the GitHub source for
+// samples, and the tool that reads it.
+function formatPlainUriLine(entry, index, { getSampleIdFromUri, getSampleUriSourceUrl = () => "", action = "" }) {
+  const isSample = entry.type === "sample";
+  const sampleId = isSample ? getSampleIdFromUri(entry.uri) : "";
+  const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
+  const sourceUrl = isSample ? getSampleUriSourceUrl(entry.uri) : "";
+  const sourceNote = sourceUrl ? ` source=${sourceUrl}` : "";
+  const actionNote = action ? ` (${action})` : "";
+  return `- ${index + 1}. ${entry.uri}${sampleNote}${formatScoreNote(entry)}${sourceNote}${actionNote}`;
 }
 
 // The search tool's response for ranked results: lead text, one resource_link
 // per hit, matched passages (unless contentMode is "none"), plain URI list.
 // `product` is the normalized product filter (empty when none was given);
 // `scopeNote` explains a search scope the server chose (empty when none).
-function buildSearchResultsResponse({ query, product, scopeNote = "", results, contentMode, describeHit, getSampleIdFromUri }) {
+function buildSearchResultsResponse({ query, product, scopeNote = "", results, contentMode, describeHit, getSampleIdFromUri, getSampleUriSourceUrl }) {
   const passages = contentMode === "none" ? "" : formatSearchPassages(results);
   const linkGuidance = "call read_document with the exact uri of a doc:// result for the full page, or get_sample_files with resource_uri for a sample:// result.";
   const readGuidance = passages
@@ -101,13 +118,11 @@ function buildSearchResultsResponse({ query, product, scopeNote = "", results, c
     content.push({ type: "text", text: passages });
   }
 
-  const plainLines = results.map((entry, index) => {
-    const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-    const action = entry.type === "sample" ? "get_sample_files resource_uri" : "read_document uri";
-    const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
-    const scoreNote = formatScoreNote(entry);
-    return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote} (${action})`;
-  });
+  const plainLines = results.map((entry, index) => formatPlainUriLine(entry, index, {
+    getSampleIdFromUri,
+    getSampleUriSourceUrl,
+    action: entry.type === "sample" ? "get_sample_files resource_uri" : "read_document uri"
+  }));
   content.push({
     type: "text",
     text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
@@ -129,6 +144,7 @@ function searchResponseText(response) {
 export {
   SEARCH_PASSAGE_COUNT,
   formatSearchPassages,
+  formatPlainUriLine,
   createHitDescriber,
   buildSearchResultsResponse,
   searchResponseText,

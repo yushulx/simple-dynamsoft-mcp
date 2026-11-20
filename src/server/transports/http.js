@@ -2,6 +2,7 @@ import { createServer as createHttpServer } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { logEvent } from "../../observability/logging.js";
 import { attachRequestLogging, buildHttpRequestContext } from "../../observability/request-logging.js";
+import { DELIVERY_FULL, normalizeDelivery } from "../helpers/delivery.js";
 import { closeRequestLogFile } from "../../observability/request-log-file.js";
 
 async function startHttpServer({
@@ -75,10 +76,15 @@ async function startHttpServer({
     });
 
     try {
-      server = createServer();
+      // Per-connection sample delivery (?delivery=links or X-Sample-Delivery):
+      // the deployment is shared, so links-only is opted into per client URL.
+      const delivery = normalizeDelivery(requestUrl.searchParams.get("delivery") || req.headers["x-sample-delivery"]);
+      server = createServer({ delivery });
+      const requestContext = buildHttpRequestContext(req);
+      if (delivery !== DELIVERY_FULL) requestContext.delivery = delivery;
       transport = attachRequestLogging(
         new StreamableHTTPServerTransport({ sessionIdGenerator: undefined }),
-        buildHttpRequestContext(req)
+        requestContext
       );
       await server.connect(transport);
       await transport.handleRequest(req, res);

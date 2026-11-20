@@ -24,7 +24,6 @@ import {
   registryPath,
   DOC_ROOTS,
   SAMPLE_ROOTS,
-  getRepoSourceUrl,
   readManifestRepoCommit
 } from "./resource-index/paths.js";
 import { bundledDataRoot } from "../data/root.js";
@@ -73,6 +72,7 @@ import {
   resetSampleDiscoveryCaches
 } from "./resource-index/samples.js";
 import { parseResourceUri, parseSampleUri, getSampleIdFromUri } from "./resource-index/uri.js";
+import { getSampleSourceUrl, resolveSampleUriPath } from "./resource-index/sample-source.js";
 import {
   parseMajorVersion,
   detectMajorFromQuery,
@@ -548,6 +548,13 @@ function getSampleEntries({ product, edition, platform }) {
   });
 }
 
+// Public GitHub URL for a sample:// URI, or "" when the sample has no local
+// checkout or lives outside a GitHub repo.
+function getSampleUriSourceUrl(uri) {
+  const sampleInfo = parseSampleUri(uri);
+  return sampleInfo ? getSampleSourceUrl(resolveSampleUriPath(sampleInfo)) : "";
+}
+
 function getDisplayEdition(entryEdition) {
   return entryEdition === "python" ? "server" : entryEdition;
 }
@@ -725,7 +732,9 @@ export {
   getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
-  getRepoSourceUrl,
+  getSampleSourceUrl,
+  getSampleUriSourceUrl,
+  resolveSampleUriPath,
   readCodeFile,
   getMainCodeFile,
   parseMajorVersion,

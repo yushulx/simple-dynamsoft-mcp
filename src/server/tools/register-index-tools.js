@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber, runScopedSearch } from "../helpers/search-response.js";
-import { formatScoreLabel, formatScoreNote } from "../helpers/server-helpers.js";
+import { SEARCH_PASSAGE_COUNT, buildSearchResultsResponse, createHitDescriber, formatPlainUriLine, runScopedSearch } from "../helpers/search-response.js";
 import {
   buildUnknownPublicProductResponse,
   isKnownPublicOffering,
@@ -24,9 +23,10 @@ export function registerIndexTools({
   searchResources,
   normalizeSampleName,
   getSampleEntries,
-  getSampleSuggestions
+  getSampleSuggestions,
+  getSampleUriSourceUrl = () => ""
 }) {
-  const buildHitDescription = createHitDescriber({ formatScopeLabel, getSampleIdFromUri });
+  const buildHitDescription = createHitDescriber({ formatScopeLabel, getSampleIdFromUri, getSampleUriSourceUrl });
 
   function looksLikeSampleIdQuery(value) {
     const normalized = String(value || "").trim();
@@ -200,11 +200,6 @@ export function registerIndexTools({
           ];
 
           for (const entry of selected) {
-            const versionLabel = entry.version ? `v${entry.version}` : "n/a";
-            const scopeLabel = formatScopeLabel(entry);
-            const sampleId = getSampleIdFromUri(entry.uri);
-            const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
-            const scoreLabel = formatScoreLabel(entry);
             content.push({
               type: "resource_link",
               uri: entry.uri,
@@ -218,13 +213,11 @@ export function registerIndexTools({
             });
           }
 
-          const plainLines = selected.map((entry, index) => {
-            const sampleId = getSampleIdFromUri(entry.uri);
-            const action = "get_sample_files resource_uri";
-            const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
-            const scoreNote = formatScoreNote(entry);
-            return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote} (${action})`;
-          });
+          const plainLines = selected.map((entry, index) => formatPlainUriLine(entry, index, {
+            getSampleIdFromUri,
+            getSampleUriSourceUrl,
+            action: "get_sample_files resource_uri"
+          }));
           content.push({
             type: "text",
             text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
@@ -268,11 +261,6 @@ export function registerIndexTools({
             ];
 
             for (const entry of suggestions) {
-              const versionLabel = entry.version ? `v${entry.version}` : "n/a";
-              const scopeLabel = formatScopeLabel(entry);
-              const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-              const sampleHint = sampleId ? ` | sample_id: ${sampleId}` : "";
-              const scoreLabel = formatScoreLabel(entry);
               content.push({
                 type: "resource_link",
                 uri: entry.uri,
@@ -286,12 +274,10 @@ export function registerIndexTools({
               });
             }
 
-            const plainLines = suggestions.map((entry, index) => {
-              const sampleId = entry.type === "sample" ? getSampleIdFromUri(entry.uri) : "";
-              const sampleNote = sampleId ? ` sample_id=${sampleId}` : "";
-              const scoreNote = formatScoreNote(entry);
-              return `- ${index + 1}. ${entry.uri}${sampleNote}${scoreNote}`;
-            });
+            const plainLines = suggestions.map((entry, index) => formatPlainUriLine(entry, index, {
+              getSampleIdFromUri,
+              getSampleUriSourceUrl
+            }));
             content.push({
               type: "text",
               text: ["Plain URIs (copy/paste):", ...plainLines].join("\n")
@@ -316,7 +302,8 @@ export function registerIndexTools({
         product: normalizedProduct,
         scopeNote,
         describeHit: buildHitDescription,
-        getSampleIdFromUri
+        getSampleIdFromUri,
+        getSampleUriSourceUrl
       });
     }
   );
