@@ -1,3 +1,5 @@
+import { PUBLIC_DOCS_URLS } from "../public-offerings.js";
+
 const SERVER_SAMPLE_REPOS = {
   python: "https://github.com/Dynamsoft/capture-vision-python-samples",
   cpp: "https://github.com/Dynamsoft/capture-vision-cpp-samples",
@@ -15,7 +17,7 @@ const MOBILE_SAMPLE_REPOS = {
   maui: "https://github.com/Dynamsoft/capture-vision-maui-samples"
 };
 
-const BBS_DOCS_URL = "https://www.dynamsoft.com/batch-barcode-scanner/docs/introduction.html";
+const BBS_DOCS_URL = PUBLIC_DOCS_URLS.bbs;
 const BBS_INTEGRATION_SAMPLES_URL = "https://github.com/Dynamsoft/batch-barcode-scanner-samples/";
 
 function getPublicServerSamplesUrl(platform) {

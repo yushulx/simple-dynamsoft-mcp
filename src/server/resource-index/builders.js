@@ -6,6 +6,7 @@ import {
   CAPABILITY_FACTS,
   PRODUCT_SELECTION_GUIDANCE,
   PRODUCT_SELECTION_GUIDE_URI,
+  PUBLIC_DOCS_URLS,
   PUBLIC_OFFERING_PRODUCTS
 } from "../public-offerings.js";
 
@@ -92,12 +93,14 @@ function buildProductSelectionGuidanceText() {
     "",
     "The public MCP catalog exposes six first-tier products: Dynamic Web TWAIN (DWT), Dynamsoft Document Viewer (DDV), Dynamsoft Barcode Reader (DBR), MRZ Scanner (MRZ), Mobile Document Scanner (MDS), and Batch Barcode Scanner (BBS).",
     "",
-    "- Dynamic Web TWAIN (DWT): use for browser-based document acquisition and scanner control.",
-    "- Dynamsoft Document Viewer (DDV): use as a standalone viewer. It is the extension path for DWT users who need mobile support or PDF annotation, and for MDS users who need multi-page support or PDF output.",
-    "- Dynamsoft Barcode Reader (DBR): use for barcode workflows. On server/desktop, it is the foundational subset with dedicated docs, samples, and packages for C++, Python, Java, and .NET. On web, start with the foundational API by default, with only minimal use of BarcodeScanner RTU when utter simplicity matters. On mobile, both the foundational API and BarcodeScanner RTU remain official.",
-    "- MRZ Scanner (MRZ): use for passport and machine-readable-zone workflows. Public guidance is web/mobile solution/RTU only. Do not default to a foundational API path here; handle server/desktop separately through contact-driven guidance.",
-    "- Mobile Document Scanner (MDS): use for document scan and normalization workflows. Public guidance is web-only solution/RTU. Do not default to a foundational API path here; handle mobile and server/desktop separately through contact-driven guidance.",
-    "- Dynamsoft Batch Barcode Scanner (BBS): use when a ready-made Android or iOS app that scans many barcodes at once (inventory boxes, lab tubes) fits the workflow. It is an app, not an SDK: there is no code to embed, no quickstart, and no samples, so do not ask for a programming language. Results leave the app by export (CSV and images, sharing, cloud). To build batch or multi-barcode scanning into your own app, use DBR instead.",
+    `- Dynamic Web TWAIN (DWT): use for browser-based document acquisition and scanner control. Docs: ${PUBLIC_DOCS_URLS.dwt}`,
+    `- Dynamsoft Document Viewer (DDV): use as a standalone viewer. It is the extension path for DWT users who need mobile support or PDF annotation, and for MDS users who need multi-page support or PDF output. Docs: ${PUBLIC_DOCS_URLS.ddv}`,
+    `- Dynamsoft Barcode Reader (DBR): use for barcode workflows. On server/desktop, it is the foundational subset with dedicated docs, samples, and packages for C++, Python, Java, and .NET. On web, start with the foundational API by default, with only minimal use of BarcodeScanner RTU when utter simplicity matters. On mobile, both the foundational API and BarcodeScanner RTU remain official. Docs: web ${PUBLIC_DOCS_URLS.dbr.web}, mobile ${PUBLIC_DOCS_URLS.dbr.mobile}, server/desktop ${PUBLIC_DOCS_URLS.dbr.server}`,
+    `- MRZ Scanner (MRZ): use for passport and machine-readable-zone workflows. Public guidance is web/mobile solution/RTU only. Do not default to a foundational API path here; handle server/desktop separately through contact-driven guidance. Docs: ${PUBLIC_DOCS_URLS.mrz}`,
+    `- Mobile Document Scanner (MDS): use for document scan and normalization workflows. Public guidance is web-only solution/RTU. Do not default to a foundational API path here; handle mobile and server/desktop separately through contact-driven guidance. Docs: ${PUBLIC_DOCS_URLS.mds}`,
+    `- Dynamsoft Batch Barcode Scanner (BBS): use when a ready-made Android or iOS app that scans many barcodes at once (inventory boxes, lab tubes) fits the workflow. It is an app, not an SDK: there is no code to embed, no quickstart, and no samples, so do not ask for a programming language. Results leave the app by export (CSV and images, sharing, cloud). To build batch or multi-barcode scanning into your own app, use DBR instead. Docs: ${PUBLIC_DOCS_URLS.bbs}`,
+    "",
+    "When recommending one of these products, link its Docs URL.",
     "",
     "Choose DBR when you want direct barcode capabilities, MRZ when you want passport/MRZ flows, MDS when you want document scanning flows, DWT when you need browser acquisition, DDV when you need viewing, annotation, multi-page handling, or PDF-oriented extension paths, and BBS when a ready-made Android/iOS app for scanning many barcodes at once meets the need.",
     "",
@@ -566,14 +569,16 @@ function buildIndexData({
             abbreviation: "DWT",
             webOnly: true,
             platforms: ["js"],
-            whenToUse: ["Browser-based document acquisition and scanner control. Web/JavaScript only."]
+            whenToUse: ["Browser-based document acquisition and scanner control. Web/JavaScript only."],
+            docsUrl: PUBLIC_DOCS_URLS.dwt
           },
           ddv: {
             name: "Dynamsoft Document Viewer",
             abbreviation: "DDV",
             webOnly: true,
             platforms: ["js"],
-            whenToUse: ["Standalone viewing plus annotation, multi-page handling, and PDF output. Web/JavaScript only."]
+            whenToUse: ["Standalone viewing plus annotation, multi-page handling, and PDF output. Web/JavaScript only."],
+            docsUrl: PUBLIC_DOCS_URLS.ddv
           },
           dbr: {
             name: "Dynamsoft Barcode Reader",
@@ -584,21 +589,24 @@ function buildIndexData({
               "Barcode workflows across server/desktop, web, and mobile. The only product with multiple editions.",
               "Web uses a foundational-first flow (BarcodeScanner RTU also available); this is not selected via api_level.",
               "api_level (high-level = BarcodeScanner RTU, low-level = foundational) applies only to DBR mobile."
-            ]
+            ],
+            docsUrls: { ...PUBLIC_DOCS_URLS.dbr }
           },
           mrz: {
             name: "MRZ Scanner",
             abbreviation: "MRZ",
             webOnly: true,
             platforms: ["js"],
-            whenToUse: ["Passport and machine-readable-zone workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
+            whenToUse: ["Passport and machine-readable-zone workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."],
+            docsUrl: PUBLIC_DOCS_URLS.mrz
           },
           mds: {
             name: "Mobile Document Scanner",
             abbreviation: "MDS",
             webOnly: true,
             platforms: ["js"],
-            whenToUse: ["Document scan and normalization workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."]
+            whenToUse: ["Document scan and normalization workflows. Served here as web/JavaScript only; mobile/server scopes return official reference links."],
+            docsUrl: PUBLIC_DOCS_URLS.mds
           },
           bbs: {
             name: "Dynamsoft Batch Barcode Scanner",
@@ -606,7 +614,8 @@ function buildIndexData({
             webOnly: false,
             editions: ["mobile"],
             platforms: ["android", "ios"],
-            whenToUse: ["Ready-made Android/iOS app for scanning many barcodes at once (inventory boxes, lab tubes). It is an app, not an SDK: docs only, with no samples or quickstart; integrate by exporting results. To embed multi-barcode scanning in your own app, use DBR."]
+            whenToUse: ["Ready-made Android/iOS app for scanning many barcodes at once (inventory boxes, lab tubes). It is an app, not an SDK: docs only, with no samples or quickstart; integrate by exporting results. To embed multi-barcode scanning in your own app, use DBR."],
+            docsUrl: PUBLIC_DOCS_URLS.bbs
           }
         }
       },

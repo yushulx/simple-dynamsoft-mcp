@@ -28,6 +28,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getMdsWebSamplePath,
     getDwtSamplePath,
     getDdvSamplePath,
+    getRepoSourceUrl,
     readCodeFile,
     getMainCodeFile,
     ensureLatestMajor,
@@ -193,6 +194,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getMdsWebSamplePath,
     getDwtSamplePath,
     getDdvSamplePath,
+    getRepoSourceUrl,
     getSampleSuggestions
   });
 
