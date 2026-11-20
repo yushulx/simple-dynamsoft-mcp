@@ -164,7 +164,6 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getMainCodeFile,
     getWebSamplePath,
     getMrzWebSamplePath,
-    getMdsWebSamplePath,
     getSampleSuggestions,
     getSampleIdFromUri,
     formatScopeLabel

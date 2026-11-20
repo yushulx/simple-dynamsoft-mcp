@@ -51,6 +51,7 @@ const DOC_ROOTS = {
   dcvWeb: join(docsRoot, DOC_DIRS.dcvWeb),
   mrzWeb: join(docsRoot, DOC_DIRS.mrzWeb),
   mdsWeb: join(docsRoot, DOC_DIRS.mdsWeb),
+  mdsWebDocs: join(docsRoot, DOC_DIRS.mdsWeb, "docs"),
   dcvMobile: join(docsRoot, DOC_DIRS.dcvMobile),
   dcvServer: join(docsRoot, DOC_DIRS.dcvServer),
   dcvCore: join(docsRoot, DOC_DIRS.dcvCore),

@@ -33,7 +33,6 @@ export function registerQuickstartTools({
   getMainCodeFile,
   getWebSamplePath,
   getMrzWebSamplePath,
-  getMdsWebSamplePath,
   getSampleSuggestions,
   getSampleIdFromUri,
   formatScopeLabel
@@ -90,7 +89,7 @@ export function registerQuickstartTools({
     if (product === "mds") {
       return {
         docsUrl: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
-        samplesUrl: "https://github.com/Dynamsoft/document-scanner-javascript"
+        samplesUrl: "https://github.com/Dynamsoft/document-scanner-javascript-samples"
       };
     }
 
@@ -351,15 +350,13 @@ export function registerQuickstartTools({
           const sdkEntry = registry.sdks["dcv-web"];
           if (isPublicDcvProduct) {
             // Serve the hydrated hello-world sample inline instead of link-only.
-            // The dedicated web sample repos ship runnable starters (#136).
+            // The MRZ sample repo ships runnable single-file starters (#136); the
+            // MDS 2.x samples are full framework projects, so MDS gets links only.
             const publicLinks = getPublicWebQuickstartLinks(normalizedProduct);
-            const getDedicated = normalizedProduct === "mrz" ? getMrzWebSamplePath : getMdsWebSamplePath;
-            let dedicatedSample = "hello-world";
-            if (normalizedProduct === "mds" && (scenarioLower.includes("pdf"))) dedicatedSample = "scanning-to-pdf";
-            else if (scenarioLower.includes("image") || scenarioLower.includes("file")) {
-              dedicatedSample = normalizedProduct === "mrz" ? "use-file-input" : "image-file-scanning";
-            }
-            const dedicatedPath = typeof getDedicated === "function" ? getDedicated("root", dedicatedSample) : "";
+            const dedicatedSample = scenarioLower.includes("image") || scenarioLower.includes("file")
+              ? "use-file-input"
+              : "hello-world";
+            const dedicatedPath = normalizedProduct === "mrz" ? getMrzWebSamplePath("root", dedicatedSample) : "";
             // Guard against a directory result (the resolver can return a dir when a
             // sample lacks a single html entry): readCodeFile would throw EISDIR.
             if (dedicatedPath && existsSync(dedicatedPath) && statSync(dedicatedPath).isFile()) {
@@ -387,7 +384,7 @@ export function registerQuickstartTools({
                 }]
               };
             }
-            // Fall back to reference links only if the sample is not hydrated.
+            // Fall back to reference links when no single-file sample is hydrated.
             return buildPublicReferenceQuickstart({
               product: normalizedProduct,
               edition: effectiveEdition,

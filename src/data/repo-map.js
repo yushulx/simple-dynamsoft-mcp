@@ -129,12 +129,12 @@ const REPO_MAP = {
   },
   mds: {
     docs: {
-      web: ["documentation/mobile-document-scanner-docs-js"],
-      any: ["documentation/mobile-document-scanner-docs-js"]
+      web: ["documentation/document-scanner-javascript"],
+      any: ["documentation/document-scanner-javascript"]
     },
     samples: {
-      web: ["samples/document-scanner-javascript"],
-      any: ["samples/document-scanner-javascript"]
+      web: ["samples/document-scanner-javascript-samples"],
+      any: ["samples/document-scanner-javascript-samples"]
     }
   },
   dwt: {

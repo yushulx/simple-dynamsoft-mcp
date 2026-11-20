@@ -8,13 +8,13 @@ const manifest = {
     { path: "documentation/batch-barcode-scanner-docs" },
     { path: "documentation/capture-vision-docs-js" },
     { path: "documentation/capture-vision-docs" },
-    { path: "documentation/mobile-document-scanner-docs-js" },
+    { path: "documentation/document-scanner-javascript" },
     { path: "documentation/mrz-scanner-docs-js" },
     { path: "samples/dynamsoft-barcode-reader" },
     { path: "samples/dynamsoft-capture-vision-mobile" },
     { path: "samples/dynamsoft-capture-vision-react-native" },
     { path: "samples/dynamsoft-capture-vision-flutter" },
-    { path: "samples/document-scanner-javascript" },
+    { path: "samples/document-scanner-javascript-samples" },
     { path: "samples/mrz-scanner-javascript" },
     { path: "documentation/web-twain-docs" },
     { path: "samples/dynamic-web-twain" }
@@ -117,22 +117,22 @@ test("resolveRepoPathsForScopes maps MRZ any-scope samples to dedicated web and 
   ]);
 });
 
-test("resolveRepoPathsForScopes maps MDS web docs to documentation/mobile-document-scanner-docs-js", () => {
+test("resolveRepoPathsForScopes maps MDS web docs to documentation/document-scanner-javascript", () => {
   const paths = resolveRepoPathsForScopes(
     [{ product: "mds", edition: "web", type: "doc" }],
     manifest
   );
 
-  assert.deepEqual(paths, ["documentation/mobile-document-scanner-docs-js"]);
+  assert.deepEqual(paths, ["documentation/document-scanner-javascript"]);
 });
 
-test("resolveRepoPathsForScopes maps MDS web samples to samples/document-scanner-javascript", () => {
+test("resolveRepoPathsForScopes maps MDS web samples to samples/document-scanner-javascript-samples", () => {
   const paths = resolveRepoPathsForScopes(
     [{ product: "mds", edition: "web", type: "sample" }],
     manifest
   );
 
-  assert.deepEqual(paths, ["samples/document-scanner-javascript"]);
+  assert.deepEqual(paths, ["samples/document-scanner-javascript-samples"]);
 });
 
 test("resolveRepoPathsForScopes maps MDS any-scope samples to dedicated web repo only", () => {
@@ -141,7 +141,7 @@ test("resolveRepoPathsForScopes maps MDS any-scope samples to dedicated web repo
     manifest
   );
 
-  assert.deepEqual(paths, ["samples/document-scanner-javascript"]);
+  assert.deepEqual(paths, ["samples/document-scanner-javascript-samples"]);
 });
 
 test("resolveRepoPathsForScopes maps BBS to its docs repo and never to samples", () => {

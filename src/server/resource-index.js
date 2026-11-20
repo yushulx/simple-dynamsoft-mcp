@@ -250,7 +250,7 @@ function loadDocumentationSets() {
 
   mdsWebDocs = withEditionScope(
     loadMarkdownDocs({
-      rootDir: DOC_ROOTS.mdsWeb,
+      rootDir: DOC_ROOTS.mdsWebDocs,
       urlBase: DOCS_CONFIG.mdsWeb.urlBase,
       excludeDirs: DOCS_CONFIG.mdsWeb.excludeDirs,
       excludeFiles: DOCS_CONFIG.mdsWeb.excludeFiles
