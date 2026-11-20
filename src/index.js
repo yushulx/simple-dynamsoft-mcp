@@ -39,7 +39,7 @@ function startupCacheSource(dataStatus) {
   return dataStatus.downloaded ? "fresh-download" : "cache";
 }
 
-function createServer() {
+function createServer({ delivery } = {}) {
   if (!resourceIndexApi || !ragApi) {
     throw new Error("MCP server is still initializing");
   }
@@ -47,7 +47,8 @@ function createServer() {
   return createMcpServerInstance({
     pkgVersion: pkg.version,
     resourceIndexApi,
-    ragApi
+    ragApi,
+    delivery
   });
 }
 

@@ -9,6 +9,7 @@ import {
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
 import { buildBbsAppReferenceResponse, buildUnsupportedPublicScopeResponse } from "./public-routing.js";
+import { findLocalSampleRefs } from "../resource-index/sample-source.js";
 
 export function registerProjectTools({
   server,
@@ -34,8 +35,10 @@ export function registerProjectTools({
   getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
-  getRepoSourceUrl = () => "",
-  getSampleSuggestions
+  getSampleSourceUrl = () => "",
+  resolveSampleUriPath,
+  getSampleSuggestions,
+  linksOnly = false
 }) {
   async function resolveDedicatedPublicWebSamplePath({
     product,
@@ -97,7 +100,7 @@ export function registerProjectTools({
         "- resource_uri: A sample:// URI as returned by search (e.g. 'sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' or 'sample://mrz/server/python/3/mrz_scanner'). Preferred over sample_id when available.",
         `- api_level: ${API_LEVEL_NOTE}`,
         "",
-        "RETURNS: A Source line with the sample's public GitHub URL, then all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No archive or download link is created; share the Source URL when the user needs the whole project. manifest_only returns the Source URL and file list without contents.",
+        "RETURNS: A Source line with the sample's public GitHub URL, then all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No archive or download link is created; share the Source URL when the user needs the whole project. manifest_only returns the Source URL and file list without contents, as does every call on a connection opened with delivery=links.",
         "",
         "EXAMPLE: get_sample_files with resource_uri='sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' returns all source files for the Android barcode scanning sample.",
         "",
@@ -221,31 +224,7 @@ export function registerProjectTools({
       if (sampleInfo) {
         sampleLabel = sampleInfo.sampleName || resource_uri;
         sampleQuery = sampleInfo.sampleName || sample_id || "";
-        if (sampleInfo.product === "dbr" && sampleInfo.edition === "mobile") {
-          samplePath = getMobileSamplePath(sampleInfo.platform, sampleInfo.level, sampleInfo.sampleName);
-        } else if (sampleInfo.product === "dbr" && sampleInfo.edition === "web") {
-          samplePath = getWebSamplePath(sampleInfo.category, sampleInfo.sampleName);
-        } else if (sampleInfo.product === "dbr" && (sampleInfo.edition === "python" || sampleInfo.edition === "server")) {
-          samplePath = getDbrServerSamplePath(sampleInfo.platform, sampleInfo.sampleName);
-        } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "mobile") {
-          samplePath = getDcvMobileSamplePath(sampleInfo.platform, sampleInfo.sampleName);
-        } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "server") {
-          samplePath = getDcvServerSamplePath(sampleInfo.platform, sampleInfo.sampleName);
-        } else if ((sampleInfo.product === "mrz" || sampleInfo.product === "mds") && sampleInfo.edition === "web") {
-          samplePath = sampleInfo.product === "mrz"
-            ? getMrzWebSamplePath(sampleInfo.category, sampleInfo.sampleName)
-            : getMdsWebSamplePath(sampleInfo.category, sampleInfo.sampleName);
-        } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "mobile") {
-          samplePath = getDcvMobileSamplePath(sampleInfo.platform, sampleInfo.sampleName);
-        } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "server") {
-          samplePath = getDcvServerSamplePath(sampleInfo.platform, sampleInfo.sampleName);
-        } else if (sampleInfo.product === "dcv" && sampleInfo.edition === "web") {
-          samplePath = getDcvWebSamplePath(sampleInfo.sampleName);
-        } else if (sampleInfo.product === "dwt") {
-          samplePath = getDwtSamplePath(sampleInfo.category, sampleInfo.sampleName);
-        } else if (sampleInfo.product === "ddv") {
-          samplePath = getDdvSamplePath(sampleInfo.sampleName);
-        }
+        samplePath = resolveSampleUriPath(sampleInfo);
       } else if (sample_id) {
         if (!normalizedProduct || !normalizedEdition) {
           return {
@@ -447,36 +426,19 @@ export function registerProjectTools({
       // initSettingsFromFile('./read_dl.json')) are delivered without their
       // siblings by the walk above. Pull in files the payload references so the
       // project is runnable as delivered (issue #137).
+      // Only references that stay INSIDE the sample tree are followed (see
+      // findLocalSampleRefs): out-of-tree refs can't be represented in the flat
+      // payload, and absolute paths must never be read (Copilot #463).
       const includedPaths = new Set(files.map((f) => f.path));
-      const refPattern = /(?:src|href)\s*=\s*["']([^"']+)["']|from\s+["']([^"']+)["']|initSettingsFromFile\(\s*["']([^"']+)["']|["'](\.\.?\/[^"']+\.(?:json|css|js|xml))["']/g;
       const pending = [...files];
       while (pending.length) {
         const file = pending.pop();
         const fileDir = dirname(join(rootDir, file.path));
-        let match;
-        refPattern.lastIndex = 0;
-        while ((match = refPattern.exec(file.content)) !== null) {
-          const ref = match[1] || match[2] || match[3] || match[4];
-          if (!ref) continue;
-          // Skip anything that isn't a project-relative path: absolute URLs,
-          // data URIs, node_modules, and — importantly — filesystem-absolute
-          // paths ("/etc/passwd"), which must never be read (Copilot #463).
-          if (/^(https?:)?\/\//.test(ref) || ref.startsWith("data:") || ref.startsWith("/") || ref.includes("node_modules")) continue;
-          const cleanRef = ref.split(/[?#]/)[0];
-          const resolved = join(fileDir, cleanRef);
-          const relPath = relative(rootDir, resolved);
-          // Only follow references that stay INSIDE the sample tree. Out-of-tree
-          // refs (../../CustomTemplates/x.json) can't be represented in the flat
-          // payload and a basename rewrite wouldn't satisfy the original ref, so
-          // we don't chase them (avoids host-file traversal too).
-          if (relPath.startsWith("..") || includedPaths.has(relPath)) continue;
+        for (const { resolved, relPath } of findLocalSampleRefs(file.content, fileDir, rootDir)) {
+          if (includedPaths.has(relPath)) continue;
           // Text assets only — never inline binary content.
           const ext = extname(resolved).toLowerCase();
           if (!textExtensions.includes(ext)) continue;
-          if (!existsSync(resolved)) continue;
-          try {
-            if (!statSync(resolved).isFile()) continue;
-          } catch { continue; }
           try {
             const content = readFileSync(resolved, "utf-8").replace(/\r\n/g, "\n");
             const added = { path: relPath, content, ext: (ext.replace(".", "") || "text") };
@@ -513,7 +475,7 @@ export function registerProjectTools({
       const validFiles = selected.filter((f) => f.content.length < MAX_FILE_BYTES);
 
       // Empty payload → actionable miss, never a silent empty success (issue #138).
-      if (files.length === 0 || (validFiles.length === 0 && !manifest_only)) {
+      if (files.length === 0 || (validFiles.length === 0 && !manifest_only && !linksOnly)) {
         const suggestions = await getSampleSuggestions({
           query: sampleQuery,
           product: normalizedProduct,
@@ -542,22 +504,7 @@ export function registerProjectTools({
         return { isError: true, content };
       }
 
-      // A file-backed sample owns its folder when the folder is named for it
-      // (scenarios/scan-qr-code/index.html, upload/upload.html) or the payload
-      // pulled in sibling files; link that folder so the Source URL covers the
-      // whole project. Standalone files (basics/hello-world.html) keep a file link.
-      const sampleFile = basename(samplePath);
-      const ownsFolder = !stat.isDirectory() && (
-        files.length > 1
-        || sampleFile === "index.html"
-        || basename(rootDir) === basename(sampleFile, extname(sampleFile))
-      );
-      let sourceUrl = "";
-      try {
-        sourceUrl = getRepoSourceUrl(ownsFolder ? rootDir : samplePath);
-      } catch {
-        // A missing or invalid data manifest only drops the link.
-      }
+      const sourceUrl = getSampleSourceUrl(samplePath);
 
       const totalKb = (selected.reduce((sum, f) => sum + f.content.length, 0) / 1024).toFixed(1);
       const output = [
@@ -570,7 +517,10 @@ export function registerProjectTools({
         ""
       ].filter((line) => line !== "");
 
-      if (manifest_only) {
+      if (manifest_only || linksOnly) {
+        if (linksOnly) {
+          output.push("", "File contents are not returned on this connection; share the Source URL for the project.");
+        }
         return { content: [{ type: "text", text: output.join("\n") }] };
       }
 

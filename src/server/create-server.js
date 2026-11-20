@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ensureDataScopesHydrated } from "../data/bootstrap.js";
+import { DELIVERY_LINKS, normalizeDelivery, stripCodeFromToolResult, toLinksOnlyResource } from "./helpers/delivery.js";
 import { createScopeHydrator } from "./helpers/server-helpers.js";
 import { registerResourceHandlers } from "./resources/register-resources.js";
 import { createIndexedResourceReader } from "./resources/read-indexed-resource.js";
@@ -10,7 +11,11 @@ import { registerVersionTools } from "./tools/register-version-tools.js";
 import { registerQuickstartTools } from "./tools/register-quickstart-tools.js";
 import { registerProjectTools } from "./tools/register-project-tools.js";
 
-export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }) {
+// `delivery` is "full" (default) or "links": a links-only connection gets docs
+// and sample links but no code blocks or file contents from any tool or
+// resource (see helpers/delivery.js).
+export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi, delivery }) {
+  const linksOnly = normalizeDelivery(delivery) === DELIVERY_LINKS;
   const {
     registry,
     LATEST_VERSIONS,
@@ -28,7 +33,9 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getMdsWebSamplePath,
     getDwtSamplePath,
     getDdvSamplePath,
-    getRepoSourceUrl,
+    getSampleSourceUrl,
+    getSampleUriSourceUrl,
+    resolveSampleUriPath,
     readCodeFile,
     getMainCodeFile,
     ensureLatestMajor,
@@ -41,7 +48,7 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getDisplayPlatform,
     formatScopeLabel,
     getPinnedResources,
-    readResourceContent,
+    readResourceContent: readRawResourceContent,
     refreshResourceIndex,
     normalizePlatform,
     normalizeApiLevel,
@@ -87,9 +94,23 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
       "api_level rule:",
       "- api_level (high-level / low-level) applies ONLY to DBR mobile. Never ask about it, or pass it, for web, server, or any product other than DBR mobile.",
       "",
-      "For scopes this MCP does not index (e.g. MRZ/MDS on mobile or server), tools return official documentation and sample links — pass those on rather than inventing code. For BBS, the quickstart and sample tools return its documentation and integration links."
+      "For scopes this MCP does not index (e.g. MRZ/MDS on mobile or server), tools return official documentation and sample links — pass those on rather than inventing code. For BBS, the quickstart and sample tools return its documentation and integration links.",
+      ...(linksOnly
+        ? ["", "This connection serves links only: code blocks and sample file contents are omitted. When the user asks for code, a sample, or a demo, share the sample's GitHub source link (Source/source_url in tool output) and a documentation link."]
+        : [])
     ].join("\n")
   });
+
+  const readResourceContent = linksOnly
+    ? async (uri) => toLinksOnlyResource(await readRawResourceContent(uri), { getSampleUriSourceUrl })
+    : readRawResourceContent;
+
+  if (linksOnly) {
+    // Every tool result passes through the same filter, so no tool can hand
+    // this connection a code block, including search passages and documents.
+    const registerTool = server.registerTool.bind(server);
+    server.registerTool = (name, config, handler) => registerTool(name, config, async (...args) => stripCodeFromToolResult(await handler(...args)));
+  }
 
   const readIndexedResource = createIndexedResourceReader({
     parseResourceUri,
@@ -110,7 +131,8 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     searchResources,
     normalizeSampleName,
     getSampleEntries,
-    getSampleSuggestions
+    getSampleSuggestions,
+    getSampleUriSourceUrl
   });
 
   registerDocumentTools({
@@ -129,7 +151,8 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getSampleEntries,
     getSampleIdFromUri,
     getDisplayEdition,
-    getDisplayPlatform
+    getDisplayPlatform,
+    getSampleUriSourceUrl
   });
 
   registerVersionTools({
@@ -167,7 +190,8 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getMrzWebSamplePath,
     getSampleSuggestions,
     getSampleIdFromUri,
-    formatScopeLabel
+    formatScopeLabel,
+    getSampleSourceUrl
   });
 
   registerProjectTools({
@@ -194,8 +218,10 @@ export function createMcpServerInstance({ pkgVersion, resourceIndexApi, ragApi }
     getMdsWebSamplePath,
     getDwtSamplePath,
     getDdvSamplePath,
-    getRepoSourceUrl,
-    getSampleSuggestions
+    getSampleSourceUrl,
+    resolveSampleUriPath,
+    getSampleSuggestions,
+    linksOnly
   });
 
   registerResourceHandlers({

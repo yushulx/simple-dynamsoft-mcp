@@ -18,7 +18,8 @@ export function registerSampleTools({
   getSampleEntries,
   getSampleIdFromUri,
   getDisplayEdition,
-  getDisplayPlatform
+  getDisplayPlatform,
+  getSampleUriSourceUrl = () => ""
 }) {
   server.registerTool(
     "list_samples",
@@ -44,7 +45,7 @@ export function registerSampleTools({
         `- platform: only DBR spans multiple platforms (android, ios, js, python, cpp, java, dotnet, nodejs, react, vue, angular, flutter, react-native, maui, etc.). ${WEB_ONLY_OMIT_NOTE}`,
         "- limit: 1-200 (default 50). Max number of results.",
         "",
-        "RETURNS: A single text content item that starts with totals and plain URIs, then appends 'JSON:' followed by a JSON object with total count and sample entries. Each entry includes sample_id, uri (sample:// URI), product, edition, platform, version, title, and summary. Use sample_id or uri with get_sample_files to retrieve full project files.",
+        "RETURNS: A single text content item that starts with totals and plain URIs, then appends 'JSON:' followed by a JSON object with total count and sample entries. Each entry includes sample_id, uri (sample:// URI), source_url (public GitHub URL, when known), product, edition, platform, version, title, and summary. Use sample_id or uri with get_sample_files to retrieve full project files; share source_url when the user wants a link to the sample.",
         "",
         "EXAMPLE: Call list_samples with product='dbr', edition='mobile', platform='android' to see all Android barcode reader samples.",
         "",
@@ -109,6 +110,7 @@ export function registerSampleTools({
       const payload = selected.map((entry) => ({
         sample_id: getSampleIdFromUri(entry.uri),
         uri: entry.uri,
+        source_url: getSampleUriSourceUrl(entry.uri) || undefined,
         product: entry.product,
         edition: getDisplayEdition(entry.edition),
         platform: getDisplayPlatform(entry.platform),
@@ -124,7 +126,8 @@ export function registerSampleTools({
         "Plain URIs (copy/paste):",
         ...payload.map((item, index) => {
           const sampleNote = item.sample_id ? ` (sample_id: ${item.sample_id})` : "";
-          return `- ${index + 1}. ${item.uri}${sampleNote}`;
+          const sourceNote = item.source_url ? ` source: ${item.source_url}` : "";
+          return `- ${index + 1}. ${item.uri}${sampleNote}${sourceNote}`;
         })
       ];
 

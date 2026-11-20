@@ -27,6 +27,8 @@ Use this endpoint directly:
 
 - `https://simple-dynamsoft-mcp.wonderfulwave-69908b91.eastus2.azurecontainerapps.io/mcp`
 
+Clients that cannot relay code to their users (for example a website chat widget) can connect to `/mcp?delivery=links`, or send the header `X-Sample-Delivery: links`. That connection gets documentation and GitHub sample links in place of code: tool results and resources omit code blocks (short install commands are kept as plain lines), `get_sample_files` returns only the Source link and file list, and `sample://` resources return their Source link. Other connections to the same server are unaffected.
+
 ### 2) Local
 
 ```bash
@@ -297,12 +299,12 @@ mcpServers:
 The server exposes this minimal tool surface:
 
 - `get_index` -- compact product/version/sample index with selection guidance, known capability facts (OCR, VIN, ID documents, batch scanning), and `productSelection.guideUri` pointing to the full product-selection guide
-- `search` -- semantic search across docs and samples (also accepts exact sample IDs); returns `doc://` and `sample://` links plus the matched passage (up to ~1500 chars) of the top 3 results (`content: "none"` returns links and short snippets only). Without `edition`/`platform`, MRZ and MDS search their web edition, and a DBR query that names exactly one edition (for example "web app" or "Android") searches that edition and says so
+- `search` -- semantic search across docs and samples (also accepts exact sample IDs); returns `doc://` and `sample://` links plus the matched passage (up to ~1500 chars) of the top 3 results (`content: "none"` returns links and short snippets only). Sample hits include their public GitHub source URL. Without `edition`/`platform`, MRZ and MDS search their web edition, and a DBR query that names exactly one edition (for example "web app" or "Android") searches that edition and says so
 - `read_document` -- read the full text (title, public docs URL, body) of a `doc://` URI returned by `search` or `get_index`
-- `list_samples` -- browse available samples for a product/edition/platform
+- `list_samples` -- browse available samples for a product/edition/platform, each with its `sample://` URI and public GitHub `source_url`
 - `resolve_version` -- resolve current version for a product/edition/platform
-- `get_quickstart` -- opinionated quickstart: picks a sample by scenario, returns code + install instructions
-- `get_sample_files` -- get full project files for a known sample (discovered via list_samples or search)
+- `get_quickstart` -- opinionated quickstart: picks a sample by scenario, returns its GitHub source link, install instructions, and code
+- `get_sample_files` -- get full project files for a known sample (discovered via list_samples or search), led by a `Source:` line with the sample's GitHub URL (`manifest_only: true` returns the link and file list without contents)
 
 BBS is a ready-made Android/iOS app, not an SDK: `search` and `read_document` serve its documentation, while `list_samples`, `get_quickstart`, and `get_sample_files` return its docs and integration links instead of code.
 

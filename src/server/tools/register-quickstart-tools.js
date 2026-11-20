@@ -36,8 +36,16 @@ export function registerQuickstartTools({
   getMrzWebSamplePath,
   getSampleSuggestions,
   getSampleIdFromUri,
-  formatScopeLabel
+  formatScopeLabel,
+  getSampleSourceUrl = () => ""
 }) {
+  // Public GitHub link for the sample a quickstart is built from, shown first
+  // so a client that cannot relay code can still hand the user the project.
+  function sampleSourceLine(samplePath) {
+    const url = getSampleSourceUrl(samplePath);
+    return url ? `**Sample source:** ${url}` : "";
+  }
+
   // Actionable miss response: instead of a bare "Sample not found", surface
   // related samples the agent can fetch next (mirrors get_sample_files). (#151)
   async function buildQuickstartMissResponse({ reason, product, edition, platform, scenario }) {
@@ -376,6 +384,7 @@ export function registerQuickstartTools({
                   text: [
                     `# Quick Start: ${publicProductLabel} Web`,
                     "",
+                    sampleSourceLine(dedicatedPath),
                     `**SDK Version:** ${sdkEntry.version}`,
                     `**Trial License:** \`${registry.trial_license}\``,
                     mrzFields,
@@ -553,6 +562,7 @@ export function registerQuickstartTools({
             text: [
               `# Quick Start: DBR Server (${platformLabel})`,
               "",
+              sampleSourceLine(samplePath),
               `**SDK Version:** ${sdkEntry.version}`,
               `**Trial License:** \`${registry.trial_license}\``,
               "",
@@ -594,6 +604,7 @@ export function registerQuickstartTools({
               text: [
                 `# Quick Start: DBR Web (${normalizedPlatform})`,
                 "",
+                sampleSourceLine(getWebSamplePath("frameworks", normalizedPlatform)),
                 `**SDK Version:** ${sdkEntry.version}`,
                 `**Trial License:** \`${registry.trial_license}\``,
                 `**Starter profile:** ${normalizedPlatform} framework project available`,
@@ -683,6 +694,7 @@ export function registerQuickstartTools({
             text: [
               "# Quick Start: DBR Web",
               "",
+              sampleSourceLine(samplePath),
               `**SDK Version:** ${sdkEntry.version}`,
               `**Trial License:** \`${registry.trial_license}\``,
               "**Starter profile:** Foundational-first",
@@ -867,6 +879,7 @@ Add camera permissions in Platforms/Android/AndroidManifest.xml and Platforms/iO
         const output = [
           "# Quick Start: DBR Mobile",
           "",
+          sampleSourceLine(samplePath),
           `**Platform:** ${targetPlatform}`,
           `**SDK Version:** ${sdkEntry.version}`,
           `**API Level:** ${level}`,
@@ -903,6 +916,7 @@ Add camera permissions in Platforms/Android/AndroidManifest.xml and Platforms/iO
             text: [
               "# Quick Start: Dynamic Web TWAIN",
               "",
+              sampleSourceLine(samplePath),
               `**SDK Version:** ${sdkEntry.version}`,
               `**Trial License:** \`${registry.trial_license}\``,
               "",
@@ -980,6 +994,7 @@ Add camera permissions in Platforms/Android/AndroidManifest.xml and Platforms/iO
             text: [
               "# Quick Start: Dynamsoft Document Viewer",
               "",
+              sampleSourceLine(samplePath),
               `**SDK Version:** ${sdkEntry.version}`,
               `**Trial License:** \`${registry.trial_license}\``,
               "",
