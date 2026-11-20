@@ -68,7 +68,7 @@ test("[lazy] packaged runtime boots in lazy hydration mode with isolated cache",
 
     assert.equal(search.isError, undefined, "Lazy search should not return isError");
     const link = search.content.find((item) => item.type === "resource_link");
-    assert.ok(link, "Lazy search should return at least one resource_link");
+    assert.ok(link, `Lazy search should return at least one resource_link: ${JSON.stringify(search.content).slice(0, 1500)}`);
 
     const hydratedDocsPath = join(cacheDir, "documentation", "web-twain-docs");
     assert.ok(
