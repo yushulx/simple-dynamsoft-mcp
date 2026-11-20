@@ -9,7 +9,7 @@ import {
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
 import { buildBbsAppReferenceResponse, buildUnsupportedPublicScopeResponse } from "./public-routing.js";
-import { findLocalSampleRefs } from "../resource-index/sample-source.js";
+import { findLocalSampleRefs } from "../helpers/sample-refs.js";
 
 export function registerProjectTools({
   server,
