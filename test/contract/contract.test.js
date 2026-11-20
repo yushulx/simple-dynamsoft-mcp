@@ -42,13 +42,17 @@ test("#155 URI round-trip: every sample:// URI from list_samples is fetchable", 
     const step = Math.max(1, Math.floor(uris.length / 40));
     const sampled = uris.filter((_, i) => i % step === 0).slice(0, 40);
     const failures = [];
+    const missingSource = [];
     for (const uri of sampled) {
       const r = await client.callTool({ name: "get_sample_files", arguments: { resource_uri: uri } }, undefined, REQ);
       const t = textOf(r);
       const ok = r.isError !== true && (/## Files \(|## /.test(t) || /docs URL|samples URL|Docs:/i.test(t));
       if (!ok) failures.push(uri);
+      // Chat hosts cannot attach files, so served projects must carry a public link.
+      if (/## Files \(/.test(t) && !/^Source: https:\/\/github\.com\//m.test(t)) missingSource.push(uri);
     }
     assert.deepEqual(failures, [], `these advertised URIs were not fetchable: ${failures.join(", ")}`);
+    assert.deepEqual(missingSource, [], `these samples have no public Source URL: ${missingSource.join(", ")}`);
   });
 });
 
@@ -97,6 +101,23 @@ test("root demo samples return the whole project, not just index.html", async ()
       assert.ok(!r.isError, `${product} demo should resolve: ${t.slice(0, 200)}`);
       assert.match(t, /## package\.json/, `${product} demo should include package.json`);
       assert.match(t, /## vite\.config\.ts/, `${product} demo should include vite.config.ts`);
+    }
+  });
+});
+
+test("Source links cover the whole sample: folder for folder-backed samples, file for standalone ones", async () => {
+  const repo = "https://github.com/Dynamsoft/barcode-reader-javascript-samples";
+  const cases = [
+    // index.html plus index.css and ReadQR.json in its own folder.
+    [{ product: "dbr", edition: "web", sample_id: "scenarios/scan-qr-code" }, `${repo}/tree/main/scenarios/scan-qr-code`],
+    // One self-contained page among other samples in basics/.
+    [{ product: "dbr", edition: "web", sample_id: "hello-world" }, `${repo}/blob/main/basics/hello-world.html`]
+  ];
+  await withClient(async (client) => {
+    for (const [args, expected] of cases) {
+      const r = await client.callTool({ name: "get_sample_files", arguments: { ...args, manifest_only: true } }, undefined, REQ);
+      const t = textOf(r);
+      assert.equal(t.match(/^Source: (\S+)/m)?.[1], expected, t.slice(0, 300));
     }
   });
 });

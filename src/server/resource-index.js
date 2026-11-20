@@ -24,6 +24,7 @@ import {
   registryPath,
   DOC_ROOTS,
   SAMPLE_ROOTS,
+  getRepoSourceUrl,
   readManifestRepoCommit
 } from "./resource-index/paths.js";
 import { bundledDataRoot } from "../data/root.js";
@@ -724,6 +725,7 @@ export {
   getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
+  getRepoSourceUrl,
   readCodeFile,
   getMainCodeFile,
   parseMajorVersion,

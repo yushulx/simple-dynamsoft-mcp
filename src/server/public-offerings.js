@@ -62,6 +62,21 @@ const CAPABILITY_FACTS = {
   batchScanning: "Dynamsoft Batch Barcode Scanner (BBS) is a ready-to-use Android/iOS app for scanning many barcodes at once (inventory, lab tubes); there is no BBS SDK. Integrate by exporting results (CSV/images, sharing, cloud). To embed multi-barcode scanning in your own app, use DBR."
 };
 
+// Public documentation landing pages, served by get_index offerings and the
+// product-selection guide so answers can link a product's docs from tool output.
+const PUBLIC_DOCS_URLS = {
+  dwt: "https://www.dynamsoft.com/web-twain/docs/",
+  ddv: "https://www.dynamsoft.com/document-viewer/docs/",
+  dbr: {
+    web: "https://www.dynamsoft.com/barcode-reader/docs/web/",
+    mobile: "https://www.dynamsoft.com/barcode-reader/docs/mobile/",
+    server: "https://www.dynamsoft.com/barcode-reader/docs/server/"
+  },
+  mrz: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
+  mds: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
+  bbs: "https://www.dynamsoft.com/batch-barcode-scanner/docs/introduction.html"
+};
+
 function normalizePublicOffering(product) {
   if (!product) return "";
   const normalized = product.trim().toLowerCase();
@@ -97,6 +112,7 @@ export {
   PRODUCT_SELECTION_GUIDANCE,
   PRODUCT_SELECTION_GUIDE_URI,
   CAPABILITY_FACTS,
+  PUBLIC_DOCS_URLS,
   normalizePublicOffering,
   getHydrationProduct,
   isKnownPublicOffering,

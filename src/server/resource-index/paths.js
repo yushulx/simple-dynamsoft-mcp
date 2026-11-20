@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DOC_DIRS, SAMPLE_DIRS } from "./config.js";
@@ -15,6 +15,7 @@ const docsRoot = join(dataRoot, "documentation");
 const registryPath = join(metadataRoot, "dynamsoft_sdks.json");
 const dataManifestPath = join(metadataRoot, "data-manifest.json");
 
+const manifestReposCache = new Map();
 const manifestCommitLookupCache = new Map();
 
 const SAMPLE_ROOTS = {
@@ -96,11 +97,11 @@ function getManifestRepoPath(repoPath, dataRootPath = dataRoot) {
   return manifestRepoPath;
 }
 
-function buildManifestCommitLookup(manifestPath = dataManifestPath) {
+function loadManifestRepos(manifestPath = dataManifestPath) {
   const resolvedManifestPath = resolve(manifestPath);
-  const cachedLookup = manifestCommitLookupCache.get(resolvedManifestPath);
-  if (cachedLookup) {
-    return cachedLookup;
+  const cachedRepos = manifestReposCache.get(resolvedManifestPath);
+  if (cachedRepos) {
+    return cachedRepos;
   }
 
   if (!existsSync(resolvedManifestPath)) {
@@ -123,8 +124,19 @@ function buildManifestCommitLookup(manifestPath = dataManifestPath) {
     );
   }
 
+  manifestReposCache.set(resolvedManifestPath, manifest.repos);
+  return manifest.repos;
+}
+
+function buildManifestCommitLookup(manifestPath = dataManifestPath) {
+  const resolvedManifestPath = resolve(manifestPath);
+  const cachedLookup = manifestCommitLookupCache.get(resolvedManifestPath);
+  if (cachedLookup) {
+    return cachedLookup;
+  }
+
   const lookup = new Map();
-  for (const repo of manifest.repos) {
+  for (const repo of loadManifestRepos(resolvedManifestPath)) {
     const repoPath = normalizeManifestRepoPath(repo?.path);
     const commit = String(repo?.commit || "").trim();
     if (!repoPath || !commit) {
@@ -137,6 +149,31 @@ function buildManifestCommitLookup(manifestPath = dataManifestPath) {
 
   manifestCommitLookupCache.set(resolvedManifestPath, lookup);
   return lookup;
+}
+
+// Public GitHub URL for a file or directory inside a data submodule, on the
+// branch the data lock tracks. Returns "" when the path is outside a GitHub repo.
+function getRepoSourceUrl(targetPath, options = {}) {
+  const dataRootPath = options.dataRootPath || dataRoot;
+  const repos = loadManifestRepos(options.manifestPath || dataManifestPath);
+  const relPath = normalizeManifestRepoPath(relative(resolve(dataRootPath), resolve(targetPath)));
+  if (!relPath || relPath.startsWith("..")) return "";
+
+  let match = null;
+  for (const repo of repos) {
+    const repoPath = normalizeManifestRepoPath(repo?.path);
+    if (!repoPath || (relPath !== repoPath && !relPath.startsWith(`${repoPath}/`))) continue;
+    if (!match || repoPath.length > match.repoPath.length) match = { repo, repoPath };
+  }
+  const { owner, repo: name, branch } = match?.repo || {};
+  if (!owner || !name || !branch || !/github\.com/i.test(match.repo.url || "")) return "";
+
+  const repoUrl = `https://github.com/${owner}/${name}`;
+  const subPath = relPath.slice(match.repoPath.length + 1);
+  if (!subPath) return repoUrl;
+  const kind = existsSync(targetPath) && statSync(targetPath).isDirectory() ? "tree" : "blob";
+  const encodedPath = subPath.split("/").map(encodeURIComponent).join("/");
+  return `${repoUrl}/${kind}/${encodeURIComponent(branch)}/${encodedPath}`;
 }
 
 function readManifestRepoCommit(repoPath, options = {}) {
@@ -169,5 +206,6 @@ export {
   DOC_ROOTS,
   getExistingPath,
   buildManifestCommitLookup,
+  getRepoSourceUrl,
   readManifestRepoCommit
 };

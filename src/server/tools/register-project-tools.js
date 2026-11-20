@@ -34,6 +34,7 @@ export function registerProjectTools({
   getMdsWebSamplePath,
   getDwtSamplePath,
   getDdvSamplePath,
+  getRepoSourceUrl = () => "",
   getSampleSuggestions
 }) {
   async function resolveDedicatedPublicWebSamplePath({
@@ -96,7 +97,7 @@ export function registerProjectTools({
         "- resource_uri: A sample:// URI as returned by search (e.g. 'sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' or 'sample://mrz/server/python/3/mrz_scanner'). Preferred over sample_id when available.",
         `- api_level: ${API_LEVEL_NOTE}`,
         "",
-        "RETURNS: A text block containing all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No zip file is created.",
+        "RETURNS: A Source line with the sample's public GitHub URL, then all project files inline, each under a heading with its relative path and wrapped in a fenced code block. Files larger than 50KB are excluded. No archive or download link is created; share the Source URL when the user needs the whole project. manifest_only returns the Source URL and file list without contents.",
         "",
         "EXAMPLE: get_sample_files with resource_uri='sample://dbr/mobile/android/10/high-level/ScanSingleBarcode' returns all source files for the Android barcode scanning sample.",
         "",
@@ -541,10 +542,28 @@ export function registerProjectTools({
         return { isError: true, content };
       }
 
+      // A file-backed sample owns its folder when the folder is named for it
+      // (scenarios/scan-qr-code/index.html, upload/upload.html) or the payload
+      // pulled in sibling files; link that folder so the Source URL covers the
+      // whole project. Standalone files (basics/hello-world.html) keep a file link.
+      const sampleFile = basename(samplePath);
+      const ownsFolder = !stat.isDirectory() && (
+        files.length > 1
+        || sampleFile === "index.html"
+        || basename(rootDir) === basename(sampleFile, extname(sampleFile))
+      );
+      let sourceUrl = "";
+      try {
+        sourceUrl = getRepoSourceUrl(ownsFolder ? rootDir : samplePath);
+      } catch {
+        // A missing or invalid data manifest only drops the link.
+      }
+
       const totalKb = (selected.reduce((sum, f) => sum + f.content.length, 0) / 1024).toFixed(1);
       const output = [
         `# Sample Files: ${sampleLabel}`,
         "",
+        sourceUrl ? `Source: ${sourceUrl}` : "",
         `## Files (${validFiles.length}${excluded.length ? ` of ${selected.length}` : ""}, ${totalKb} KB total)`,
         ...validFiles.map((f) => `- ${f.path} (${(f.content.length / 1024).toFixed(1)} KB)`),
         excluded.length ? `Excluded (>50KB): ${excluded.map((f) => f.path).join(", ")}` : "",
@@ -555,7 +574,13 @@ export function registerProjectTools({
         return { content: [{ type: "text", text: output.join("\n") }] };
       }
 
-      output.push("", "Note: Files are returned inline and no downloadable zip is created.", "");
+      output.push(
+        "",
+        sourceUrl
+          ? "Note: Files are returned inline as text. This server does not create archives or download links; the full project is at the Source URL above."
+          : "Note: Files are returned inline as text. This server does not create archives or download links.",
+        ""
+      );
       for (const file of validFiles) {
         output.push(`## ${file.path}`);
         output.push("```" + (file.ext || "text"));

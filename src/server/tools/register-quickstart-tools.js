@@ -6,6 +6,7 @@ import {
   isKnownPublicOffering,
   API_LEVEL_NOTE,
   DBR_ONLY_EDITIONS_NOTE,
+  PUBLIC_DOCS_URLS,
   WEB_ONLY_OMIT_NOTE
 } from "../public-offerings.js";
 import { buildBbsAppReferenceResponse, buildUnsupportedPublicScopeResponse } from "./public-routing.js";
@@ -81,14 +82,14 @@ export function registerQuickstartTools({
   function getPublicWebQuickstartLinks(product) {
     if (product === "mrz") {
       return {
-        docsUrl: "https://www.dynamsoft.com/mrz-scanner/docs/web/",
+        docsUrl: PUBLIC_DOCS_URLS.mrz,
         samplesUrl: "https://github.com/Dynamsoft/mrz-scanner-javascript"
       };
     }
 
     if (product === "mds") {
       return {
-        docsUrl: "https://www.dynamsoft.com/mobile-document-scanner/docs/web/",
+        docsUrl: PUBLIC_DOCS_URLS.mds,
         samplesUrl: "https://github.com/Dynamsoft/document-scanner-javascript-samples"
       };
     }
