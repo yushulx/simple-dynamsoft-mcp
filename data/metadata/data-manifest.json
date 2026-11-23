@@ -38,8 +38,8 @@
       "branch": "main",
       "owner": "dynamsoft-docs",
       "repo": "batch-barcode-scanner-docs",
-      "commit": "94f12c0549c916542792e9dd167a737cea789f40",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/batch-barcode-scanner-docs/zip/94f12c0549c916542792e9dd167a737cea789f40"
+      "commit": "f3dffae1f10e708b1b8eaa7b9d167aceb323ed8c",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/batch-barcode-scanner-docs/zip/f3dffae1f10e708b1b8eaa7b9d167aceb323ed8c"
     },
     {
       "name": "data/documentation/capture-vision-docs",
@@ -118,8 +118,8 @@
       "branch": "master",
       "owner": "dynamsoft-docs",
       "repo": "web-twain-docs",
-      "commit": "050eb34018a8073b43dcbba193eb98f17ca1e246",
-      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/050eb34018a8073b43dcbba193eb98f17ca1e246"
+      "commit": "21e19834fb2b64335aa586bc2ebd3b6b33dbaa8e",
+      "archiveUrl": "https://codeload.github.com/dynamsoft-docs/web-twain-docs/zip/21e19834fb2b64335aa586bc2ebd3b6b33dbaa8e"
     },
     {
       "name": "data/samples/document-scanner-javascript-samples",
